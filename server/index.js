@@ -1,38 +1,39 @@
-const http = require('http');
-const fs = require('fs');
+const express = require('express');
+const mongoose = require('mongoose');
 const path = require('path');
+const apiRouter = require('./router/api');
 
-const server = http.createServer((req, res) => {
-    // 1. Xác định đường dẫn file
-    let filePath = req.url === '/' 
-        ? path.join(__dirname, '../public/index.html') 
-        : path.join(__dirname, '../public', req.url);
-
-    // 2. Xác định loại file (MIME Type)
-    const extname = path.extname(filePath);
-    let contentType = 'text/html';
-    const mimeTypes = {
-        '.css': 'text/css',
-        '.js': 'text/javascript',
-        '.png': 'image/png',
-        '.jpg': 'image/jpg'
-    };
-    contentType = mimeTypes[extname] || 'text/html';
-
-    // 3. Đọc và trả về file
-    fs.readFile(filePath, (err, content) => {
-        if (err) {
-            res.writeHead(404);
-            res.end('404: Không tìm thấy tệp');
-        } else {
-            res.writeHead(200, { 'Content-Type': contentType });
-            res.end(content, 'utf-8');
-        }
-    });
-});
-
-// QUAN TRỌNG: Render sử dụng biến môi trường PORT
+const app = express();
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`🚀 Server đang chạy tại cổng ${PORT}`);
+
+// Đường dẫn tuyệt đối đến thư mục public
+const publicPath = path.resolve(__dirname, '../public');
+
+// 1. Kết nối MongoDB
+// Lưu ý: Đảm bảo MongoDB đang chạy. Nếu dùng Atlas, hãy thay chuỗi kết nối.
+// VÍ DỤ ATLAS: 'mongodb+srv://user:pass@cluster0.example.mongodb.net/ten_database'
+// VÍ DỤ LOCAL: 'mongodb://127.0.0.1:27017/ten_database_cua_ban'
+// Thay 'family-tree' bằng tên database chứa dữ liệu cũ của bạn (ví dụ: 'GiaPha', 'MyFamily'...)
+const MONGO_URI = 'mongodb://127.0.0.1:27017/family-tree';
+mongoose.connect(MONGO_URI)
+    .then(() => console.log('✅ Đã kết nối MongoDB'))
+    .catch(err => console.error('❌ Lỗi kết nối MongoDB:', err));
+
+// 2. Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// 3. Phục vụ file tĩnh (CSS, JS, Images)
+console.log('📂 Đang phục vụ file tĩnh từ:', publicPath);
+app.use(express.static(publicPath));
+
+// Fallback: Hỗ trợ nếu file css/js nằm trực tiếp trong public nhưng HTML gọi /css/ hoặc /js/
+app.use('/css', express.static(publicPath));
+app.use('/js', express.static(publicPath));
+
+// 4. API Routes (Import từ api.js)
+app.use('/api', apiRouter);
+
+app.listen(PORT, () => {
+    console.log(`🚀 Server đang chạy tại http://localhost:${PORT}`);
 });

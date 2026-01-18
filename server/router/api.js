@@ -1,9 +1,12 @@
-﻿const express = require('express');
+﻿﻿const express = require('express');
 const fs = require('fs');
 const router = express.Router();
 const multer = require('multer');
 const Member = require('../models/Member');
-const { importCSV, importGedcom } = require('../utils/importers');
+const { importCSV, importExcel, importGedcom } = require('../utils/importers');
+
+// Đảm bảo thư mục uploads tồn tại trước khi multer sử dụng
+if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
 const upload = multer({ dest: 'uploads/' });
 
 // Lấy toàn bộ danh sách
@@ -31,8 +34,10 @@ router.post('/import', upload.single('file'), async (req, res) => {
     const filePath = req.file.path;
     try {
         let count = 0;
-        if (req.file.originalname.endsWith('.csv')) count = await importCSV(filePath);
-        else if (req.file.originalname.endsWith('.ged')) count = await importGedcom(filePath);
+        const lowerName = req.file.originalname.toLowerCase();
+        if (lowerName.endsWith('.csv')) count = await importCSV(filePath);
+        else if (lowerName.match(/\.xlsx?$/)) count = await importExcel(filePath);
+        else if (lowerName.endsWith('.ged')) count = await importGedcom(filePath);
         res.json({ message: `Đã import ${count} người.` });
     } catch (error) {
         res.status(500).json({ message: 'Lỗi xử lý file: ' + error.message });
