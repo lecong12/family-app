@@ -6,6 +6,7 @@ const Member = require('../models/Member');
 const { importCSV, importGedcom } = require('../utils/importers');
 const upload = multer({ dest: 'uploads/' });
 
+// Lấy toàn bộ danh sách
 router.get('/members', async (req, res) => {
     try {
         const members = await Member.find().sort({ generation: 1, order: 1 });
@@ -13,6 +14,7 @@ router.get('/members', async (req, res) => {
     } catch (e) { res.status(500).json({error: e.message}); }
 });
 
+// Thêm thành viên mới
 router.post('/members', async (req, res) => {
     try {
         const newId = "M" + Date.now();
@@ -23,6 +25,7 @@ router.post('/members', async (req, res) => {
     } catch (e) { res.status(500).json({error: e.message}); }
 });
 
+// Import file
 router.post('/import', upload.single('file'), async (req, res) => {
     if (!req.file) return res.status(400).json({ message: 'Vui lòng chọn file.' });
     const filePath = req.file.path;
