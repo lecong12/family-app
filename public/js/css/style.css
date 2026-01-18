@@ -1,0 +1,42 @@
+/* Giao diện tổng thể */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    display: flex;
+    height: 100vh;
+}
+
+/* Sidebar bên phải chứa 2000 thành viên */
+#memberList {
+    width: 300px;
+    background: #f4f4f4;
+    border-left: 1px solid #ccc;
+    overflow-y: auto; /* Tạo thanh cuộn khi danh sách dài */
+    padding: 10px;
+}
+
+/* Thẻ card cho từng thành viên */
+.member-card {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.member-card:hover {
+    background: #e0f7fa;
+}
+
+.member-card h4 {
+    margin: 0 0 5px 0;
+    color: #333;
+}
+
+.member-card p {
+    margin: 2px 0;
+    font-size: 0.9em;
+    color: #666;
+}
