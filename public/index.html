@@ -26,31 +26,40 @@
         <div id="tree-canvas"></div>
 
         <div id="memberList">
+            <div class="list-header">
+                <h3>Danh sách Thành viên</h3>
+                <p>Tổng số: <span id="member-count">0</span></p>
             </div>
+            <div id="members-container"></div>
+        </div>
     </div>
 
     <div id="member-modal" class="modal">
         <div class="modal-content">
-            <h3>Thêm Thành Viên</h3>
-            <input type="text" id="m-name" placeholder="Họ tên">
-            <select id="m-gender">
-                <option value="Nam">Nam</option>
-                <option value="Nữ">Nữ</option>
-            </select>
-            <select id="m-fid" onchange="updateMothers(this.value)">
-                <option value="">Chọn Cha</option>
-            </select>
-            <select id="m-mid">
-                <option value="">Chọn Mẹ</option>
-            </select>
+            <h3>Thêm Thành Viên Mới</h3>
+            <div class="form-group">
+                <input type="text" id="m-name" placeholder="Họ tên">
+                <select id="m-gender">
+                    <option value="Nam">Nam</option>
+                    <option value="Nữ">Nữ</option>
+                </select>
+                <input type="number" id="m-gen" placeholder="Đời thứ (ví dụ: 5)">
+                <input type="text" id="m-branch" placeholder="Phái (ví dụ: Phái 1)">
+                <select id="m-fid" onchange="updateMothers(this.value)">
+                    <option value="">Chọn Cha</option>
+                </select>
+                <select id="m-mid">
+                    <option value="">Chọn Mẹ</option>
+                </select>
+            </div>
             <div class="modal-actions">
-                <button onclick="saveMember()">Lưu</button>
-                <button onclick="closeModal()">Đóng</button>
+                <button onclick="saveMember()" class="btn-save">Lưu</button>
+                <button onclick="closeModal()" class="btn-close">Đóng</button>
             </div>
         </div>
     </div>
 
-    <script src="js/renderer.js"></script>
-    <script src="js/main.js"></script>
+    <script src="/js/renderer.js"></script>
+    <script src="/js/main.js"></script>
 </body>
 </html>
