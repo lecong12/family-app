@@ -5,7 +5,7 @@ const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
 
-console.log('⏳ Đang khởi động Server...'); // Log để biết server bắt đầu chạy
+console.log('⏳ Đang khởi động Server...');
 
 const app = express();
 app.use(cors());
