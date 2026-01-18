@@ -8,15 +8,22 @@ async function loadMembers() {
         const res = await fetch(API_URL);
         const members = await res.json();
         
-        if (members.length === 0) console.log("Database trống!");
+        if (members.length === 0) {
+            console.log("Database trống!");
+            return;
+        }
 
-        // 1. Hiển thị danh sách trước (để đảm bảo nhìn thấy dữ liệu dù cây bị lỗi)
-        renderMemberList(members);
+        // 1. Hiển thị danh sách vào Sidebar bên phải
+        renderSidebarList(members);
         
-        // 2. Sau đó mới vẽ cây
-        if (typeof drawTree === 'function') drawTree(members);
-        
+        // 2. Cập nhật các lựa chọn trong Modal
         updateSelectOptions(members);
+
+        // 3. Vẽ sơ đồ cây (nếu hàm drawTree đã sẵn sàng trong renderer.js)
+        if (typeof drawTree === 'function') {
+            drawTree(members);
+        }
+        
     } catch (err) {
         console.error('Lỗi tải dữ liệu:', err);
     }
@@ -27,38 +34,65 @@ function updateSelectOptions(members) {
     const fidSelect = document.getElementById('m-fid');
     const midSelect = document.getElementById('m-mid');
     
-    // Giữ lại option đầu tiên (Chọn Cha/Mẹ)
+    if (!fidSelect || !midSelect) return;
+
     fidSelect.innerHTML = '<option value="">Chọn Cha</option>';
     midSelect.innerHTML = '<option value="">Chọn Mẹ</option>';
 
     members.forEach(m => {
+        // Sử dụng m.id và m.full_name khớp với Schema của bạn
         const option = `<option value="${m.id}">${m.full_name}</option>`;
         if (m.gender === 'Nam') fidSelect.innerHTML += option;
         else midSelect.innerHTML += option;
     });
 }
 
-// Hiển thị danh sách thành viên dạng list
-function renderMemberList(members) {
+// Hiển thị danh sách thành viên vào Sidebar (Đã tối ưu cho 2k người)
+function renderSidebarList(members) {
     const container = document.getElementById('memberList');
     if (!container) return;
 
-    if (members.length > 0) {
-        container.style.display = 'block';
-        container.innerHTML = `<h3>Danh sách (${members.length})</h3>` + 
-            members.map(m => `
-                <div class="member-item">
-                    <strong>${m.full_name}</strong> - Đời: ${m.generation}
-                </div>
-            `).join('');
-    }
+    // Sử dụng DocumentFragment để tăng tốc độ xử lý 2000 bản ghi
+    const fragment = document.createDocumentFragment();
+    
+    // Thêm tiêu đề tổng số lượng
+    const title = document.createElement('h3');
+    title.innerText = `Thành viên (${members.length})`;
+    title.style.padding = "0 10px";
+    fragment.appendChild(title);
+
+    members.forEach(m => {
+        const card = document.createElement('div');
+        card.className = 'member-card'; // Khớp với CSS .member-card
+        
+        card.innerHTML = `
+            <h4>${m.full_name}</h4>
+            <p><strong>Đời:</strong> ${m.generation} | <strong>GT:</strong> ${m.gender}</p>
+        `;
+
+        // Sự kiện khi nhấn vào thẻ
+        card.onclick = () => {
+            console.log("Xem chi tiết:", m.full_name);
+            if (typeof focusOnMember === 'function') focusOnMember(m.id);
+        };
+
+        fragment.appendChild(card);
+    });
+
+    container.innerHTML = ''; // Xóa trắng trước khi chèn mới
+    container.appendChild(fragment);
 }
 
-// Các hàm xử lý Modal
-function openModal() { document.getElementById('member-modal').style.display = 'block'; }
-function closeModal() { document.getElementById('member-modal').style.display = 'none'; }
+// --- Các hàm xử lý giao diện (Modal & Upload) ---
 
-// Lưu thành viên mới
+function openModal() { 
+    document.getElementById('member-modal').style.display = 'block'; 
+}
+
+function closeModal() { 
+    document.getElementById('member-modal').style.display = 'none'; 
+}
+
 async function saveMember() {
     const data = {
         full_name: document.getElementById('m-name').value,
@@ -69,23 +103,32 @@ async function saveMember() {
 
     if (!data.full_name) return alert("Vui lòng nhập tên!");
 
-    await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-
-    closeModal();
-    loadMembers(); // Tải lại cây
+    try {
+        await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        closeModal();
+        loadMembers(); 
+    } catch (err) {
+        alert("Lỗi khi lưu!");
+    }
 }
 
-// Upload file
 async function uploadFile(input) {
     const file = input.files[0];
     if (!file) return;
     const formData = new FormData();
     formData.append('file', file);
-    await fetch('/api/import', { method: 'POST', body: formData });
-    alert("Import thành công!");
-    loadMembers();
+    
+    try {
+        const res = await fetch('/api/import', { method: 'POST', body: formData });
+        if (res.ok) {
+            alert("Import thành công!");
+            loadMembers();
+        }
+    } catch (err) {
+        alert("Lỗi import!");
+    }
 }
