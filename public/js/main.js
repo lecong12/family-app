@@ -9,6 +9,7 @@ async function loadMembers() {
         const members = await res.json();
         drawTree(members); // Hàm này nằm bên renderer.js
         updateSelectOptions(members);
+        renderMemberList(members); // Hiển thị danh sách bên phải
     } catch (err) {
         console.error('Lỗi tải dữ liệu:', err);
     }
@@ -28,6 +29,22 @@ function updateSelectOptions(members) {
         if (m.gender === 'Nam') fidSelect.innerHTML += option;
         else midSelect.innerHTML += option;
     });
+}
+
+// Hiển thị danh sách thành viên dạng list
+function renderMemberList(members) {
+    const container = document.getElementById('memberList');
+    if (!container) return;
+
+    if (members.length > 0) {
+        container.style.display = 'block';
+        container.innerHTML = `<h3>Danh sách (${members.length})</h3>` + 
+            members.map(m => `
+                <div class="member-item">
+                    <strong>${m.full_name}</strong> - Đời: ${m.generation}
+                </div>
+            `).join('');
+    }
 }
 
 // Các hàm xử lý Modal
