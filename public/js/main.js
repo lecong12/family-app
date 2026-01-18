@@ -7,9 +7,16 @@ async function loadMembers() {
     try {
         const res = await fetch(API_URL);
         const members = await res.json();
-        drawTree(members); // Hàm này nằm bên renderer.js
+        
+        if (members.length === 0) console.log("Database trống!");
+
+        // 1. Hiển thị danh sách trước (để đảm bảo nhìn thấy dữ liệu dù cây bị lỗi)
+        renderMemberList(members);
+        
+        // 2. Sau đó mới vẽ cây
+        if (typeof drawTree === 'function') drawTree(members);
+        
         updateSelectOptions(members);
-        renderMemberList(members); // Hiển thị danh sách bên phải
     } catch (err) {
         console.error('Lỗi tải dữ liệu:', err);
     }

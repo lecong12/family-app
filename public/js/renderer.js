@@ -6,8 +6,11 @@ const g = svg.append("g");
 function drawTree(data) {
     g.selectAll("*").remove();
     data.forEach(d => {
-        d.y = d.generation * 180;
-        d.x = (hashBranch(d.branch) * 400) + (d.order * 60);
+        // Gán giá trị mặc định để tránh lỗi tính toán
+        const gen = d.generation || 1;
+        const ord = d.order || 1;
+        d.y = gen * 180;
+        d.x = (hashBranch(d.branch) * 400) + (ord * 60);
     });
 
     // Vẽ đường nối Cha-Con
@@ -26,4 +29,8 @@ function drawTree(data) {
     nodes.append("text").text(d => d.full_name).attr("y", 25).attr("text-anchor", "middle");
 }
 
-function hashBranch(s) { return Math.abs(s.split("").reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0)) % 5; }
+function hashBranch(s) { 
+    // Chuyển về chuỗi và gán mặc định nếu null/undefined để tránh lỗi s.split
+    const str = String(s || "Gốc"); 
+    return Math.abs(str.split("").reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0)) % 5; 
+}
