@@ -15,6 +15,7 @@ function drawTree(data) {
         .attr("class", "link")
         .attr("d", d => {
             const f = data.find(p => p.id === d.fid);
+            if (!f) return ""; // Bỏ qua nếu không tìm thấy cha (tránh lỗi trắng trang)
             return `M${f.x},${f.y} L${d.x},${d.y}`;
         });
 
