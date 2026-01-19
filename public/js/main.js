@@ -1,100 +1,163 @@
-const API_URL = '/api/members';
+// Biến toàn cục lưu danh sách thành viên
+let allMembers = [];
 
-const App = () => {
-    const [members, setMembers] = React.useState([]);
-    const [loading, setLoading] = React.useState(true);
-    const [modalOpen, setModalOpen] = React.useState(false);
-    const [formData, setFormData] = React.useState({
-        full_name: '', gender: 'Nam', fid: '', mid: ''
-    });
+// 1. Khởi tạo khi trang tải xong
+document.addEventListener('DOMContentLoaded', () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = '/login.html';
+        return;
+    }
+    loadMembers();
+});
 
-    // Load dữ liệu khi component mount
-    React.useEffect(() => {
-        fetchMembers();
-    }, []);
-
-    const fetchMembers = async () => {
-        try {
-            const res = await fetch(API_URL);
-            const data = await res.json();
-            setMembers(data);
-        } catch (err) {
-            console.error('Lỗi tải dữ liệu:', err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleSave = async () => {
-        if (!formData.full_name) return alert("Vui lòng nhập tên!");
-
-        await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
+// 2. Hàm tải dữ liệu từ Server
+async function loadMembers() {
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/members', {
+            headers: { 'Authorization': `Bearer ${token}` }
         });
+        
+        if (res.status === 401) {
+            localStorage.removeItem('token');
+            window.location.href = '/login.html';
+            return;
+        }
 
-        setModalOpen(false);
-        setFormData({ full_name: '', gender: 'Nam', fid: '', mid: '' });
-        fetchMembers(); // Tải lại danh sách
-    };
+        allMembers = await res.json();
+        
+        // Cập nhật số lượng
+        const countEl = document.getElementById('member-count');
+        if (countEl) countEl.innerText = allMembers.length;
 
-    return (
-        <div style={{display: 'flex', height: '100vh'}}>
-            {/* Sidebar Danh sách */}
-            <div id="memberList">
-                <h3>Danh sách ({members.length})</h3>
-                <button className="btn-add" onClick={() => setModalOpen(true)}>+ Thêm thành viên</button>
-                {loading ? <p>Đang tải...</p> : members.map(m => (
-                    <div key={m.id} className="member-card">
-                        <h4>{m.full_name}</h4>
-                        <p>Đời: {m.generation} | {m.gender}</p>
-                    </div>
-                ))}
+        // Vẽ cây (Hàm này nằm bên renderer.js)
+        if (typeof drawTree === 'function') {
+            drawTree(allMembers);
+        }
+
+        // Render danh sách bên phải
+        renderMemberList(allMembers);
+        
+        // Cập nhật Select box trong Modal
+        updateParentSelects();
+
+    } catch (err) {
+        console.error('Lỗi tải dữ liệu:', err);
+    }
+}
+
+// 3. Render danh sách thành viên (Sidebar)
+function renderMemberList(members) {
+    const container = document.getElementById('members-container');
+    if (!container) return;
+    
+    let html = '';
+    members.forEach(m => {
+        html += `
+            <div class="member-card">
+                <h4>${m.full_name}</h4>
+                <p>Đời: ${m.generation} | ${m.gender}</p>
             </div>
-            
-            {/* Khu vực vẽ cây */}
-            <div style={{flex: 1, overflow: 'hidden', position: 'relative'}}>
-                <FamilyTree members={members} />
-            </div>
+        `;
+    });
+    container.innerHTML = html;
+}
 
-            {/* Modal Thêm mới */}
-            {modalOpen && (
-                <div className="modal" style={{display: 'block'}}>
-                    <div className="modal-content">
-                        <span className="close" onClick={() => setModalOpen(false)}>&times;</span>
-                        <h2>Thêm thành viên</h2>
-                        
-                        <input type="text" placeholder="Họ tên" value={formData.full_name}
-                            onChange={e => setFormData({...formData, full_name: e.target.value})} />
-                        
-                        <select value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})}>
-                            <option value="Nam">Nam</option>
-                            <option value="Nữ">Nữ</option>
-                        </select>
+// 4. Xử lý Upload File (Được gọi từ HTML onchange)
+async function uploadFile(input) {
+    if (!input.files || !input.files[0]) return;
 
-                        <select value={formData.fid} onChange={e => setFormData({...formData, fid: e.target.value})}>
-                            <option value="">Chọn Cha</option>
-                            {members.filter(m => m.gender === 'Nam').map(m => 
-                                <option key={m.id} value={m.id}>{m.full_name}</option>
-                            )}
-                        </select>
+    const formData = new FormData();
+    formData.append('file', input.files[0]);
 
-                        <select value={formData.mid} onChange={e => setFormData({...formData, mid: e.target.value})}>
-                            <option value="">Chọn Mẹ</option>
-                            {members.filter(m => m.gender !== 'Nam').map(m => 
-                                <option key={m.id} value={m.id}>{m.full_name}</option>
-                            )}
-                        </select>
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/import', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        });
+        const data = await res.json();
+        alert(data.message || 'Import hoàn tất');
+        loadMembers(); // Tải lại dữ liệu
+    } catch (err) {
+        alert('Lỗi khi import: ' + err.message);
+    } finally {
+        input.value = ''; 
+    }
+}
 
-                        <button className="btn-save" onClick={handleSave}>Lưu</button>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
+// 5. Các hàm Modal và Form
+function openModal() {
+    document.getElementById('member-modal').style.display = 'block';
+}
 
-// Render App vào div#root
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
+function closeModal() {
+    document.getElementById('member-modal').style.display = 'none';
+}
+
+function updateParentSelects() {
+    const fidSelect = document.getElementById('m-fid');
+    const midSelect = document.getElementById('m-mid');
+    
+    // Reset options
+    fidSelect.innerHTML = '<option value="">Chọn Cha</option>';
+    midSelect.innerHTML = '<option value="">Chọn Mẹ</option>';
+
+    allMembers.forEach(m => {
+        const option = `<option value="${m.id}">${m.full_name}</option>`;
+        if (m.gender === 'Nam') fidSelect.innerHTML += option;
+        else midSelect.innerHTML += option;
+    });
+}
+
+async function saveMember() {
+    // Logic lưu thành viên (bạn có thể bổ sung sau nếu cần form nhập tay)
+    // Hiện tại ưu tiên Import CSV
+    alert("Chức năng đang cập nhật. Vui lòng dùng Import CSV.");
+    closeModal();
+}
+
+// 6. Hàm đồng bộ Google Sheets
+async function syncGoogleSheets() {
+    const confirmSync = confirm("Hệ thống sẽ xóa dữ liệu cũ và nạp lại từ Google Sheets.\n\nQuy ước: 0 là Đã mất, 1 hoặc Trống là Còn sống.\n\nBạn có chắc chắn không?");
+    if (!confirmSync) return;
+
+    const btn = document.getElementById('btn-sync-sheets');
+    const originalText = btn ? btn.innerHTML : '';
+    
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = "⌛ Đang xử lý...";
+        btn.style.backgroundColor = "#ccc";
+    }
+
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/import-sheets', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        const result = await response.json();
+
+        if (response.ok) {
+            alert("✅ Thành công: " + result.message);
+            loadMembers(); // Tải lại cây gia phả
+        } else {
+            alert("❌ Lỗi: " + (result.message || response.statusText));
+        }
+    } catch (error) {
+        console.error("Sync Error:", error);
+        alert("❌ Lỗi kết nối đến Server!");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            btn.style.backgroundColor = "#f39c12";
+        }
+    }
+}

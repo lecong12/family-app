@@ -1,55 +1,53 @@
-<div id="toolbar">
-    <button onclick="openModal()">+ Thêm Thành Viên</button>
-    <input type="file" id="file-up" hidden onchange="uploadFile(this)">
-    <button onclick="document.getElementById('file-up').click()">Import CSV/GEDCOM</button>
-    
-    <button id="btn-sync-sheets" onclick="syncGoogleSheets()" style="background-color: #f39c12; color: white;">
-        🔄 Đồng bộ Google Sheets (0/1)
-    </button>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Gia Phả</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <!-- Thanh công cụ -->
+    <div id="toolbar">
+        <button onclick="openModal()">+ Thêm thành viên</button>
+        <button id="btn-sync-sheets" onclick="syncGoogleSheets()" style="background-color: #f39c12;">🔄 Nạp từ Google Sheets</button>
+        <span style="margin-left: auto;">Số lượng: <b id="member-count">0</b></span>
+        <button onclick="localStorage.removeItem('token'); window.location.href='/login.html';" style="background-color: #e74c3c; margin-left: 10px;">Đăng xuất</button>
+    </div>
 
-    <div class="filters-group">
-        ```
+    <!-- Khu vực chính -->
+    <div id="main-container">
+        <div id="tree-canvas"></div> <!-- Nơi vẽ cây -->
+        <div id="memberList">
+            <h3>Danh sách thành viên</h3>
+            <div id="members-container"></div>
+        </div>
+    </div>
 
-### 2. Thêm hàm xử lý vào `js/main.js`
-Mở file `/js/main.js` và dán thêm đoạn code này xuống dưới cùng. Đây là nơi thực hiện lệnh gọi tới API xử lý **0 (Mất) / 1 (Sống)**:
+    <!-- Modal Thêm mới / Import -->
+    <div id="member-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Thêm thành viên</h2>
+            
+            <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee;">
+                <label><b>Cách 1: Import File (CSV/Excel)</b></label>
+                <input type="file" id="csvFile" accept=".csv, .xlsx" onchange="uploadFile(this)">
+            </div>
+            
+            <div>
+                <label><b>Cách 2: Nhập tay (Đang phát triển)</b></label>
+                <input type="text" id="m-fullname" placeholder="Họ tên" disabled>
+                <select id="m-gender" disabled><option>Nam</option></select>
+                <select id="m-fid" disabled><option>Chọn Cha</option></select>
+                <select id="m-mid" disabled><option>Chọn Mẹ</option></select>
+                <button class="btn-save" onclick="saveMember()" disabled>Lưu</button>
+            </div>
+        </div>
+    </div>
 
-```javascript
-async function syncGoogleSheets() {
-    const confirmSync = confirm("Hệ thống sẽ xóa dữ liệu cũ và nạp lại 964 người từ Google Sheets.\n\nQuy ước: 0 là Đã mất, 1 hoặc Trống là Còn sống.\n\nBạn có chắc chắn không?");
-    
-    if (!confirmSync) return;
-
-    const btn = document.getElementById('btn-sync-sheets');
-    const originalText = btn.innerHTML;
-
-    // Trạng thái đang xử lý
-    btn.disabled = true;
-    btn.innerHTML = "⌛ Đang nạp 964 người...";
-    btn.style.backgroundColor = "#ccc";
-
-    try {
-        const response = await fetch('/api/members/import-sheets', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-            alert("✅ Thành công: " + result.message);
-            // Gọi lại hàm load danh sách để cập nhật cây và bảng
-            if (typeof init === 'function') init(); 
-            else location.reload();
-        } else {
-            alert("❌ Lỗi: " + result.message);
-        }
-    } catch (error) {
-        console.error("Sync Error:", error);
-        alert("❌ Lỗi kết nối đến Server!");
-    } finally {
-        // Khôi phục nút bấm
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        btn.style.backgroundColor = "#f39c12";
-    }
-}
+    <script src="/js/renderer.js"></script>
+    <script src="/js/main.js"></script>
+</body>
+</html>
