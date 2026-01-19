@@ -1,65 +1,55 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ thống Quản lý Gia phả</title>
-    <link rel="stylesheet" href="/css/style.css">
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-</head>
-<body>
-    <div id="toolbar">
-        <button onclick="openModal()">+ Thêm Thành Viên</button>
-        <input type="file" id="file-up" hidden onchange="uploadFile(this)">
-        <button onclick="document.getElementById('file-up').click()">Import CSV/GEDCOM</button>
-        
-        <div class="filters-group">
-            <select id="filter-branch" onchange="applyFilters()">
-                <option value="all">Tất cả Phái</option>
-            </select>
-            <label for="filter-gen">Đời: </label>
-            <input type="range" id="filter-gen" min="1" max="20" value="20" oninput="applyFilters()">
-        </div>
-    </div>
+<div id="toolbar">
+    <button onclick="openModal()">+ Thêm Thành Viên</button>
+    <input type="file" id="file-up" hidden onchange="uploadFile(this)">
+    <button onclick="document.getElementById('file-up').click()">Import CSV/GEDCOM</button>
+    
+    <button id="btn-sync-sheets" onclick="syncGoogleSheets()" style="background-color: #f39c12; color: white;">
+        🔄 Đồng bộ Google Sheets (0/1)
+    </button>
 
-    <div id="main-container">
-        <div id="tree-canvas"></div>
+    <div class="filters-group">
+        ```
 
-        <div id="memberList">
-            <div class="list-header">
-                <h3>Danh sách Thành viên</h3>
-                <p>Tổng số: <span id="member-count">0</span></p>
-            </div>
-            <div id="members-container"></div>
-        </div>
-    </div>
+### 2. Thêm hàm xử lý vào `js/main.js`
+Mở file `/js/main.js` và dán thêm đoạn code này xuống dưới cùng. Đây là nơi thực hiện lệnh gọi tới API xử lý **0 (Mất) / 1 (Sống)**:
 
-    <div id="member-modal" class="modal">
-        <div class="modal-content">
-            <h3>Thêm Thành Viên Mới</h3>
-            <div class="form-group">
-                <input type="text" id="m-name" placeholder="Họ tên">
-                <select id="m-gender">
-                    <option value="Nam">Nam</option>
-                    <option value="Nữ">Nữ</option>
-                </select>
-                <input type="number" id="m-gen" placeholder="Đời thứ (ví dụ: 5)">
-                <input type="text" id="m-branch" placeholder="Phái (ví dụ: Phái 1)">
-                <select id="m-fid" onchange="updateMothers(this.value)">
-                    <option value="">Chọn Cha</option>
-                </select>
-                <select id="m-mid">
-                    <option value="">Chọn Mẹ</option>
-                </select>
-            </div>
-            <div class="modal-actions">
-                <button onclick="saveMember()" class="btn-save">Lưu</button>
-                <button onclick="closeModal()" class="btn-close">Đóng</button>
-            </div>
-        </div>
-    </div>
+```javascript
+async function syncGoogleSheets() {
+    const confirmSync = confirm("Hệ thống sẽ xóa dữ liệu cũ và nạp lại 964 người từ Google Sheets.\n\nQuy ước: 0 là Đã mất, 1 hoặc Trống là Còn sống.\n\nBạn có chắc chắn không?");
+    
+    if (!confirmSync) return;
 
-    <script src="/js/renderer.js"></script>
-    <script src="/js/main.js"></script>
-</body>
-</html>
+    const btn = document.getElementById('btn-sync-sheets');
+    const originalText = btn.innerHTML;
+
+    // Trạng thái đang xử lý
+    btn.disabled = true;
+    btn.innerHTML = "⌛ Đang nạp 964 người...";
+    btn.style.backgroundColor = "#ccc";
+
+    try {
+        const response = await fetch('/api/members/import-sheets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            alert("✅ Thành công: " + result.message);
+            // Gọi lại hàm load danh sách để cập nhật cây và bảng
+            if (typeof init === 'function') init(); 
+            else location.reload();
+        } else {
+            alert("❌ Lỗi: " + result.message);
+        }
+    } catch (error) {
+        console.error("Sync Error:", error);
+        alert("❌ Lỗi kết nối đến Server!");
+    } finally {
+        // Khôi phục nút bấm
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        btn.style.backgroundColor = "#f39c12";
+    }
+}
