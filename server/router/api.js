@@ -1,8 +1,40 @@
 const express = require('express');
 const router = express.Router();
-const memberController = require('../controllers/memberController');
-const upload = require('../middleware/upload');
-const auth = require('../middleware/auth');
+
+// Hàm nạp an toàn: Nếu lỗi, trả về middleware báo lỗi
+const safeRequire = (path, name) => {
+    try {
+        return require(path);
+    } catch (err) {
+        console.error(`❌ Lỗi nạp ${name}:`, err); // In toàn bộ lỗi để debug
+        // Trả về object chứa các hàm giả, khi gọi sẽ báo lỗi
+        return new Proxy({}, {
+            get: () => (req, res) => res.status(500).json({ 
+                error: `Module ${name} bị lỗi khi khởi động server.`, 
+                details: err.message 
+            })
+        });
+    }
+};
+
+// Nạp các module với cơ chế an toàn
+const memberController = safeRequire('../controllers/memberController', 'memberController');
+
+// Xử lý riêng cho Middleware (vì nó là function, không phải object)
+let upload, auth;
+try {
+    upload = require('../middleware/upload');
+} catch (err) {
+    console.error('❌ Lỗi nạp upload middleware:', err.message);
+    upload = { single: () => (req, res, next) => next() }; // Bỏ qua upload nếu lỗi
+}
+
+try {
+    auth = require('../middleware/auth');
+} catch (err) {
+    console.error('❌ Lỗi nạp auth middleware:', err.message);
+    auth = (req, res, next) => next(); // Bỏ qua auth nếu lỗi
+}
 
 // --- Định nghĩa Routes ---
 

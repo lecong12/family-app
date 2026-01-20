@@ -19,10 +19,14 @@ async function loadMembers() {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         
-        if (res.status === 401) {
-            localStorage.removeItem('token');
-            window.location.href = '/login.html';
-            return;
+        if (!res.ok) {
+            const errData = await res.json();
+            if (res.status === 401) {
+                localStorage.removeItem('token');
+                window.location.href = '/login.html';
+                return;
+            }
+            throw new Error(errData.error || errData.message || "Lỗi tải dữ liệu từ server");
         }
 
         allMembers = await res.json();
@@ -44,6 +48,7 @@ async function loadMembers() {
 
     } catch (err) {
         console.error('Lỗi tải dữ liệu:', err);
+        alert('⚠️ Hệ thống báo lỗi: ' + err.message); // Hiển thị lỗi cho người dùng thấy
     }
 }
 

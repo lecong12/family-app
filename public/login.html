@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Đăng nhập - Quản lý Gia phả</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/style.css">
     <style>
         body { justify-content: center; align-items: center; }
         .login-box { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 350px; }
@@ -48,7 +48,7 @@
                     localStorage.setItem('token', data.token);
                     window.location.href = '/';
                 } else {
-                    errorMsg.innerText = data.message;
+                    errorMsg.innerText = data.message || data.error || 'Đăng nhập thất bại';
                     errorMsg.style.display = 'block';
                 }
             } catch (err) {

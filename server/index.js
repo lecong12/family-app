@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose'); // Thêm để kiểm tra trạng thái DB
+const cors = require('cors'); // Thêm CORS để tránh lỗi kết nối từ trình duyệt
 const connectDB = require('./config/database');
 
 // Nạp Router an toàn (Tránh crash nếu thiếu file)
@@ -9,13 +10,13 @@ let apiRouter, authRouter;
 try {
     apiRouter = require('./router/api');
 } catch (error) {
-    console.error('❌ Lỗi nạp API Router:', error.message);
+    console.error('❌ Lỗi nạp API Router:', error);
 }
 
 try {
     authRouter = require('./router/auth');
 } catch (error) {
-    console.error('❌ Lỗi nạp Auth Router:', error.message);
+    console.error('❌ Lỗi nạp Auth Router:', error);
 }
 
 const app = express();
@@ -23,12 +24,12 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware xử lý JSON (quan trọng cho Login)
 app.use(express.json());
+app.use(cors()); // Kích hoạt CORS
 
 const publicPath = path.resolve(__dirname, '../public');
-// Fallback: Hỗ trợ nếu file css/js nằm trực tiếp trong public nhưng HTML gọi /css/ hoặc /js/
-app.use('/css', express.static(publicPath));
-app.use('/js', express.static(publicPath));
-app.use(express.static(publicPath)); 
+console.log('📂 Đang phục vụ file tĩnh từ:', publicPath); // Log đường dẫn để debug
+// Phục vụ file tĩnh chuẩn xác
+app.use(express.static(publicPath));
 
 // Route gốc: Đảm bảo luôn trả về index.html khi truy cập trang chủ
 app.get('/', (req, res) => {
@@ -51,7 +52,8 @@ app.get('/status', (req, res) => {
             auth: !!authRouter ? 'OK' : 'FAILED (Check logs)',
             api: !!apiRouter ? 'OK' : 'FAILED (Check logs)'
         },
-        mongo_uri_configured: !!process.env.MONGO_URI
+        mongo_uri_configured: !!process.env.MONGO_URI,
+        port: PORT
     });
 });
 
@@ -60,12 +62,14 @@ if (authRouter) app.use('/api/auth', authRouter);
 if (apiRouter) app.use('/api', apiRouter);
 
 // 1. Khởi động Server NGAY LẬP TỨC (Để Render không bị timeout)
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server đang chạy tại cổng ${PORT}`);
     
     // 2. Sau đó mới thực hiện kết nối Database
     if (!process.env.MONGO_URI) {
         console.warn('⚠️ CẢNH BÁO: Chưa tìm thấy biến MONGO_URI. Server có thể không kết nối được DB trên Cloud.');
+    } else {
+        console.log('✅ Tìm thấy biến môi trường MONGO_URI');
     }
     connectDB();
 });
