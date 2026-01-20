@@ -4,30 +4,25 @@ const path = require('path');
 const mongoose = require('mongoose'); // Thêm để kiểm tra trạng thái DB
 const cors = require('cors'); // Thêm CORS để tránh lỗi kết nối từ trình duyệt
 
-// Xử lý lỗi nếu không tìm thấy file config/database (Cơ chế dự phòng)
-let connectDB;
-try {
-    connectDB = require('./config/database');
-} catch (err) {
-    console.warn('⚠️ Không tìm thấy file config/database.js, sử dụng cấu hình kết nối dự phòng.');
-    connectDB = async () => {
-        const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://lecong12:Lecong78@cluster0.onrzjrx.mongodb.net/GiaphaDB?retryWrites=true&w=majority';
-        console.log(`🔌 (Fallback) Đang kết nối DB...`);
-        try { await mongoose.connect(MONGO_URI); console.log('✅ MongoDB Connected (Fallback)'); }
-        catch (e) { console.error('❌ Lỗi kết nối DB:', e.message); }
-    };
-}
+// Cấu hình kết nối Database trực tiếp (Bỏ qua file config cũ để tránh nhầm lẫn)
+const connectDB = async () => {
+    // Ưu tiên lấy từ .env, nếu không có thì dùng chuỗi mặc định trỏ vào 'family-app'
+    const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://lecong12:Lecong78@cluster0.onrzjrx.mongodb.net/family-app?retryWrites=true&w=majority';
+    console.log(`🔌 Đang kết nối tới Database...`);
+    try { await mongoose.connect(MONGO_URI); console.log('✅ MongoDB Connected'); }
+    catch (e) { console.error('❌ Lỗi kết nối DB:', e.message); process.exit(1); }
+};
 
 // Nạp Router an toàn (Tránh crash nếu thiếu file)
 let apiRouter, authRouter;
 try {
-    apiRouter = require('./router/api');
+    apiRouter = require('./routes/api');
 } catch (error) {
     console.error('❌ Lỗi nạp API Router:', error);
 }
 
 try {
-    authRouter = require('./router/auth');
+    authRouter = require('./routes/auth');
 } catch (error) {
     console.error('❌ Lỗi nạp Auth Router:', error);
 }
@@ -39,7 +34,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(cors()); // Kích hoạt CORS
 
-const publicPath = path.resolve(__dirname, '../public');
+const publicPath = path.resolve(__dirname, 'public');
 console.log('📂 Đang phục vụ file tĩnh từ:', publicPath); // Log đường dẫn để debug
 // Phục vụ file tĩnh chuẩn xác
 app.use(express.static(publicPath));
@@ -95,5 +90,11 @@ app.listen(PORT, '0.0.0.0', () => {
 // Bắt các lỗi không mong muốn để tránh sập server
 process.on('uncaughtException', (err) => {
     console.error('❌ Lỗi không mong muốn (Uncaught Exception):', err);
-    // Không exit process để giữ server sống
+    process.exit(1); // Thoát tiến trình để môi trường (Render) tự khởi động lại
+});
+
+// Bắt các Promise bị từ chối nhưng không được xử lý
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Lỗi không được xử lý (Unhandled Rejection):', reason);
+  process.exit(1); // Thoát tiến trình
 });

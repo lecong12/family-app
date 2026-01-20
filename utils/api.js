@@ -7,8 +7,6 @@ const { parse } = require('csv-parse/sync');
 
 console.log('✅ API Router đang khởi động...'); // Log kiểm tra phiên bản mới
 
-console.log('✅ API Router đang khởi động...'); // Log kiểm tra phiên bản mới
-
 // Nạp importers an toàn (nếu lỗi thì tính năng import file sẽ báo lỗi, nhưng web vẫn chạy)
 let importCSV, importExcel, importGedcom;
 try {
@@ -43,36 +41,67 @@ const getMembers = async (req, res) => {
 
 const createMember = async (req, res) => {
     try {
+        // 1. Tạo ID mới ngẫu nhiên và an toàn hơn, tránh trùng lặp khi thêm nhanh
+        const newId = 'M' + Date.now() + Math.random().toString(36).substr(2, 9);
+
         const newMember = new Member({
             ...req.body,
-            id: req.body.id || 'M' + Date.now()
+            id: newId
         });
         await newMember.save();
-        res.json(newMember);
+
+        // 2. Nếu có thêm vợ/chồng (pid), cập nhật 2 chiều cho người đó
+        // Điều này đảm bảo mối quan hệ luôn được kết nối đúng trên cây gia phả
+        if (req.body.pid) {
+            await Member.findOneAndUpdate(
+                { id: req.body.pid }, // Tìm người vợ/chồng đã có
+                { pid: newId },      // Cập nhật pid của họ để trỏ về người mới
+                { new: true }
+            );
+        }
+
+        // Trả về mã 201 (Created) và thông tin thành viên vừa tạo
+        res.status(201).json(newMember);
     } catch (err) {
-        res.status(400).json({ message: err.message });
+        res.status(400).json({ message: "Lỗi tạo thành viên: " + err.message });
     }
 };
 
-const importFile = async (req, res) => {
-    if (!req.file) return res.status(400).json({ message: 'Vui lòng chọn file' });
-    
-    const filePath = req.file.path;
+const updateMember = async (req, res) => {
     try {
-        let count = 0;
-        const lowerName = req.file.originalname.toLowerCase();
-        
-        if (lowerName.endsWith('.csv')) count = await importCSV(filePath);
-        else if (lowerName.match(/\.xlsx?$/)) count = await importExcel(filePath);
-        else if (lowerName.endsWith('.ged')) count = await importGedcom(filePath);
-        
-        res.json({ message: `Đã import ${count} người.` });
-    } catch (error) {
-        res.status(500).json({ message: 'Lỗi xử lý file: ' + error.message });
-    } finally {
-        if (fs.existsSync(filePath)) {
-            try { fs.unlinkSync(filePath); } catch(e) {}
+        const { id } = req.params;
+        const updatedMember = await Member.findOneAndUpdate(
+            { id: id }, 
+            req.body, 
+            { new: true } // Trả về dữ liệu mới sau khi update
+        );
+        if (!updatedMember) return res.status(404).json({ message: "Không tìm thấy thành viên" });
+        res.json(updatedMember);
+    } catch (err) {
+        res.status(400).json({ message: "Lỗi cập nhật: " + err.message });
+    }
+};
+
+const deleteMember = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const memberToDelete = await Member.findOne({ id: id });
+        if (!memberToDelete) {
+            return res.status(404).json({ message: "Không tìm thấy thành viên để xóa" });
         }
+
+        // Xóa thành viên khỏi database
+        await Member.deleteOne({ id: id });
+
+        // Cập nhật lại các thành viên khác có liên quan (gỡ bỏ liên kết)
+        await Member.updateMany({ fid: id }, { $set: { fid: null } }); // Gỡ liên kết cha
+        await Member.updateMany({ mid: id }, { $set: { mid: null } }); // Gỡ liên kết mẹ
+        await Member.updateMany({ pid: id }, { $set: { pid: null } }); // Gỡ liên kết vợ/chồng
+
+        res.json({ message: `Đã xóa thành viên "${memberToDelete.full_name}"` });
+    } catch (err) {
+        console.error("Lỗi xóa thành viên:", err);
+        res.status(500).json({ message: "Lỗi server khi xóa thành viên: " + err.message });
     }
 };
 
@@ -102,24 +131,24 @@ const importSheets = async (req, res) => {
         const allPeople = [
             ...records.map(r => ({
                 ...r,
-                id: r.id || r['mã'] || ('M' + Date.now() + Math.random().toString(36).substr(2, 5)),
+                id: getCol(r, ['id', 'mã', 'ma', 'code']) || ('M' + Date.now() + Math.random().toString(36).substr(2, 5)),
                 fid: getCol(r, ['fid', 'father_id', 'cha', 'id cha']),
                 mid: getCol(r, ['mid', 'mother_id', 'mẹ', 'id mẹ']),
                 pid: getCol(r, ['pid', 'partner_id', 'vợ/chồng', 'id vợ/chồng']),
-                full_name: r.full_name?.trim() || 'Chưa có tên',
+                full_name: getCol(r, ['full_name', 'fullname', 'họ tên', 'tên', 'hoten', 'name']) || 'Chưa có tên',
                 is_live: r.is_live !== '0',
-                gender: (r.gender || '').includes('Nữ') ? 'Nữ' : 'Nam',
+                gender: (getCol(r, ['gender', 'sex', 'giới tính', 'phái']) || '').includes('Nữ') ? 'Nữ' : 'Nam',
                 temp_id: `blood_${clean(r.id)}`
             })),
             ...spouseRecords.map(r => ({
                 ...r,
-                id: r.id || r['mã'] || ('S' + Date.now() + Math.random().toString(36).substr(2, 5)),
+                id: getCol(r, ['id', 'mã', 'ma', 'code']) || ('S' + Date.now() + Math.random().toString(36).substr(2, 5)),
                 fid: getCol(r, ['fid', 'father_id', 'cha', 'id cha']),
                 mid: getCol(r, ['mid', 'mother_id', 'mẹ', 'id mẹ']),
                 pid: getCol(r, ['pid', 'partner_id', 'vợ/chồng', 'id vợ/chồng']),
-                full_name: r.full_name?.trim() || 'Chưa có tên',
+                full_name: getCol(r, ['full_name', 'fullname', 'họ tên', 'tên', 'hoten', 'name']) || 'Chưa có tên',
                 is_live: r.is_live !== '0',
-                gender: (r.gender || '').includes('Nam') ? 'Nam' : 'Nữ',
+                gender: (getCol(r, ['gender', 'sex', 'giới tính', 'phái']) || '').includes('Nam') ? 'Nam' : 'Nữ',
                 temp_id: `spouse_${clean(r.id)}`
             }))
         ];
@@ -153,8 +182,11 @@ router.get('/members', auth, getMembers);
 // Thêm thành viên mới (Cần đăng nhập)
 router.post('/members', auth, createMember);
 
-// Import file (Cần đăng nhập)
-router.post('/import', auth, upload.single('file'), importFile);
+// Cập nhật thành viên (Sửa)
+router.put('/members/:id', auth, updateMember);
+
+// Xóa thành viên
+router.delete('/members/:id', auth, deleteMember);
 
 // Import Google Sheets
 router.post('/import-sheets', auth, importSheets);

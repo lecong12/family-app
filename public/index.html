@@ -8,12 +8,22 @@
     <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
+    <!-- Tiêu đề trang -->
+    <div id="header" style="background-color: #34495e; color: white; padding: 15px; text-align: center; border-bottom: 1px solid #2c3e50;">
+        <h1 style="margin: 0; font-size: 24px; text-transform: uppercase;">Gia Phả Dòng Họ Lê Công</h1>
+    </div>
     <!-- Thanh công cụ -->
     <div id="toolbar">
-        <button onclick="openModal()">+ Thêm thành viên</button>
+        <button onclick="openAddModal()">+ Thêm thành viên</button>
         <button id="btn-sync-sheets" onclick="syncGoogleSheets()" style="background-color: #f39c12;">🔄 Nạp từ Google Sheets</button>
+        
+        <div class="search-container">
+            <input type="text" id="search-input" onkeyup="handleSearch()" placeholder="Tìm kiếm thành viên...">
+            <div id="search-results"></div>
+        </div>
+
         <span style="margin-left: auto;">Số lượng: <b id="member-count">0</b></span>
-        <button onclick="localStorage.removeItem('token'); window.location.href='/login.html';" style="background-color: #e74c3c; margin-left: 10px;">Đăng xuất</button>
+        <button onclick="logout()" style="background-color: #e74c3c; margin-left: 10px;">Đăng xuất</button>
     </div>
 
     <!-- Khu vực chính -->
@@ -26,23 +36,26 @@
     </div>
 
     <!-- Modal Thêm mới / Import -->
-    <div id="member-modal" class="modal">
+    <div id="add-member-modal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal()">&times;</span>
-            <h2>Thêm thành viên</h2>
+            <h2 id="modal-title">Thêm thành viên</h2>
             
-            <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee;">
-                <label><b>Cách 1: Import File (CSV/Excel)</b></label>
-                <input type="file" id="csvFile" accept=".csv, .xlsx" onchange="uploadFile(this)">
+            <div class="form-group">
+                <label>Họ và tên:</label>
+                <input type="text" id="m-name" placeholder="Nhập họ tên...">
             </div>
-            
-            <div>
-                <label><b>Cách 2: Nhập tay (Đang phát triển)</b></label>
-                <input type="text" id="m-fullname" placeholder="Họ tên" disabled>
-                <select id="m-gender" disabled><option>Nam</option></select>
-                <select id="m-fid" disabled><option>Chọn Cha</option></select>
-                <select id="m-mid" disabled><option>Chọn Mẹ</option></select>
-                <button class="btn-save" onclick="saveMember()" disabled>Lưu</button>
+
+            <div class="form-group">
+                <label>Thông tin:</label>
+                <select id="m-gender"><option value="Nam">Nam</option><option value="Nữ">Nữ</option></select>
+                <select id="m-fid"><option value="">Chọn Cha</option></select>
+                <select id="m-mid"><option value="">Chọn Mẹ</option></select>
+                <select id="m-pid"><option value="">Chọn Vợ/Chồng</option></select>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-save btn-primary" onclick="saveMember()">Lưu thông tin</button>
+                <button id="btn-delete-member" class="btn-danger" onclick="deleteMember()" style="display: none;">Xóa thành viên</button>
             </div>
         </div>
     </div>

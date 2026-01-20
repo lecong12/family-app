@@ -4,6 +4,7 @@
     --sidebar-bg: #ffffff;
     --accent-color: #27ae60; /* Màu xanh lá đặc trưng cho gia phả */
     --text-main: #2c3e50;
+    --header-height: 60px; /* Chiều cao của header mới */
     --toolbar-height: 60px;
 }
 
@@ -49,10 +50,47 @@ body {
     background-color: #219150;
 }
 
+/* CSS cho ô tìm kiếm */
+.search-container {
+    position: relative;
+    display: inline-block;
+}
+
+#search-input {
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    width: 250px;
+}
+
+#search-results {
+    display: none;
+    position: absolute;
+    background-color: white;
+    width: 100%;
+    border: 1px solid #ddd;
+    border-top: none;
+    z-index: 99;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+#search-results div {
+    padding: 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    color: #2c3e50; /* QUAN TRỌNG: Đặt màu chữ đen để không bị chìm vào nền trắng */
+}
+
+#search-results div:hover {
+    background-color: #f1f1f1; /* Hiệu ứng hover cho dễ nhìn */
+}
+
 /* 3. Bố cục chính (Main Container) */
 #main-container {
     display: flex;
-    flex: 1; /* Chiếm toàn bộ phần còn lại dưới toolbar */
+    /* Chiếm toàn bộ phần còn lại dưới header và toolbar */
+    flex: 1;
     overflow: hidden;
 }
 
@@ -72,6 +110,7 @@ body {
     display: flex;
     flex-direction: column;
     padding: 15px;
+    transition: transform 0.3s ease; /* Hiệu ứng trượt mượt mà */
     overflow-y: auto; /* Kích hoạt thước cuộn cho danh sách 2k người */
 }
 
@@ -109,10 +148,222 @@ body {
 .modal-content {
     background-color: #fff;
     margin: 5% auto;
+    position: relative; /* Quan trọng: Để định vị nút close */
     padding: 20px;
-    width: 400px;
+    width: 90%; /* Responsive: Tự co giãn trên mobile */
+    max-width: 400px; /* Giới hạn chiều rộng tối đa */
+    max-height: 90vh; /* Ngăn modal cao vượt quá màn hình */
+    overflow-y: auto; /* Thêm thanh cuộn nếu nội dung dài */
     border-radius: 8px;
     display: flex;
     flex-direction: column;
     gap: 10px;
+}
+
+/* Nút đóng (X) trên modal */
+.modal .close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.modal .close:hover,
+.modal .close:focus {
+    color: #333;
+    text-decoration: none;
+}
+
+/* Cải tiến style cho các input bên trong modal */
+.modal-content input[type="text"],
+.modal-content input[type="date"], /* Thêm style cho chọn ngày */
+.modal-content input[type="number"], /* Thêm style cho nhập số */
+.modal-content textarea, /* Thêm style cho khung ghi chú */
+.modal-content select {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+    width: 100%; /* Make them full-width */
+}
+
+/* Style cho khu vực chứa các nút bấm Lưu/Xóa */
+.modal-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 15px;
+    gap: 10px;
+}
+
+.modal-actions button {
+    flex-grow: 1; /* Để các nút có chiều rộng bằng nhau */
+    padding: 12px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 16px;
+    transition: background-color 0.2s;
+}
+
+.btn-primary {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.btn-danger {
+    background-color: #e74c3c; /* Màu đỏ cho hành động nguy hiểm */
+    color: white;
+}
+
+/* CSS cho Modal có Tab (Thêm/Sửa/Import) */
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.tab-buttons {
+    display: flex;
+}
+
+.tab-btn {
+    padding: 10px 15px;
+    border: none;
+    background-color: #f1f1f1;
+    cursor: pointer;
+    font-size: 16px;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.tab-btn.active {
+    background-color: #fff;
+    border-bottom: 3px solid var(--accent-color);
+    font-weight: bold;
+    color: var(--text-main);
+}
+
+.close-btn {
+    font-size: 28px;
+    font-weight: bold;
+    color: #aaa;
+    cursor: pointer;
+    padding: 0 10px;
+}
+
+.close-btn:hover {
+    color: #333;
+}
+
+.tab-content {
+    display: none; /* Ẩn tất cả các tab mặc định */
+}
+
+.tab-content.active {
+    display: flex; /* Chỉ hiện tab đang được chọn */
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* --- RESPONSIVE DESIGN (Cho điện thoại & Tablet) --- */
+@media (max-width: 768px) {
+    /* 1. Header & Toolbar nhỏ lại */
+    :root {
+        --header-height: 50px;
+        --toolbar-height: auto; /* Chiều cao tự động để chứa các nút khi xuống dòng */
+    }
+
+    #header h1 {
+        font-size: 18px !important;
+    }
+
+    #toolbar {
+        flex-wrap: wrap; /* Cho phép các nút xuống dòng */
+        padding: 10px;
+        height: auto;
+        justify-content: center;
+    }
+
+    #search-input {
+        width: 100%; /* Ô tìm kiếm full màn hình */
+    }
+
+    /* 2. Bố cục chính: Chuyển sang dọc (Cây trên, Danh sách dưới) */
+    #main-container {
+        flex-direction: column;
+    }
+
+    /* 3. Cây gia phả chiếm phần lớn màn hình */
+    #tree-canvas {
+        flex: 2; /* Chiếm 2/3 không gian */
+        border-bottom: 1px solid #ddd;
+    }
+
+    /* 4. Danh sách thành viên nhỏ lại và nằm dưới cùng */
+    #memberList {
+        width: 100%; /* Full chiều ngang */
+        flex: 1; /* Chiếm 1/3 không gian còn lại */
+        border-left: none;
+    }
+}
+
+/* --- DASHBOARD STATISTICS STYLES --- */
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: -0.75rem; /* Simulates gutter */
+}
+.col-md-4, .col-md-6 {
+    padding: 0.75rem; /* Simulates gutter */
+    width: 100%;
+}
+@media (min-width: 768px) {
+    .col-md-4 { width: 33.333%; }
+    .col-md-6 { width: 50%; }
+}
+.mb-4 { margin-bottom: 1.5rem; }
+.mt-1 { margin-top: 0.25rem; }
+.g-4 { /* This class is handled by the row/col padding */ }
+
+.card {
+    background: #fff;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+}
+.h-100 { height: 100%; }
+.p-3 { padding: 1rem; }
+.shadow { box-shadow: 0 .125rem .25rem rgba(0,0,0,.075) !important; }
+
+.text-white { color: white !important; }
+.text-secondary { color: #6c757d !important; }
+.text-center { text-align: center !important; }
+
+.bg-primary { background-color: #0d6efd !important; }
+.bg-success { background-color: #198754 !important; }
+.bg-danger { background-color: #dc3545 !important; }
+
+.display-4 { font-size: 3rem; }
+.fw-bold { font-weight: 700 !important; }
+
+.card-title { margin-bottom: .5rem; }
+.card h3, .card h5 { margin-top: 0; margin-bottom: .5rem; }
+.card i { margin-right: 10px; }
+
+/* Thêm style cho modal thống kê */
+#stats-modal .modal-content {
+    max-width: 90vw; /* Rộng hơn modal thường */
+    width: 1200px;
+}
+#stats-modal .modal-content h2 {
+    text-align: center;
+    margin-top: 0;
+    color: #333;
 }
