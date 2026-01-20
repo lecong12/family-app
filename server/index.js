@@ -3,7 +3,20 @@ const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose'); // Thêm để kiểm tra trạng thái DB
 const cors = require('cors'); // Thêm CORS để tránh lỗi kết nối từ trình duyệt
-const connectDB = require('./config/database');
+
+// Xử lý lỗi nếu không tìm thấy file config/database (Cơ chế dự phòng)
+let connectDB;
+try {
+    connectDB = require('./config/database');
+} catch (err) {
+    console.warn('⚠️ Không tìm thấy file config/database.js, sử dụng cấu hình kết nối dự phòng.');
+    connectDB = async () => {
+        const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://lecong12:Lecong78@cluster0.onrzjrx.mongodb.net/GiaphaDB?retryWrites=true&w=majority';
+        console.log(`🔌 (Fallback) Đang kết nối DB...`);
+        try { await mongoose.connect(MONGO_URI); console.log('✅ MongoDB Connected (Fallback)'); }
+        catch (e) { console.error('❌ Lỗi kết nối DB:', e.message); }
+    };
+}
 
 // Nạp Router an toàn (Tránh crash nếu thiếu file)
 let apiRouter, authRouter;
@@ -60,6 +73,11 @@ app.get('/status', (req, res) => {
 // 4. API Routes
 if (authRouter) app.use('/api/auth', authRouter);
 if (apiRouter) app.use('/api', apiRouter);
+
+// 404 Handler cho API: Trả về JSON thay vì HTML nếu gọi sai đường dẫn API
+app.use('/api/*', (req, res) => {
+    res.status(404).json({ error: 'API Route not found', path: req.originalUrl });
+});
 
 // 1. Khởi động Server NGAY LẬP TỨC (Để Render không bị timeout)
 app.listen(PORT, '0.0.0.0', () => {

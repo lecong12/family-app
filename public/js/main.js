@@ -19,6 +19,13 @@ async function loadMembers() {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         
+        // Kiểm tra nếu server trả về HTML (lỗi 404/500) thay vì JSON
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            const text = await res.text();
+            throw new Error("Server lỗi (trả về HTML): " + text.substring(0, 100) + "...");
+        }
+
         if (!res.ok) {
             const errData = await res.json();
             if (res.status === 401) {
