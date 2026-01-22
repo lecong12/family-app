@@ -1,5 +1,7 @@
 // Biến toàn cục lưu danh sách thành viên
 let allMembers = [];
+let chartInstances = {};
+
 // Biến trạng thái để biết đang Thêm hay Sửa
 let currentEditingId = null;
 
@@ -11,19 +13,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
     
-    // 1.1. Thử nạp dữ liệu từ Cache (để hiển thị ngay lập tức khi refresh)
-    const cachedData = localStorage.getItem('familyData');
-    if (cachedData) {
-        try {
-            allMembers = JSON.parse(cachedData);
-            renderData(allMembers); // Hiển thị dữ liệu cũ trong lúc chờ dữ liệu mới
-        } catch (e) { console.error("Lỗi đọc cache:", e); }
-    }
+    // Khởi tạo các ô tìm kiếm thông minh và cấu trúc form
+    initSmartSelects();
+    
+    // Khởi tạo giao diện tab
+    initTabs();
 
-    loadMembers();
-
-    // Thêm nút và modal cho chức năng thống kê
-    setupStatsFeature();
+    // Tải dữ liệu và render tab mặc định (Dashboard)
+    loadAndRenderAll();
 });
 
 // 2. Hàm tải dữ liệu từ Server
@@ -63,22 +60,96 @@ async function loadMembers() {
     }
 }
 
-// Hàm hiển thị dữ liệu lên giao diện (Tách ra để dùng chung cho Cache và Server)
+async function loadAndRenderAll() {
+    await loadMembers();
+    // Render tab mặc định (Dashboard) sau khi có dữ liệu
+    renderDashboardTab();
+}
+
+function initTabs() {
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            // Tắt active cho tất cả
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+
+            // Kích hoạt tab được click
+            button.classList.add('active');
+            const targetId = button.dataset.target;
+            const targetContent = document.querySelector(targetId);
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+
+            // Render nội dung cho tab tương ứng
+            switch(targetId) {
+                case '#dashboard-tab':
+                    renderDashboardTab();
+                    break;
+                case '#tree-tab':
+                    renderTreeTab();
+                    break;
+                case '#members-tab':
+                    renderMembersTab();
+                    break;
+                case '#posts-tab':
+                    renderPostsTab();
+                    break;
+                case '#settings-tab':
+                    renderSettingsTab();
+                    break;
+            }
+        });
+    });
+}
+
+// Hàm render dữ liệu chung (khi dữ liệu thay đổi)
 function renderData(members) {
-    // Cập nhật số lượng
-    const countEl = document.getElementById('member-count');
-    if (countEl) countEl.innerText = members.length;
-
-    // Vẽ cây
-    if (typeof drawTree === 'function') {
-        drawTree(members);
+    // Sau khi có dữ liệu, cập nhật lại tab đang active
+    const activeTab = document.querySelector('.tab-content.active');
+    if (!activeTab) {
+        renderDashboardTab(); // Mặc định render dashboard
+        return;
     }
-
-    // Render danh sách bên phải
-    renderMemberList(members);
     
-    // Cập nhật Select box trong Modal
-    updateParentSelects();
+    switch(activeTab.id) {
+        case 'dashboard-tab': renderDashboardTab(); break;
+        case 'tree-tab': renderTreeTab(); break;
+        case 'members-tab': renderMembersTab(); break;
+        case 'posts-tab': renderPostsTab(); break;
+        case 'settings-tab': renderSettingsTab(); break;
+    }
+}
+
+function renderTreeTab() {
+    const treeContainer = document.querySelector('#tree-tab #tree-canvas');
+    if (!treeContainer) return;
+    
+    // Luôn vẽ lại cây để đảm bảo dữ liệu mới nhất (renderer.js đã tạo SVG sẵn nên không check rỗng)
+    if (typeof drawTree === 'function') {
+        drawTree(allMembers);
+    }
+    // Cập nhật ô tìm kiếm của cây
+    const searchInput = document.getElementById('tree-search-input');
+    const searchResults = document.getElementById('tree-search-results');
+    if (searchInput) {
+        searchInput.onkeyup = () => handleTreeSearch(searchInput, searchResults);
+    }
+}
+
+function renderMembersTab() {
+    renderMemberList(allMembers);
+    const searchInput = document.getElementById('member-search-input');
+    if(searchInput) {
+        searchInput.onkeyup = () => {
+            const query = searchInput.value.toLowerCase();
+            const filteredMembers = allMembers.filter(m => m.full_name.toLowerCase().includes(query));
+            renderMemberList(filteredMembers);
+        };
+    }
 }
 
 // Hàm Đăng xuất: Xóa Token và Xóa Dữ liệu Cache
@@ -90,45 +161,12 @@ function logout() {
 
 // 3. Render danh sách thành viên (Sidebar)
 function renderMemberList(members) {
-    const container = document.getElementById('members-container');
+    const container = document.getElementById('membersGrid');
     if (!container) return;
     
     container.innerHTML = ''; // Xóa danh sách cũ trước khi render lại
-    // 1. Sắp xếp sơ bộ theo Đời và Thứ tự
-    const sorted = [...members].sort((a, b) => {
-        if ((a.generation || 0) !== (b.generation || 0)) return (a.generation || 0) - (b.generation || 0);
-        return (a.order || 0) - (b.order || 0);
-    });
-
-    // 2. Gom nhóm Vợ Chồng (Nam trước - Nữ sau)
-    const displayList = [];
-    const processed = new Set();
-    const memberMap = new Map(members.map(m => [m.id, m]));
-
-    sorted.forEach(m => {
-        if (processed.has(m.id)) return;
-
-        const spouseId = m.pid ? String(m.pid) : null;
-        const spouse = spouseId ? memberMap.get(spouseId) : null;
-
-        if (spouse && !processed.has(spouseId)) { // Chỉ xử lý cặp đôi nếu người vợ/chồng chưa được xử lý
-            // Nếu là cặp vợ chồng, luôn đưa Nam lên trước
-            const husband = m.gender === 'Nam' ? m : spouse;
-            const wife = m.gender === 'Nam' ? spouse : m;
-            
-            displayList.push(husband);
-            if (wife) displayList.push(wife); // Chỉ thêm vợ nếu tồn tại
-            
-            processed.add(husband.id);
-            if (wife) processed.add(wife.id);
-        } else {
-            // Nếu không có vợ/chồng hoặc vợ/chồng đã được xử lý rồi, chỉ thêm người hiện tại
-            displayList.push(m);
-            processed.add(m.id);
-        }
-    });
-
-    displayList.forEach(m => {
+    
+    members.forEach(m => {
         // Tạo thẻ div thay vì chuỗi HTML để dễ gắn sự kiện onclick
         const card = document.createElement('div');
         card.className = 'member-card';
@@ -136,8 +174,7 @@ function renderMemberList(members) {
         
         // Thêm sự kiện click để zoom đến người đó trên cây
         card.onclick = () => { 
-            if (typeof zoomToNode === 'function') zoomToNode(m.id); 
-            else console.error("Hàm zoomToNode chưa được định nghĩa");
+            openEditModal(m.id);
         };
         
         container.appendChild(card);
@@ -155,12 +192,10 @@ function openAddModal() {
     document.getElementById('m-name').value = '';
     document.getElementById('m-gender').value = 'Nam';
     
-    updateParentSelects(); // Tải lại danh sách chọn
-    
-    // Đặt lại các lựa chọn cha/mẹ/vợ-chồng
-    document.getElementById('m-fid').value = '';
-    document.getElementById('m-mid').value = '';
-    document.getElementById('m-pid').value = '';
+    ['m-fid', 'm-mid', 'm-pid'].forEach(id => {
+        document.getElementById(id).value = ''; // Hidden input
+        document.getElementById(id + '-search').value = ''; // Search input
+    });
 
     // Ẩn nút Xóa khi ở chế độ Thêm mới
     document.getElementById('btn-delete-member').style.display = 'none';
@@ -179,16 +214,32 @@ window.openEditModal = function(memberId) {
     currentEditingId = memberId; // Đặt trạng thái: đang sửa
     document.getElementById('modal-title').innerText = "Sửa thông tin thành viên";
 
-    // Điền dữ liệu cũ vào form
+    // Điền dữ liệu cơ bản
     document.getElementById('m-name').value = member.full_name;
     document.getElementById('m-gender').value = member.gender;
     
-    updateParentSelects(); // Tải lại danh sách chọn
-    
-    // Chọn đúng giá trị đã lưu cho cha/mẹ/vợ-chồng
-    document.getElementById('m-fid').value = member.fid || '';
-    document.getElementById('m-mid').value = member.mid || '';
-    document.getElementById('m-pid').value = member.pid || '';
+    // Cải tiến: Tìm vợ/chồng 2 chiều để điền vào form
+    let spouseId = member.pid;
+    if (!spouseId) {
+        // Tìm xem có ai khác coi người này là vợ/chồng không
+        const spouse = allMembers.find(p => String(p.pid) === String(memberId));
+        if (spouse) {
+            spouseId = spouse.id;
+        }
+    }
+
+    // Điền dữ liệu cho các ô tìm kiếm thông minh
+    const relations = {
+        'm-fid': member.fid,
+        'm-mid': member.mid,
+        'm-pid': spouseId // Sử dụng spouseId đã tìm được
+    };
+    for (const id in relations) {
+        const relatedId = relations[id];
+        document.getElementById(id).value = relatedId || ''; // Set hidden input
+        const relatedMember = allMembers.find(m => String(m.id) === String(relatedId));
+        document.getElementById(id + '-search').value = relatedMember ? relatedMember.full_name : ''; // Set search input
+    }
 
     // Hiển thị nút Xóa khi ở chế độ Sửa
     document.getElementById('btn-delete-member').style.display = 'inline-block';
@@ -206,32 +257,151 @@ function closeModal() {
     currentEditingId = null;
 }
 
-function updateParentSelects() {
-    const fidSelect = document.getElementById('m-fid');
-    const midSelect = document.getElementById('m-mid');
-    const pidSelect = document.getElementById('m-pid'); // Thêm select cho Vợ/Chồng
-    
-    // Tối ưu hóa: Tạo chuỗi HTML trong bộ nhớ thay vì thao tác DOM liên tục
-    let fidHtml = '<option value="">Chọn Cha</option>';
-    let midHtml = '<option value="">Chọn Mẹ</option>';
-    let pidHtml = '<option value="">Chọn Vợ/Chồng</option>';
+function updateSmartSelectOptions() {
+    // Hàm này sẽ được gọi khi allMembers thay đổi để cập nhật lại dữ liệu cho các smart select
+    // Hiện tại, logic lọc đã nằm trong event listener của searchInput, nên không cần làm gì nhiều ở đây.
+    // Tuy nhiên, nếu có các trường hợp cần cập nhật lại danh sách hiển thị mà không cần gõ,
+    // thì logic sẽ được thêm vào đây.
+    // Ví dụ: khi chọn Cha, danh sách Mẹ sẽ tự động lọc lại mà không cần gõ lại.
+    // Điều này đã được xử lý trong event listener của searchInput cho m-mid.
+}
 
-    // Sắp xếp thành viên theo tên để dễ tìm trong danh sách dropdown
-    const sortedMembers = [...allMembers].sort((a, b) => a.full_name.localeCompare(b.full_name, 'vi'));
+function initSmartSelects() {
+    const modalContent = document.querySelector('#add-member-modal .modal-content');
+    if (!modalContent || modalContent.dataset.smartInit === 'true') return;
 
-    sortedMembers.forEach(m => {
-        const option = `<option value="${m.id}">${m.full_name}</option>`;
-        if (m.gender === 'Nam') fidHtml += option;
-        if (m.gender === 'Nữ') midHtml += option;
-        
-        // Thêm tất cả mọi người vào danh sách chọn Vợ/Chồng
-        pidHtml += option;
+    const configs = [
+        { id: 'm-name', type: 'text' }, // Giữ nguyên input text
+        { id: 'm-gender', type: 'select' }, // Giữ nguyên select
+        { id: 'm-fid', type: 'smart-select', filter: (m) => m.gender === 'Nam', placeholder: 'Gõ để tìm kiếm Cha...' },
+        { id: 'm-mid', type: 'smart-select', filter: (m) => m.gender === 'Nữ', placeholder: 'Gõ để tìm kiếm Mẹ...' },
+        { id: 'm-pid', type: 'smart-select', filter: () => true, placeholder: 'Gõ để tìm kiếm Vợ/Chồng...' },
+    ];
+
+    configs.forEach(({ id, type, filter, placeholder }) => {
+        const originalEl = document.getElementById(id);
+        if (!originalEl) return;
+
+        // Tìm nhãn (label) đã có sẵn trong HTML
+        const labelEl = modalContent.querySelector(`label[for="${id}"]`);
+
+        // Tạo một div mới để nhóm label và input/smart-select
+        const group = document.createElement('div');
+        group.className = 'form-group';
+
+        // Chèn group vào trước label hoặc input gốc
+        const referenceNode = labelEl || originalEl;
+        referenceNode.parentElement.insertBefore(group, referenceNode);
+
+        // Di chuyển label đã có vào trong group
+        if (labelEl) {
+            group.appendChild(labelEl);
+        }
+
+        if (type === 'smart-select') {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'smart-select-wrapper';
+
+            const searchInput = document.createElement('input');
+            searchInput.type = 'text';
+            searchInput.id = id + '-search';
+            searchInput.placeholder = placeholder || 'Gõ để tìm kiếm...';
+            searchInput.autocomplete = 'off';
+
+            const resultsDiv = document.createElement('div');
+            resultsDiv.className = 'smart-select-results';
+
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.id = id; // Giữ ID gốc cho input ẩn
+
+            wrapper.appendChild(searchInput);
+            wrapper.appendChild(resultsDiv);
+            group.appendChild(wrapper);
+            group.appendChild(hiddenInput);
+
+            // Cập nhật lại thuộc tính 'for' của label để trỏ đúng vào ô tìm kiếm mới
+            if (labelEl) {
+                labelEl.setAttribute('for', id + '-search');
+            }
+
+            // Xóa thẻ <select> gốc đi
+            originalEl.remove();
+
+            // Logic tìm kiếm
+            searchInput.addEventListener('input', () => {
+                const query = searchInput.value.toLowerCase();
+                resultsDiv.innerHTML = '';
+                let dataSource;
+
+                if (id === 'm-pid') { // Logic lọc danh sách Vợ/Chồng
+                    const takenIds = new Set();
+                    allMembers.forEach(p => {
+                        if (p.pid) {
+                            takenIds.add(String(p.id));
+                            takenIds.add(String(p.pid));
+                        }
+                    });
+                    const currentSpouseId = document.getElementById('m-pid').value;
+                    dataSource = allMembers.filter(m => {
+                        if (currentEditingId && String(m.id) === String(currentEditingId)) return false;
+                        if (currentSpouseId && String(m.id) === String(currentSpouseId)) return true;
+                        return !takenIds.has(String(m.id));
+                    });
+                } else if (id === 'm-mid') { // Logic lọc danh sách Mẹ theo Cha
+                    dataSource = allMembers.filter(filter);
+                    const fatherId = document.getElementById('m-fid').value;
+                    if (fatherId) {
+                        const father = allMembers.find(m => String(m.id) === String(fatherId));
+                        if (father) {
+                            const wifeIds = new Set();
+                            allMembers.forEach(p => { if (String(p.pid) === String(fatherId) && p.gender === 'Nữ') wifeIds.add(p.id); });
+                            if (father.pid) {
+                                const spouse = allMembers.find(p => String(p.id) === String(father.pid));
+                                if (spouse && spouse.gender === 'Nữ') wifeIds.add(spouse.id);
+                            }
+                            dataSource = allMembers.filter(m => wifeIds.has(String(m.id)));
+                        }
+                    }
+                } else { // Các trường hợp khác (Cha)
+                    dataSource = allMembers.filter(filter);
+                }
+
+                const matched = query ? dataSource.filter(m => m.full_name.toLowerCase().includes(query)) : dataSource;
+                matched.slice(0, 10).forEach(member => {
+                    const item = document.createElement('div');
+                    item.textContent = member.full_name;
+                    item.addEventListener('click', () => {
+                        searchInput.value = member.full_name;
+                        hiddenInput.value = member.id;
+                        resultsDiv.style.display = 'none';
+                        if (id === 'm-fid') { // Nếu vừa chọn Cha, tự động xóa lựa chọn Mẹ cũ
+                            document.getElementById('m-mid-search').value = '';
+                            document.getElementById('m-mid').value = '';
+                        }
+                    });
+                    resultsDiv.appendChild(item);
+                });
+                resultsDiv.style.display = matched.length > 0 ? 'block' : 'none';
+            });
+
+            searchInput.addEventListener('focus', () => { if (!searchInput.value) searchInput.dispatchEvent(new Event('input')); });
+            searchInput.addEventListener('change', () => { if (searchInput.value === '') hiddenInput.value = ''; });
+
+        } else {
+            // Đối với các trường input/select thường, chỉ cần di chuyển chúng vào trong nhóm
+            group.appendChild(originalEl);
+        }
     });
 
-    // Cập nhật DOM một lần duy nhất
-    if (fidSelect) fidSelect.innerHTML = fidHtml;
-    if (midSelect) midSelect.innerHTML = midHtml;
-    if (pidSelect) pidSelect.innerHTML = pidHtml;
+    // Đóng danh sách kết quả tìm kiếm khi click ra ngoài
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.smart-select-wrapper')) {
+            document.querySelectorAll('.smart-select-results').forEach(div => div.style.display = 'none');
+        }
+    });
+
+    modalContent.dataset.smartInit = 'true';
 }
 
 async function saveMember() {
@@ -379,29 +549,348 @@ async function syncGoogleSheets() {
     }
 }
 
-// 7. Hàm tìm kiếm thành viên
-function handleSearch() {
-    const input = document.getElementById('search-input');
+// --- Chức năng Bài Viết (Posts) ---
+let currentPostId = null;
+
+function renderPostsTab() {
+    const wrapper = document.getElementById('posts-content-wrapper');
+    if (!wrapper) return;
+    wrapper.innerHTML = `
+        <div class="members-header">
+            <h2 style="font-size: 20px; margin: 0;">Bài Viết & Thông Báo</h2>
+            <button class="btn-add" onclick="showPostForm()">+ Viết bài mới</button>
+        </div>
+        <div id="posts-list-container" class="posts-container" style="margin-top: 24px;">Đang tải...</div>
+        <!-- Form Thêm/Sửa bài viết (Mặc định ẩn) -->
+        <div id="post-form-container" style="display:none; margin-top: 24px;">
+            <h3 id="post-form-title">Viết bài mới</h3>
+            <div class="form-group"><label>Tiêu đề:</label><input type="text" id="post-title"></div>
+            <div class="form-group"><label>Danh mục:</label><select id="post-category"><option value="announcement">📢 Thông báo</option><option value="event">📅 Sự kiện</option><option value="news">📰 Tin tức</option></select></div>
+            <div class="form-group"><label>Nội dung:</label><textarea id="post-content" rows="10"></textarea></div>
+            <div class="form-group" style="flex-direction: row; gap: 10px; align-items: center;"><input type="checkbox" id="post-pinned" style="width: auto; flex-grow: 0;"><label for="post-pinned" style="flex-basis: auto;">Ghim lên đầu trang</label></div>
+            <div class="modal-actions">
+                <button class="btn-danger" onclick="hidePostForm()">Hủy</button>
+                <button class="btn-primary" onclick="savePost()">Lưu bài viết</button>
+            </div>
+        </div>
+    `;
+    loadPosts();
+}
+
+async function loadPosts() {
+    const container = document.getElementById('posts-list-container');
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/posts', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            if (data.posts.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:#666;">Chưa có bài viết nào.</p>';
+                return;
+            }
+
+            container.innerHTML = data.posts.map(post => {
+                const date = new Date(post.created_at).toLocaleDateString('vi-VN');
+                const pinnedIcon = post.is_pinned ? '<span class="pinned-icon">📌 Đã ghim</span>' : '';
+                const catMap = { 'announcement': 'Thông báo', 'event': 'Sự kiện', 'news': 'Tin tức' };
+                const catClass = `cat-${post.category}`;
+                
+                return `
+                <div class="post-card ${post.is_pinned ? 'pinned' : ''}">
+                    <div class="post-header">
+                        <span class="post-category ${catClass}">${catMap[post.category]}</span>
+                        ${pinnedIcon}
+                        <span class="post-date">${date} - bởi <b>${post.author ? post.author.username : 'Ẩn danh'}</b></span>
+                    </div>
+                    <h3 class="post-title">${post.title}</h3>
+                    <div class="post-content">${post.content.replace(/\n/g, '<br>')}</div>
+                    <div class="post-actions">
+                        <button class="btn-small" onclick="editPost('${post._id}')">✏️ Sửa</button>
+                        <button class="btn-small btn-delete" onclick="deletePost('${post._id}')">🗑️ Xóa</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+    } catch (err) {
+        container.innerHTML = `<p style="color:red;">Lỗi tải bài viết: ${err.message}</p>`;
+    }
+}
+
+function showPostForm(post = null) {
+    document.getElementById('post-form-container').style.display = 'block';
+    document.querySelector('#posts-tab .members-header').style.display = 'none'; // Ẩn header
+    document.getElementById('posts-list-container').style.display = 'none'; // Ẩn danh sách
+
+    if (post) {
+        currentPostId = post._id;
+        document.getElementById('post-form-title').innerText = 'Sửa bài viết';
+        document.getElementById('post-title').value = post.title;
+        document.getElementById('post-content').value = post.content;
+        document.getElementById('post-category').value = post.category;
+        document.getElementById('post-pinned').checked = post.is_pinned;
+    } else {
+        currentPostId = null;
+        document.getElementById('post-form-title').innerText = 'Viết bài mới';
+        document.getElementById('post-title').value = '';
+        document.getElementById('post-content').value = '';
+        document.getElementById('post-category').value = 'announcement';
+        document.getElementById('post-pinned').checked = false;
+    }
+}
+
+function hidePostForm() {
+    document.getElementById('post-form-container').style.display = 'none';
+    document.querySelector('#posts-tab .members-header').style.display = 'flex';
+    document.getElementById('posts-list-container').style.display = 'block';
+}
+
+async function editPost(id) {
+    // Cần lấy lại dữ liệu chi tiết hoặc tìm trong DOM, ở đây fetch lại cho chắc
+    const token = localStorage.getItem('token');
+    const res = await fetch(`/api/posts/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const data = await res.json();
+    if (data.success) {
+        showPostForm(data.post);
+    } else {
+        alert(data.message);
+    }
+}
+
+async function savePost() {
+    const title = document.getElementById('post-title').value;
+    const content = document.getElementById('post-content').value;
+    const category = document.getElementById('post-category').value;
+    const is_pinned = document.getElementById('post-pinned').checked;
+
+    const payload = { title, content, category, is_pinned };
+    const method = currentPostId ? 'PUT' : 'POST';
+    const url = currentPostId ? `/api/posts/${currentPostId}` : '/api/posts';
+    const token = localStorage.getItem('token');
+
+    try {
+        const res = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('✅ Lưu thành công!');
+            hidePostForm();
+            loadPosts();
+        } else {
+            alert('❌ Lỗi: ' + data.message);
+        }
+    } catch (err) {
+        alert('❌ Lỗi kết nối: ' + err.message);
+    }
+}
+
+async function deletePost(id) {
+    if (!confirm('Bạn có chắc chắn muốn xóa bài viết này?')) return;
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch(`/api/posts/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+            loadPosts();
+        } else {
+            alert('❌ ' + data.message);
+        }
+    } catch (err) {
+        alert('❌ Lỗi: ' + err.message);
+    }
+}
+
+function renderSettingsTab() {
+// --- Chức năng Import File từ Máy tính ---
+
+    const wrapper = document.getElementById('settings-content-wrapper');
+    if (!wrapper) return;
+    wrapper.innerHTML = `
+        <div class="settings-card" onclick="syncGoogleSheets()">
+            <i class="fas fa-cloud-download-alt" style="color: #3498db;"></i>
+            <h3>Đồng bộ Google Sheets</h3>
+            <p>Xóa dữ liệu cũ và nạp lại từ Google Sheets.</p>
+        </div>
+        <div class="settings-card" onclick="openImportModal()">
+            <i class="fas fa-file-csv" style="color: #27ae60;"></i>
+            <h3>Nhập từ File CSV</h3>
+            <p>Thêm hoặc cập nhật thành viên từ file CSV.</p>
+        </div>
+        <div class="settings-card" onclick="exportToCSV()">
+            <i class="fas fa-file-export" style="color: #f39c12;"></i>
+            <h3>Xuất ra File CSV</h3>
+            <p>Tải xuống toàn bộ dữ liệu gia phả hiện tại.</p>
+        </div>
+    `;
+}
+
+function openImportModal() {
+    const modal = document.getElementById('import-modal');
+    if (modal) {
+        // Reset lại form mỗi khi mở
+        document.getElementById('csv-file-input').value = '';
+        const statusDiv = document.getElementById('import-status');
+        statusDiv.innerHTML = '';
+        statusDiv.className = ''; // Xóa các class success/error/info
+        
+        // Reset hiển thị tên file và nút tải lên
+        updateFileName(document.getElementById('csv-file-input'));
+
+        // Reset nút upload
+        const uploadBtn = document.getElementById('btn-upload-csv');
+        uploadBtn.innerHTML = 'Tải lên & Xử lý';
+
+        modal.style.display = 'block';
+    }
+}
+
+function updateFileName(input) {
+    const fileNameDisplay = document.getElementById('file-name-display');
+    const uploadBtn = document.getElementById('btn-upload-csv');
+    if (input.files.length > 0) {
+        fileNameDisplay.textContent = `Đã chọn: ${input.files[0].name}`;
+        fileNameDisplay.style.color = '#0f5132'; // Màu xanh lá cây đậm
+        uploadBtn.disabled = false; // Kích hoạt nút tải lên
+    } else {
+        fileNameDisplay.textContent = 'Chưa có file nào được chọn';
+        fileNameDisplay.style.color = '#6c757d'; // Màu xám
+        uploadBtn.disabled = true; // Vô hiệu hóa nút
+    }
+}
+
+async function handleFileUpload() {
+    const fileInput = document.getElementById('csv-file-input');
+    const statusDiv = document.getElementById('import-status');
+    const uploadBtn = document.getElementById('btn-upload-csv');
+
+    if (fileInput.files.length === 0) {
+        alert('Vui lòng chọn một file CSV.');
+        return;
+    }
+
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append('csvfile', file); // 'csvfile' phải khớp với tên field trong upload.single() ở backend
+
+    uploadBtn.disabled = true;
+    uploadBtn.innerHTML = '⌛ Đang xử lý...';
+    statusDiv.className = 'info';
+    statusDiv.innerHTML = 'Đang tải file lên và xử lý, vui lòng chờ...';
+
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/import-csv', {
+            method: 'POST',
+            headers: {
+                // 'Content-Type': 'multipart/form-data' được trình duyệt tự động thêm vào khi dùng FormData
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            statusDiv.className = 'success';
+            statusDiv.innerHTML = result.message.replace(/\n/g, '<br>'); // Thay \n bằng <br> để xuống dòng
+            
+            const hasWarning = result.message.includes('⚠️');
+
+            if (hasWarning) {
+                // Có cảnh báo, giữ modal mở và bật lại nút để thử lại
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = 'Tải lên & Xử lý';
+            } else {
+                // Thành công không có cảnh báo, tự động đóng sau 2.5 giây
+                setTimeout(() => {
+                    const modal = document.getElementById('import-modal');
+                    if (modal) modal.style.display = 'none';
+                }, 2500);
+            }
+
+            loadMembers(); // Tải lại toàn bộ dữ liệu gia phả
+        } else {
+            // Server có thể trả về lỗi dạng { message: ... } hoặc { error: ... }
+            throw new Error(result.message || result.error || 'Lỗi không xác định từ server.');
+        }
+
+    } catch (error) {
+        console.error('Lỗi import file:', error);
+        statusDiv.className = 'error';
+        statusDiv.innerHTML = `❌ Lỗi: ${error.message}`;
+        // Nếu có lỗi, kích hoạt lại nút để người dùng có thể thử lại
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = 'Tải lên & Xử lý';
+    }
+}
+
+async function exportToCSV() {
+    const btn = document.querySelector('#settings-dropdown a[onclick="exportToCSV()"]');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '⌛ Đang tạo file...';
+
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/export-csv', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.message || 'Lỗi khi tạo file CSV');
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        const date = new Date().toISOString().slice(0, 10);
+        a.download = `giapha_export_${date}.csv`;
+        
+        document.body.appendChild(a);
+        a.click();
+        
+        window.URL.revokeObjectURL(url);
+        a.remove();
+    } catch (error) {
+        console.error('Lỗi xuất CSV:', error);
+        alert('❌ Lỗi: ' + error.message);
+    } finally {
+        btn.innerHTML = originalText;
+    }
+}
+
+function handleTreeSearch(input, resultsContainer) {
     const filter = input.value.toLowerCase();
-    const resultsContainer = document.getElementById('search-results');
 
     if (!filter) {
         resultsContainer.style.display = 'none';
         return;
     }
 
-    const results = allMembers.filter(m => 
-        m.full_name.toLowerCase().includes(filter)
-    );
+    const results = allMembers.filter(m => m.full_name.toLowerCase().includes(filter));
 
     resultsContainer.innerHTML = '';
     if (results.length > 0) {
-        results.slice(0, 10).forEach(member => { // Giới hạn 10 kết quả
+        results.slice(0, 5).forEach(member => {
             const div = document.createElement('div');
+            div.className = 'search-item';
             div.innerHTML = `${member.full_name} (Đời ${member.generation})`;
             div.onclick = () => {
                 if (typeof zoomToNode === 'function') zoomToNode(member.id);
-                input.value = member.full_name;
+                input.value = '';
                 resultsContainer.style.display = 'none';
             };
             resultsContainer.appendChild(div);
@@ -412,95 +901,74 @@ function handleSearch() {
     }
 }
 
-// --- Chức năng Thống kê (Dashboard) ---
-
-// Biến để tránh tạo lại chart
-let chartInstances = {};
-
-// Hàm tải script bất đồng bộ
-function loadScript(src) {
-    return new Promise((resolve, reject) => {
-        if (document.querySelector(`script[src="${src}"]`)) {
-            return resolve();
-        }
-        const script = document.createElement('script');
-        script.src = src;
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error(`Không thể tải script: ${src}`));
-        document.head.appendChild(script);
-    });
-}
-
-function setupStatsFeature() {
-    // 1. Tạo nút "Thống kê"
-    const toolbar = document.getElementById('toolbar');
-    if (toolbar) {
-        const statsButton = document.createElement('button');
-        statsButton.id = 'btn-stats';
-        statsButton.innerHTML = 'Thống kê';
-        statsButton.onclick = openStatsModal;
-        const addButton = document.querySelector('#toolbar button');
-        if (addButton) {
-            addButton.insertAdjacentElement('afterend', statsButton);
-        } else {
-            toolbar.appendChild(statsButton);
-        }
-    }
-
-    // 2. Tạo HTML cho Modal
-    const modalHtml = `
-    <div id="stats-modal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="document.getElementById('stats-modal').style.display='none'">&times;</span>
-            <div id="stats-content-wrapper">
-                <!-- Nội dung dashboard sẽ được chèn vào đây -->
-            </div>
-        </div>
-    </div>`;
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-}
-
-async function openStatsModal() {
-    const modal = document.getElementById('stats-modal');
-    const wrapper = document.getElementById('stats-content-wrapper');
-    if (!modal || !wrapper) return;
-
-    modal.style.display = 'block';
-    wrapper.innerHTML = '<h2 style="text-align: center;">Đang tải thư viện và tính toán...</h2>';
-
-    try {
-        await loadScript('https://cdn.jsdelivr.net/npm/chart.js');
-        renderAllCharts();
-    } catch (error) {
-        console.error("Lỗi mở dashboard:", error);
-        wrapper.innerHTML = `<h3 style="color: red; text-align: center;">❌ Đã xảy ra lỗi: ${error.message}</h3>`;
-    }
-}
-
-function renderAllCharts() {
+function renderDashboardTab() {
     const wrapper = document.getElementById('stats-content-wrapper');
     if (!wrapper) return;
 
     // Chèn HTML dashboard vào
     wrapper.innerHTML = `
-        <div class="row g-4 mb-4">
-          <div class="col-md-4"><div class="card bg-primary text-white shadow h-100 p-3"><h3>Tổng thành viên</h3><h1 class="display-4 fw-bold" id="total-mem">0</h1></div></div>
-          <div class="col-md-4"><div class="card bg-success text-white shadow h-100 p-3"><h3>Nam</h3><h1 class="display-4 fw-bold" id="total-male">0</h1></div></div>
-          <div class="col-md-4"><div class="card bg-danger text-white shadow h-100 p-3"><h3>Nữ</h3><h1 class="display-4 fw-bold" id="total-female">0</h1></div></div>
+        <h2 style="text-align: center; margin-bottom: 20px;">Tổng quan Gia phả</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #f97316, #fbbf24);">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>Tổng Thành Viên</h3>
+                    <div class="stat-number" id="totalMembers">0</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #06b6d4, #0ea5e9);">
+                    <i class="fa-solid fa-male"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>Nam</h3>
+                    <div class="stat-number" id="maleCount">0</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #ec4899, #f43f5e);">
+                    <i class="fa-solid fa-female"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>Nữ</h3>
+                    <div class="stat-number" id="femaleCount">0</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #10b981, #34d399);">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>Số Thế Hệ</h3>
+                    <div class="stat-number" id="generationCount">0</div>
+                </div>
+            </div>
         </div>
-        <div class="row g-4">
-          <div class="col-md-4"><div class="card shadow p-3 h-100"><h5 class="card-title text-center text-secondary fw-bold">Thành phần</h5><div style="height: 300px; position: relative;"><canvas id="chartComp"></canvas></div></div></div>
-          <div class="col-md-4"><div class="card shadow p-3 h-100"><h5 class="card-title text-center text-secondary fw-bold">Giới tính</h5><div style="height: 300px; position: relative;"><canvas id="chartGender"></canvas></div></div></div>
-          <div class="col-md-4"><div class="card shadow p-3 h-100"><h5 class="card-title text-center text-secondary fw-bold">Trạng thái (Sinh/Tử)</h5><div style="height: 300px; position: relative;"><canvas id="chartStatus"></canvas></div></div></div>
+
+        <div class="dashboard-columns">
+            <div class="dashboard-col">
+                <h3>Phân bố theo Thế hệ</h3>
+                <canvas id="chartGen"></canvas>
+            </div>
+            <div class="dashboard-col">
+                <h3>Thành phần Gia tộc</h3>
+                <canvas id="chartComp"></canvas>
+            </div>
         </div>
-        <div class="row g-4 mt-1">
-          <div class="col-md-6"><div class="card shadow p-3 h-100"><h5 class="card-title text-center text-secondary fw-bold">Phân bố theo Đời thứ</h5><div style="height: 300px; position: relative;"><canvas id="chartGen"></canvas></div></div></div>
-          <div class="col-md-6"><div class="card shadow p-3 h-100"><h5 class="card-title text-center text-secondary fw-bold">Phân bố theo Phái (Branch)</h5><div style="height: 300px; position: relative;"><canvas id="chartBranch"></canvas></div></div></div>
+        <div class="dashboard-columns">
+            <div class="dashboard-col">
+                <h3>Sự kiện sắp tới</h3>
+                <div id="upcoming-events">
+                    <p>Chức năng đang phát triển (Sinh nhật, ngày giỗ...)</p>
+                </div>
+            </div>
         </div>
     `;
 
     if (allMembers.length === 0) {
-        wrapper.innerHTML = '<h3 style="text-align: center;">Chưa có dữ liệu để thống kê.</h3>';
+        wrapper.querySelector('.stats-grid').innerHTML = '<p style="text-align: center; grid-column: 1 / -1;">Chưa có dữ liệu để thống kê.</p>';
         return;
     }
 
@@ -508,39 +976,38 @@ function renderAllCharts() {
     const total = allMembers.length;
     const males = allMembers.filter(m => m.gender === 'Nam').length;
     const females = total - males;
-    const alive = allMembers.filter(m => m.is_live !== false).length; // Xử lý trường hợp undefined hoặc true
-    const dead = total - alive;
-    // Giả định: Dâu/Rể là người có vợ/chồng nhưng không có cha/mẹ trong gia phả
     const spouses = allMembers.filter(m => m.pid && !m.fid && !m.mid).length;
     const coreMembers = total - spouses;
+
+    // Tính toán cho biểu đồ thế hệ
     const genCounts = allMembers.reduce((acc, m) => {
-        const gen = m.generation || 'Chưa rõ';
-        acc[gen] = (acc[gen] || 0) + 1;
+        // Chỉ tính các thế hệ hợp lệ (số dương) để biểu đồ hiển thị đúng thứ tự
+        if (m.generation && !isNaN(m.generation) && m.generation > 0) {
+            const gen = m.generation;
+            acc[gen] = (acc[gen] || 0) + 1;
+        }
         return acc;
     }, {});
-    const genLabels = Object.keys(genCounts).sort((a, b) => a - b);
+    // Sắp xếp label theo giá trị số (1, 2, 3... 10, 11) thay vì string (1, 10, 11, 2...)
+    const genLabels = Object.keys(genCounts).sort((a, b) => parseInt(a) - parseInt(b));
     const genData = genLabels.map(label => genCounts[label]);
-    const branchCounts = allMembers.reduce((acc, m) => {
-        const branch = m.branch || 'Chưa rõ';
-        acc[branch] = (acc[branch] || 0) + 1;
-        return acc;
-    }, {});
-    const branchLabels = Object.keys(branchCounts);
-    const branchData = branchLabels.map(label => branchCounts[label]);
 
     // --- Cập nhật thẻ ---
-    document.getElementById('total-mem').innerText = total;
-    document.getElementById('total-male').innerText = males;
-    document.getElementById('total-female').innerText = females;
+    document.getElementById('totalMembers').innerText = total;
+    document.getElementById('maleCount').innerText = males;
+    document.getElementById('femaleCount').innerText = females;
+    document.getElementById('generationCount').innerText = genLabels.length;
 
     // --- Vẽ biểu đồ ---
     Object.values(chartInstances).forEach(chart => chart.destroy());
     chartInstances = {};
     const chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } };
 
-    chartInstances.comp = new Chart(document.getElementById('chartComp'), { type: 'doughnut', data: { labels: ['Thành viên chính', 'Dâu/Rể'], datasets: [{ data: [coreMembers, spouses], backgroundColor: ['#36A2EB', '#FF6384'] }] }, options: chartOptions });
-    chartInstances.gender = new Chart(document.getElementById('chartGender'), { type: 'pie', data: { labels: ['Nam', 'Nữ'], datasets: [{ data: [males, females], backgroundColor: ['#4BC0C0', '#FFCD56'] }] }, options: chartOptions });
-    chartInstances.status = new Chart(document.getElementById('chartStatus'), { type: 'doughnut', data: { labels: ['Còn sống', 'Đã mất'], datasets: [{ data: [alive, dead], backgroundColor: ['#9966FF', '#C9CBCF'] }] }, options: chartOptions });
-    chartInstances.gen = new Chart(document.getElementById('chartGen'), { type: 'bar', data: { labels: genLabels.map(l => `Đời ${l}`), datasets: [{ label: 'Số người', data: genData, backgroundColor: '#FF9F40' }] }, options: { ...chartOptions, plugins: { legend: { display: false } } } });
-    chartInstances.branch = new Chart(document.getElementById('chartBranch'), { type: 'bar', data: { labels: branchLabels, datasets: [{ label: 'Số người', data: branchData, backgroundColor: '#36A2EB' }] }, options: { ...chartOptions, indexAxis: 'y', plugins: { legend: { display: false } } } });
+    // Biểu đồ Phân bố thế hệ
+    const chartGenEl = document.getElementById('chartGen');
+    if (chartGenEl) chartInstances.gen = new Chart(chartGenEl, { type: 'bar', data: { labels: genLabels.map(l => `Đời ${l}`), datasets: [{ label: 'Số người', data: genData, backgroundColor: '#ff9f40' }] }, options: { ...chartOptions, plugins: { legend: { display: false } } } });
+    
+    // Biểu đồ Thành phần
+    const chartCompEl = document.getElementById('chartComp');
+    if (chartCompEl) chartInstances.comp = new Chart(chartCompEl, { type: 'doughnut', data: { labels: ['Huyết thống', 'Dâu/Rể'], datasets: [{ data: [coreMembers, spouses], backgroundColor: ['#36a2eb', '#ff6384'] }] }, options: chartOptions });
 }

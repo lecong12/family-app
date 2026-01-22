@@ -3,64 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý Gia Phả</title>
-    <link rel="stylesheet" href="/style.css">
+    <title>Gia Phả Online - Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Thư viện biểu đồ Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Thư viện D3.js để vẽ cây -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
-<body>
-    <!-- Tiêu đề trang -->
-    <div id="header" style="background-color: #34495e; color: white; padding: 15px; text-align: center; border-bottom: 1px solid #2c3e50;">
-        <h1 style="margin: 0; font-size: 24px; text-transform: uppercase;">Gia Phả Dòng Họ Lê Công</h1>
+<body class="dashboard-page">
+    <!-- HEADER -->
+    <header class="header">
+        <div class="header-container">
+            <div class="header-left">
+                <div class="logo"><i class="fas fa-sitemap"></i></div>
+                <div class="header-info">
+                    <h1>Gia Phả Online</h1>
+                    <p class="user-role" id="userRole">Quản trị viên</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <span class="user-name" id="userName"></span>
+                <button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Đăng Xuất</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- TABS -->
+    <div class="tabs-container">
+        <button class="tab-btn active" data-tab="dashboard" data-target="#dashboard-tab"><i class="fas fa-chart-line"></i> Dashboard</button>
+        <button class="tab-btn" data-tab="tree" data-target="#tree-tab"><i class="fas fa-sitemap"></i> Cây Gia Phả</button>
+        <button class="tab-btn" data-tab="members" data-target="#members-tab"><i class="fas fa-users"></i> Thành viên</button>
+        <button class="tab-btn" data-tab="posts" data-target="#posts-tab"><i class="fas fa-newspaper"></i> Bài Viết</button>
+        <button class="tab-btn" data-tab="settings" data-target="#settings-tab"><i class="fas fa-cog"></i> Cài Đặt</button>
     </div>
-    <!-- Thanh công cụ -->
-    <div id="toolbar">
-        <button onclick="openAddModal()">+ Thêm thành viên</button>
-        <button id="btn-sync-sheets" onclick="syncGoogleSheets()" style="background-color: #f39c12;">🔄 Nạp từ Google Sheets</button>
-        
-        <div class="search-container">
-            <input type="text" id="search-input" onkeyup="handleSearch()" placeholder="Tìm kiếm thành viên...">
-            <div id="search-results"></div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        <!-- DASHBOARD TAB -->
+        <div id="dashboard-tab" class="tab-content active">
+            <div id="stats-content-wrapper">
+                <!-- Nội dung dashboard sẽ được JS chèn vào đây -->
+                <h2 style="text-align: center;">Đang tải dữ liệu...</h2>
+            </div>
         </div>
 
-        <span style="margin-left: auto;">Số lượng: <b id="member-count">0</b></span>
-        <button onclick="logout()" style="background-color: #e74c3c; margin-left: 10px;">Đăng xuất</button>
-    </div>
+        <!-- FAMILY TREE TAB -->
+        <div id="tree-tab" class="tab-content">
+            <div class="tree-section">
+                <div class="tree-controls">
+                    <div class="search-container">
+                        <input type="text" id="tree-search-input" class="search-input" placeholder="Tìm người trên cây...">
+                        <div id="tree-search-results" class="search-results"></div>
+                    </div>
+                    <button class="btn-control" onclick="zoomToNode(null)">
+                        <i class="fas fa-project-diagram"></i> Xem toàn bộ
+                    </button>
+                </div>
+                <div id="tree-canvas" style="height: calc(100vh - 200px); border: 1px solid #ddd; border-radius: 8px;"></div>
+            </div>
+        </div>
 
-    <!-- Khu vực chính -->
-    <div id="main-container">
-        <div id="tree-canvas"></div> <!-- Nơi vẽ cây -->
-        <div id="memberList">
-            <h3>Danh sách thành viên</h3>
-            <div id="members-container"></div>
+        <!-- MEMBERS TAB -->
+        <div id="members-tab" class="tab-content">
+            <div class="tree-section">
+                <div class="members-header">
+                    <div class="search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="member-search-input" placeholder="Tìm kiếm thành viên...">
+                    </div>
+                    <button class="btn-add" onclick="openAddModal()">
+                        <i class="fas fa-plus"></i> Thêm Thành viên
+                    </button>
+                </div>
+                <div class="members-grid" id="membersGrid"></div>
+            </div>
+        </div>
+
+        <!-- POSTS TAB -->
+        <div id="posts-tab" class="tab-content">
+            <div class="tree-section">
+                <div id="posts-content-wrapper">
+                    <!-- Nội dung bài viết sẽ được JS chèn vào đây -->
+                    <h2 style="text-align: center;">Đang tải bài viết...</h2>
+                </div>
+            </div>
+        </div>
+
+        <!-- SETTINGS TAB -->
+        <div id="settings-tab" class="tab-content">
+            <div class="tree-section">
+                <h2 style="margin-bottom: 24px; font-size: 20px;">⚙️ Cài đặt & Công cụ</h2>
+                <div id="settings-content-wrapper" class="settings-grid">
+                    <!-- Các card cài đặt sẽ được JS chèn vào đây -->
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Modal Thêm mới / Import -->
+    <!-- MODALS (giữ nguyên, chỉ gọi khi cần) -->
+    <!-- ADD/EDIT MEMBER MODAL -->
     <div id="add-member-modal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal()">&times;</span>
             <h2 id="modal-title">Thêm thành viên</h2>
-            
-            <div class="form-group">
-                <label>Họ và tên:</label>
-                <input type="text" id="m-name" placeholder="Nhập họ tên...">
-            </div>
-
-            <div class="form-group">
-                <label>Thông tin:</label>
-                <select id="m-gender"><option value="Nam">Nam</option><option value="Nữ">Nữ</option></select>
-                <select id="m-fid"><option value="">Chọn Cha</option></select>
-                <select id="m-mid"><option value="">Chọn Mẹ</option></select>
-                <select id="m-pid"><option value="">Chọn Vợ/Chồng</option></select>
-            </div>
+            <div class="form-group"><label for="m-name">Họ tên:</label><input type="text" id="m-name"></div>
+            <div class="form-group"><label for="m-gender">Giới tính:</label><select id="m-gender"><option value="Nam">Nam</option><option value="Nữ">Nữ</option></select></div>
+            <div class="form-group"><label for="m-fid-search">Cha:</label><div class="smart-select-wrapper"><input type="text" id="m-fid-search" autocomplete="off"><div class="smart-select-results"></div><input type="hidden" id="m-fid"></div></div>
+            <div class="form-group"><label for="m-mid-search">Mẹ:</label><div class="smart-select-wrapper"><input type="text" id="m-mid-search" autocomplete="off"><div class="smart-select-results"></div><input type="hidden" id="m-mid"></div></div>
+            <div class="form-group"><label for="m-pid-search">Vợ/Chồng:</label><div class="smart-select-wrapper"><input type="text" id="m-pid-search" autocomplete="off"><div class="smart-select-results"></div><input type="hidden" id="m-pid"></div></div>
             <div class="modal-actions">
-                <button class="btn-save btn-primary" onclick="saveMember()">Lưu thông tin</button>
-                <button id="btn-delete-member" class="btn-danger" onclick="deleteMember()" style="display: none;">Xóa thành viên</button>
+                <button id="btn-delete-member" class="btn-danger" onclick="deleteMember()" style="display: none;">Xóa</button>
+                <button class="btn-primary" onclick="saveMember()">Lưu</button>
             </div>
         </div>
     </div>
 
-    <script src="/js/renderer.js"></script>
-    <script src="/js/main.js"></script>
+    <!-- IMPORT CSV MODAL -->
+    <div id="import-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="document.getElementById('import-modal').style.display='none'">&times;</span>
+            <h3>Nhập dữ liệu từ File CSV</h3>
+            <p>Chọn file CSV từ máy tính để thêm mới hoặc cập nhật dữ liệu gia phả.</p>
+            <div class="file-upload-area">
+                <input type="file" id="csv-file-input" accept=".csv" onchange="updateFileName(this)">
+                <label for="csv-file-input" class="file-upload-label">
+                    <span>Nhấn để chọn file hoặc kéo thả vào đây</span>
+                    <span class="small">Hỗ trợ file .csv</span>
+                </label>
+                <div id="file-name-display">Chưa có file nào được chọn</div>
+            </div>
+            <div id="import-status"></div>
+            <div class="modal-actions">
+                <button id="btn-upload-csv" class="btn-primary" onclick="handleFileUpload()" disabled>Tải lên & Xử lý</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/d3-org-chart.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/main.js"></script>
 </body>
 </html>

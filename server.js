@@ -10,21 +10,41 @@ const connectDB = async () => {
     const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://lecong12:Lecong78@cluster0.onrzjrx.mongodb.net/family-app?retryWrites=true&w=majority';
     console.log(`🔌 Đang kết nối tới Database...`);
     try { await mongoose.connect(MONGO_URI); console.log('✅ MongoDB Connected'); }
-    catch (e) { console.error('❌ Lỗi kết nối DB:', e.message); process.exit(1); }
+    catch (e) { 
+        console.error('❌ Lỗi kết nối DB:', e.message); 
+        console.warn('⚠️ Server vẫn chạy nhưng chưa kết nối được Database (Kiểm tra lại MONGO_URI).');
+        // process.exit(1); // Tạm thời không tắt server để bạn có thể đăng nhập và debug
+    }
 };
 
 // Nạp Router an toàn (Tránh crash nếu thiếu file)
-let apiRouter, authRouter;
+let apiRouter, authRouter, postsRouter;
 try {
-    apiRouter = require('./routes/api');
-} catch (error) {
-    console.error('❌ Lỗi nạp API Router:', error);
+    // 1. Ưu tiên nạp từ utils/api (Cấu trúc mới)
+    apiRouter = require('./utils/api');
+    console.log('✅ Đã nạp API Router từ utils/api');
+} catch (error1) {
+    try {
+        // 2. Nếu lỗi, thử nạp từ routes/api (Cấu trúc cũ)
+        apiRouter = require('./routes/api');
+        console.log('✅ Đã nạp API Router từ routes/api');
+    } catch (error2) {
+        console.error('❌ KHÔNG THỂ NẠP API ROUTER (Kiểm tra lại thư viện hoặc đường dẫn):');
+        console.error('   - Lỗi tại utils/api:', error1.message);
+        console.error('   - Lỗi tại routes/api:', error2.message);
+    }
 }
 
 try {
     authRouter = require('./routes/auth');
 } catch (error) {
-    console.error('❌ Lỗi nạp Auth Router:', error);
+    console.error('❌ Lỗi nạp Auth Router:', error.message);
+}
+
+try {
+    postsRouter = require('./routes/posts');
+} catch (error) {
+    console.error('❌ Lỗi nạp Posts Router:', error.message);
 }
 
 const app = express();
@@ -58,7 +78,8 @@ app.get('/status', (req, res) => {
         database: states[dbState] || 'Unknown',
         routers: {
             auth: !!authRouter ? 'OK' : 'FAILED (Check logs)',
-            api: !!apiRouter ? 'OK' : 'FAILED (Check logs)'
+            api: !!apiRouter ? 'OK' : 'FAILED (Check logs)',
+            posts: !!postsRouter ? 'OK' : 'FAILED (Check logs)'
         },
         mongo_uri_configured: !!process.env.MONGO_URI,
         port: PORT
@@ -68,10 +89,11 @@ app.get('/status', (req, res) => {
 // 4. API Routes
 if (authRouter) app.use('/api/auth', authRouter);
 if (apiRouter) app.use('/api', apiRouter);
+if (postsRouter) app.use('/api/posts', postsRouter);
 
 // 404 Handler cho API: Trả về JSON thay vì HTML nếu gọi sai đường dẫn API
 app.use('/api/*', (req, res) => {
-    res.status(404).json({ error: 'API Route not found', path: req.originalUrl });
+    res.status(404).json({ message: 'API Route not found', error: 'API Route not found', path: req.originalUrl });
 });
 
 // 1. Khởi động Server NGAY LẬP TỨC (Để Render không bị timeout)

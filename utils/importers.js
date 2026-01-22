@@ -1,4 +1,4 @@
-﻿﻿const fs = require('fs');
+﻿﻿﻿﻿const fs = require('fs');
 const csv = require('csv-parser');
 const xlsx = require('xlsx');
 const Member = require('../models/Member');
@@ -9,8 +9,8 @@ const getCol = (row, keys, defaultVal = null) => {
     for (const key of keys) {
         // So sánh không phân biệt hoa thường và khoảng trắng thừa
         const match = rowKeys.find(k => k.trim().toLowerCase() === key.toLowerCase());
-        if (match && row[match] !== undefined && row[match] !== '') {
-            return row[match].trim();
+        if (match && row[match] !== undefined && row[match] !== null && String(row[match]).trim() !== '') {
+            return String(row[match]).trim(); // Chuyển sang chuỗi để tránh lỗi với ID dạng số
         }
     }
     return defaultVal;
@@ -18,13 +18,24 @@ const getCol = (row, keys, defaultVal = null) => {
 
 // Hàm lưu thành viên (dùng chung cho cả CSV và Excel)
 const saveMember = async (row) => {
+    // Xử lý giới tính: Các biến thể của "Nữ" sẽ là "Nữ", còn lại mặc định là "Nam"
+    const val = getCol(row, ['gender', 'sex', 'giới tính', 'phái', 'gioi tinh']);
+    let gender;
+    const s = (val || '').trim().toLowerCase();
+
+    if (s === 'nữ' || ['nu', 'female', 'f', 'gái', 'bà', 'mẹ'].some(k => s.includes(k))) {
+        gender = 'Nữ';
+    } else {
+        gender = 'Nam'; // Mặc định là 'Nam' cho các trường hợp còn lại (nam, male, trống...)
+    }
+    
     const memberData = {
-        id: getCol(row, ['id', 'mã'], 'M' + Date.now() + Math.random().toString(36).substr(2, 5)),
-        full_name: getCol(row, ['full_name', 'name', 'họ tên', 'tên', 'hoten'], 'Unknown'),
-        gender: getCol(row, ['gender', 'sex', 'giới tính', 'phái'], 'Nam'),
-        fid: getCol(row, ['fid', 'father_id', 'id cha', 'cha'], null),
-        mid: getCol(row, ['mid', 'mother_id', 'id mẹ', 'mẹ'], null),
-        pid: getCol(row, ['pid', 'partner_id', 'id vợ/chồng', 'vợ chồng'], null),
+        id: getCol(row, ['id', 'mã', 'ma', 'code', 'stt', 'mã thành viên']) || 'M' + Date.now() + Math.random().toString(36).substr(2, 5),
+        full_name: getCol(row, ['full_name', 'name', 'họ tên', 'tên', 'hoten', 'họ và tên', 'fullname'], 'Unknown'),
+        gender: gender,
+        fid: getCol(row, ['fid', 'father_id', 'id cha', 'cha', 'ma cha', 'mã cha', 'father', 'bố', 'id bố', 'mã bố', 'bo'], null),
+        mid: getCol(row, ['mid', 'mother_id', 'id mẹ', 'mẹ', 'ma me', 'mã mẹ', 'ma mẹ', 'mother'], null),
+        pid: getCol(row, ['pid', 'partner_id', 'id vợ/chồng', 'vợ chồng', 'ma vo chong', 'mã vợ chồng', 'partner', 'spouse'], null),
         generation: parseInt(getCol(row, ['generation', 'gen', 'đời', 'thế hệ'], 1)) || 1,
         order: parseInt(getCol(row, ['order', 'stt', 'thứ tự'], 1)) || 1,
         branch: getCol(row, ['branch', 'nhánh', 'chi'], 'Gốc')
@@ -45,11 +56,25 @@ const importCSV = (filePath) => {
             .on('data', (data) => results.push(data))
             .on('end', async () => {
                 try {
-                    let count = 0;
+                    let total = 0;
+                    let orphans = 0;
                     for (const row of results) {
-                        count += await saveMember(row);
+                        const savedCount = await saveMember(row);
+                        if (savedCount > 0) {
+                            total++;
+                            // Kiểm tra xem thành viên này có bị "mồ côi" không
+                            const generation = parseInt(getCol(row, ['generation', 'gen', 'đời', 'thế hệ'], 1)) || 1;
+                            const fid = getCol(row, ['fid', 'father_id', 'id cha', 'cha', 'ma cha', 'mã cha', 'father', 'bố', 'id bố', 'mã bố', 'bo'], null);
+                            const mid = getCol(row, ['mid', 'mother_id', 'id mẹ', 'mẹ', 'ma me', 'mã mẹ', 'ma mẹ', 'mother'], null);
+
+                            // Một thành viên được coi là "mồ côi" nếu thuộc đời > 1 nhưng không có thông tin cha hoặc mẹ trong file
+                            if (generation > 1 && !fid && !mid) {
+                                orphans++;
+                            }
+                        }
                     }
-                    resolve(count);
+                    // Trả về một object chứa nhiều thông tin hơn là chỉ một con số
+                    resolve({ total, orphans });
                 } catch (err) { reject(err); }
             })
             .on('error', reject);
