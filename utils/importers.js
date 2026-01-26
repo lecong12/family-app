@@ -1,4 +1,4 @@
-﻿﻿﻿﻿const fs = require('fs');
+﻿﻿﻿﻿﻿﻿const fs = require('fs');
 const csv = require('csv-parser');
 const xlsx = require('xlsx');
 const Member = require('../models/Member');
@@ -38,7 +38,12 @@ const saveMember = async (row) => {
         pid: getCol(row, ['pid', 'partner_id', 'id vợ/chồng', 'vợ chồng', 'ma vo chong', 'mã vợ chồng', 'partner', 'spouse'], null),
         generation: parseInt(getCol(row, ['generation', 'gen', 'đời', 'thế hệ'], 1)) || 1,
         order: parseInt(getCol(row, ['order', 'stt', 'thứ tự'], 1)) || 1,
-        branch: getCol(row, ['branch', 'nhánh', 'chi'], 'Gốc')
+        branch: getCol(row, ['branch', 'nhánh', 'chi'], 'Gốc'),
+        birth_date: getCol(row, ['birth_date', 'birth', 'ngày sinh', 'ngay sinh', 'dob'], ''),
+        death_date: getCol(row, ['death_date', 'death', 'ngày mất', 'ngay mat', 'dod'], ''),
+        is_live: getCol(row, ['is_live', 'is_alive', 'alive', 'còn sống', 'con song'], '1') !== '0',
+        address: getCol(row, ['address', 'địa chỉ', 'dia chi'], ''),
+        job: getCol(row, ['job', 'nghề nghiệp', 'nghe nghiep', 'công việc'], '')
     };
 
     if (memberData.full_name !== 'Unknown') {

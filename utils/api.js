@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Member = require('../models/Member');
+const mongoose = require('mongoose'); // Thêm mongoose để tạo Model Activity
 const fs = require('fs');
 const axios = require('axios');
 const { parse } = require('csv-parse/sync');
@@ -27,6 +28,27 @@ catch (e) { upload = { single: () => (req, res, next) => next() }; console.error
 
 try { auth = require('../middleware/auth'); } 
 catch (e) { auth = (req, res, next) => next(); console.error('Lỗi auth:', e.message); }
+
+// --- Activity Model & Helper (Thêm mới) ---
+const ActivitySchema = new mongoose.Schema({
+    actor_name: String,
+    actor_role: String,
+    action_type: { type: String, enum: ['create', 'update', 'delete'] },
+    description: String,
+    created_at: { type: Date, default: Date.now }
+});
+const Activity = mongoose.models.Activity || mongoose.model('Activity', ActivitySchema);
+
+async function logToDB(req, type, description) {
+    try {
+        // Lấy thông tin user từ request (nếu có auth), mặc định là Admin
+        const name = (req.user && req.user.full_name) ? req.user.full_name : 'Admin';
+        const role = (req.user && req.user.role) ? req.user.role : 'owner';
+        await Activity.create({ actor_name: name, actor_role: role, action_type: type, description });
+    } catch (e) {
+        console.error("Logging failed:", e.message);
+    }
+}
 
 // --- Logic Xử lý Trực tiếp (Thay thế memberController) ---
 
@@ -62,6 +84,7 @@ const createMember = async (req, res) => {
             await Member.updateOne({ id: newPid }, { $set: { pid: newId } });
         }
 
+        logToDB(req, 'create', `Thêm thành viên: ${newMember.full_name}`);
         res.status(201).json(newMember);
     } catch (err) {
         res.status(400).json({ message: "Lỗi tạo thành viên: " + err.message });
@@ -104,6 +127,7 @@ const updateMember = async (req, res) => {
             req.body, 
             { new: true } // Trả về dữ liệu mới sau khi update
         );
+        logToDB(req, 'update', `Cập nhật thông tin: ${updatedMember.full_name}`);
         res.json(updatedMember);
     } catch (err) {
         res.status(400).json({ message: "Lỗi cập nhật: " + err.message });
@@ -126,6 +150,7 @@ const deleteMember = async (req, res) => {
         await Member.updateMany({ mid: id }, { $set: { mid: null } }); // Gỡ liên kết mẹ
         await Member.updateMany({ pid: id }, { $set: { pid: null } }); // Gỡ liên kết vợ/chồng
 
+        logToDB(req, 'delete', `Xóa thành viên: ${memberToDelete.full_name}`);
         res.json({ message: `Đã xóa thành viên "${memberToDelete.full_name}"` });
     } catch (err) {
         console.error("Lỗi xóa thành viên:", err);
@@ -135,8 +160,69 @@ const deleteMember = async (req, res) => {
 
 const exportToCSV = async (req, res) => {
     try {
-        const members = await Member.find().lean(); // .lean() for performance
+        let members = [];
+        const db = req.app.get('db'); // Lấy kết nối SQL (PostgreSQL)
 
+        if (db) {
+            // --- CHẾ ĐỘ SQL (Ưu tiên) ---
+            const ownerId = req.user ? req.user.id : null;
+            if (!ownerId) throw new Error("Chưa đăng nhập hoặc không xác định được người dùng");
+
+            // 1. Lấy danh sách thành viên
+            const people = await new Promise((resolve, reject) => {
+                db.all(`SELECT * FROM people WHERE owner_id = ? ORDER BY generation, id`, [ownerId], (err, rows) => {
+                    if (err) reject(err); else resolve(rows);
+                });
+            });
+
+            // 2. Lấy quan hệ cha-con để xác định fid (cha), mid (mẹ)
+            const relationships = await new Promise((resolve, reject) => {
+                db.all(`
+                    SELECT r.parent_id, r.child_id, p.gender as parent_gender
+                    FROM relationships r
+                    JOIN people p ON r.parent_id = p.id
+                    WHERE p.owner_id = ?
+                `, [ownerId], (err, rows) => {
+                    if (err) reject(err); else resolve(rows);
+                });
+            });
+
+            // 3. Lấy quan hệ vợ chồng để xác định pid
+            const marriages = await new Promise((resolve, reject) => {
+                db.all(`
+                    SELECT m.husband_id, m.wife_id
+                    FROM marriages m
+                    JOIN people p ON m.husband_id = p.id
+                    WHERE p.owner_id = ?
+                `, [ownerId], (err, rows) => {
+                    if (err) reject(err); else resolve(rows);
+                });
+            });
+
+            // 4. Ghép dữ liệu
+            const memberMap = {};
+            people.forEach(p => {
+                memberMap[p.id] = { ...p, fid: '', mid: '', pid: '' };
+            });
+
+            relationships.forEach(r => {
+                if (memberMap[r.child_id]) {
+                    if (r.parent_gender === 'Nam') memberMap[r.child_id].fid = r.parent_id;
+                    else memberMap[r.child_id].mid = r.parent_id;
+                }
+            });
+
+            marriages.forEach(m => {
+                if (memberMap[m.husband_id]) memberMap[m.husband_id].pid = m.wife_id;
+                if (memberMap[m.wife_id]) memberMap[m.wife_id].pid = m.husband_id;
+            });
+
+            members = Object.values(memberMap);
+        } else if (Member) {
+            // --- CHẾ ĐỘ MONGOOSE (Dự phòng) ---
+            members = await Member.find().lean();
+        }
+        
         // Define headers based on user request, correcting typos
         const headers = [
             'id', 'full_name', 'gender', 'pid', 'fid', 'mid', 
@@ -215,8 +301,15 @@ const importSheets = async (req, res) => {
                 mid: getCol(r, ['mid', 'mother_id', 'mẹ', 'id mẹ', 'ma me', 'mã mẹ', 'ma mẹ']),
                 pid: getCol(r, ['pid', 'partner_id', 'vợ/chồng', 'id vợ/chồng', 'ma vo chong', 'mã vợ chồng']),
                 full_name: getCol(r, ['full_name', 'fullname', 'họ tên', 'tên', 'hoten', 'name']) || 'Chưa có tên',
-                is_live: r.is_live !== '0',
+                is_live: getCol(r, ['is_live', 'is_alive', 'alive', 'còn sống', 'con song'], '1') !== '0',
                 gender: normalizeGender(getCol(r, ['gender', 'sex', 'giới tính', 'phái'])),
+                birth_date: getCol(r, ['birth_date', 'birth', 'ngày sinh', 'ngay sinh', 'dob'], ''),
+                death_date: getCol(r, ['death_date', 'death', 'ngày mất', 'ngay mat', 'dod'], ''),
+                branch: getCol(r, ['branch', 'nhánh', 'chi'], 'Gốc'),
+                address: getCol(r, ['address', 'địa chỉ', 'dia chi'], ''),
+                job: getCol(r, ['job', 'nghề nghiệp', 'nghe nghiep', 'công việc'], ''),
+                generation: parseInt(getCol(r, ['generation', 'gen', 'đời', 'thế hệ'], 1)) || 1,
+                order: parseInt(getCol(r, ['order', 'stt', 'thứ tự'], 1)) || 1,
                 temp_id: `blood_${clean(r.id)}`
             })),
             ...spouseRecords.map(r => ({
@@ -226,8 +319,15 @@ const importSheets = async (req, res) => {
                 mid: getCol(r, ['mid', 'mother_id', 'mẹ', 'id mẹ', 'ma me', 'mã mẹ', 'ma mẹ']),
                 pid: getCol(r, ['pid', 'partner_id', 'vợ/chồng', 'id vợ/chồng', 'ma vo chong', 'mã vợ chồng']),
                 full_name: getCol(r, ['full_name', 'fullname', 'họ tên', 'tên', 'hoten', 'name']) || 'Chưa có tên',
-                is_live: r.is_live !== '0',
+                is_live: getCol(r, ['is_live', 'is_alive', 'alive', 'còn sống', 'con song'], '1') !== '0',
                 gender: normalizeGender(getCol(r, ['gender', 'sex', 'giới tính', 'phái'])),
+                birth_date: getCol(r, ['birth_date', 'birth', 'ngày sinh', 'ngay sinh', 'dob'], ''),
+                death_date: getCol(r, ['death_date', 'death', 'ngày mất', 'ngay mat', 'dod'], ''),
+                branch: getCol(r, ['branch', 'nhánh', 'chi'], 'Gốc'),
+                address: getCol(r, ['address', 'địa chỉ', 'dia chi'], ''),
+                job: getCol(r, ['job', 'nghề nghiệp', 'nghe nghiep', 'công việc'], ''),
+                generation: parseInt(getCol(r, ['generation', 'gen', 'đời', 'thế hệ'], 1)) || 1,
+                order: parseInt(getCol(r, ['order', 'stt', 'thứ tự'], 1)) || 1,
                 temp_id: `spouse_${clean(r.id)}`
             }))
         ];
@@ -246,6 +346,7 @@ const importSheets = async (req, res) => {
         const uniquePeople = Array.from(uniquePeopleMap.values());
 
         const docs = await Member.insertMany(uniquePeople);
+        logToDB(req, 'create', `Đồng bộ ${docs.length} thành viên từ Google Sheets`);
         res.json({ message: `Đã nạp thành công ${docs.length} thành viên từ Google Sheets!` });
     } catch (error) {
         console.error('Google Sheets Import Error:', error);
@@ -270,6 +371,31 @@ router.delete('/members/:id', auth, deleteMember);
 // Import Google Sheets
 router.post('/import-sheets', auth, importSheets);
 
+// THÊM MỚI: API lấy danh sách hoạt động
+router.get('/activities', auth, async (req, res) => {
+    try {
+        const logs = await Activity.find().sort({ created_at: -1 }).limit(20);
+        res.json({ success: true, logs });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// THÊM MỚI: API xóa toàn bộ hoạt động
+router.delete('/activities', auth, async (req, res) => {
+    try {
+        // Kiểm tra quyền: Chỉ Admin (owner) mới được xóa
+        if (req.user && req.user.role !== 'owner' && req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: 'Bạn không có quyền xóa lịch sử.' });
+        }
+
+        await Activity.deleteMany({});
+        res.json({ success: true, message: 'Đã xóa sạch lịch sử hoạt động.' });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
 // THÊM MỚI: Route để xuất dữ liệu ra file CSV
 router.get('/export-csv', auth, exportToCSV);
 
@@ -290,6 +416,7 @@ router.post('/import-csv', auth, upload.single('csvfile'), async (req, res) => {
         if (result.orphans > 0) {
             message += `\n\n⚠️ Cảnh báo: Phát hiện ${result.orphans} thành viên không có liên kết cha/mẹ. Vui lòng kiểm tra lại các cột 'fid' và 'mid' trong file CSV.`;
         }
+        logToDB(req, 'create', `Import file CSV: ${result.total} thành viên`);
         res.json({ message });
     } catch (error) {
         console.error('Lỗi khi import CSV:', error);

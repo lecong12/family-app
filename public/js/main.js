@@ -166,11 +166,125 @@ function renderMemberList(members) {
     
     container.innerHTML = ''; // Xóa danh sách cũ trước khi render lại
     
-    members.forEach(m => {
+    // 1. Sắp xếp danh sách: Đời (tăng dần) -> Phái (tăng dần) -> Thứ tự (tăng dần)
+    const sortedMembers = [...members].sort((a, b) => {
+        const genA = parseInt(a.generation) || 999;
+        const genB = parseInt(b.generation) || 999;
+        if (genA !== genB) return genA - genB;
+
+        const branchA = String(a.branch || '0');
+        const branchB = String(b.branch || '0');
+        if (branchA !== branchB) return branchA.localeCompare(branchB);
+
+        const orderA = parseInt(a.order) || 0;
+        const orderB = parseInt(b.order) || 0;
+        return orderA - orderB;
+    });
+
+    // Đảm bảo container hiển thị dạng Grid
+    container.style.display = 'grid';
+    container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(280px, 1fr))';
+    container.style.gap = '20px';
+
+    sortedMembers.forEach(m => {
+        // Logic xác định sinh tử (đồng bộ với Dashboard và Cây gia phả)
+        const hasDeathDate = m.death_date && String(m.death_date).trim() !== '' && String(m.death_date).trim() !== '0';
+        const isDeadByFlag = m.is_live === 0 || m.is_live === '0' || m.is_live === false || m.is_alive === 0 || m.is_alive === '0' || m.is_alive === false;
+        const isDeceased = hasDeathDate || isDeadByFlag;
+
+        // Logic Dâu/Rể (nếu có pid mà không có fid/mid)
+        const isInLaw = !!m.pid && !m.fid && !m.mid;
+
+        // Tìm tên vợ/chồng
+        let spouseName = '';
+        if (m.pid) {
+            const spouse = members.find(s => String(s.id) === String(m.pid));
+            if (spouse) spouseName = spouse.full_name;
+        }
+
+        // Tính tuổi (nếu còn sống và có năm sinh)
+        let ageDisplay = '';
+        if (!isDeceased && m.birth_date) {
+            try {
+                // Lấy năm sinh từ chuỗi (hỗ trợ dd/mm/yyyy hoặc yyyy)
+                const parts = String(m.birth_date).split(/[\/\-]/);
+                let year = 0;
+                if (parts.length === 3) year = parts[0].length === 4 ? parseInt(parts[0]) : parseInt(parts[2]);
+                else if (parts.length === 1 && parts[0].length === 4) year = parseInt(parts[0]);
+                
+                if (year > 0) {
+                    const currentYear = new Date().getFullYear();
+                    const age = currentYear - year;
+                    if (age >= 0) ageDisplay = ` (${age} tuổi)`;
+                }
+            } catch(e) {}
+        }
+
         // Tạo thẻ div thay vì chuỗi HTML để dễ gắn sự kiện onclick
         const card = document.createElement('div');
-        card.className = 'member-card';
-        card.innerHTML = `<h4>${m.full_name}</h4><p>Đời: ${m.generation} | ${m.gender}</p>`;
+        card.className = `member-card ${m.gender === 'Nam' ? 'male' : 'female'} ${isDeceased ? 'deceased' : ''}`;
+        
+        // Avatar color based on gender/status
+        const avatarColor = isDeceased ? '#9ca3af' : (m.gender === 'Nam' ? '#3b82f6' : '#ec4899');
+        const avatarLetter = (m.full_name || '?').charAt(0).toUpperCase();
+
+        // Branch display
+        const branchMap = { '0': 'Tổ', '1': 'P.Nhất', '2': 'P.Nhì', '3': 'P.Ba', '4': 'P.Bốn' };
+        let branchDisplay = branchMap[m.branch] || (m.branch ? `Phái ${m.branch}` : 'Gốc');
+        if (m.branch === 'Gốc') branchDisplay = 'Gốc';
+
+        // Style inline để đảm bảo giao diện đẹp ngay lập tức
+        card.style.cssText = `
+            background: ${isDeceased ? '#f9fafb' : '#fff'};
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            padding: 0;
+            border: 1px solid #e5e7eb;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+        `;
+
+        card.innerHTML = `
+            <div style="padding: 15px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #f0f0f0;">
+                <div style="width: 45px; height: 45px; border-radius: 50%; background: ${avatarColor}; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2em; flex-shrink: 0;">
+                    ${avatarLetter}
+                </div>
+                <div style="flex-grow: 1; min-width: 0;">
+                    <h4 style="margin: 0; font-size: 1.1em; color: #1f2937; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${m.full_name}</h4>
+                    <div style="font-size: 0.85em; color: #6b7280; margin-top: 2px;">
+                        ${m.gender === 'Nam' ? '<i class="fas fa-mars" style="color:#3b82f6"></i> Nam' : '<i class="fas fa-venus" style="color:#ec4899"></i> Nữ'}
+                        ${ageDisplay}
+                    </div>
+                </div>
+                ${isDeceased ? '<i class="fas fa-cross" style="color: #9ca3af; font-size: 1.2em;" title="Đã mất"></i>' : ''}
+            </div>
+            
+            <div style="padding: 10px 15px; display: flex; gap: 8px; flex-wrap: wrap; background: #f9fafb;">
+                <span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; font-weight: 600;">Đời ${m.generation}</span>
+                <span style="background: #f3f4f6; color: #4b5563; padding: 2px 8px; border-radius: 12px; font-size: 0.75em;">${branchDisplay}</span>
+                ${isInLaw ? '<span style="background: #fef3c7; color: #d97706; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; font-weight: 600;">Dâu/Rể</span>' : ''}
+            </div>
+
+            <div style="padding: 15px; font-size: 0.9em; color: #4b5563; flex-grow: 1;">
+                <div style="margin-bottom: 6px;"><i class="fas fa-birthday-cake" style="width: 20px; text-align: center; color: #10b981;"></i> ${m.birth_date || 'Unknown'}</div>
+                ${isDeceased ? `<div style="margin-bottom: 6px;"><i class="fas fa-star-of-life" style="width: 20px; text-align: center; color: #6b7280;"></i> Mất: ${m.death_date || 'Unknown'}</div>` : ''}
+                ${spouseName ? `<div style="margin-bottom: 6px;"><i class="fas fa-ring" style="width: 20px; text-align: center; color: #ec4899;"></i> VC: ${spouseName}</div>` : ''}
+                ${m.job ? `<div style="margin-bottom: 6px;"><i class="fas fa-briefcase" style="width: 20px; text-align: center; color: #f59e0b;"></i> ${m.job}</div>` : ''}
+            </div>
+        `;
+
+        // Hiệu ứng Hover
+        card.onmouseenter = () => { 
+            card.style.transform = 'translateY(-3px)'; 
+            card.style.boxShadow = '0 10px 15px rgba(0,0,0,0.1)';
+        };
+        card.onmouseleave = () => { 
+            card.style.transform = 'translateY(0)'; 
+            card.style.boxShadow = '0 4px 6px rgba(0,0,0,0.05)';
+        };
         
         // Thêm sự kiện click để zoom đến người đó trên cây
         card.onclick = () => { 
@@ -191,6 +305,8 @@ function openAddModal() {
     // Dọn dẹp form
     document.getElementById('m-name').value = '';
     document.getElementById('m-gender').value = 'Nam';
+    document.getElementById('m-birth').value = '';
+    document.getElementById('m-death').value = '';
     
     ['m-fid', 'm-mid', 'm-pid'].forEach(id => {
         document.getElementById(id).value = ''; // Hidden input
@@ -217,6 +333,8 @@ window.openEditModal = function(memberId) {
     // Điền dữ liệu cơ bản
     document.getElementById('m-name').value = member.full_name;
     document.getElementById('m-gender').value = member.gender;
+    document.getElementById('m-birth').value = member.birth_date || '';
+    document.getElementById('m-death').value = member.death_date || '';
     
     // Cải tiến: Tìm vợ/chồng 2 chiều để điền vào form
     let spouseId = member.pid;
@@ -273,6 +391,8 @@ function initSmartSelects() {
     const configs = [
         { id: 'm-name', type: 'text' }, // Giữ nguyên input text
         { id: 'm-gender', type: 'select' }, // Giữ nguyên select
+        { id: 'm-birth', type: 'text' },
+        { id: 'm-death', type: 'text' },
         { id: 'm-fid', type: 'smart-select', filter: (m) => m.gender === 'Nam', placeholder: 'Gõ để tìm kiếm Cha...' },
         { id: 'm-mid', type: 'smart-select', filter: (m) => m.gender === 'Nữ', placeholder: 'Gõ để tìm kiếm Mẹ...' },
         { id: 'm-pid', type: 'smart-select', filter: () => true, placeholder: 'Gõ để tìm kiếm Vợ/Chồng...' },
@@ -407,6 +527,8 @@ function initSmartSelects() {
 async function saveMember() {
     const nameInput = document.getElementById('m-name');
     const genderInput = document.getElementById('m-gender');
+    const birthInput = document.getElementById('m-birth');
+    const deathInput = document.getElementById('m-death');
     const fidInput = document.getElementById('m-fid');
     const midInput = document.getElementById('m-mid');
     const pidInput = document.getElementById('m-pid'); // Thêm input cho Vợ/Chồng
@@ -436,6 +558,8 @@ async function saveMember() {
     const payload = {
         full_name: nameInput.value.trim(),
         gender: genderInput ? genderInput.value : 'Nam',
+        birth_date: birthInput ? birthInput.value.trim() : '',
+        death_date: deathInput ? deathInput.value.trim() : '',
         fid: fid,
         mid: mid,
         pid: pid, // Thêm pid vào payload
@@ -508,7 +632,7 @@ async function deleteMember() {
 
 // 6. Hàm đồng bộ Google Sheets
 async function syncGoogleSheets() {
-    const confirmSync = confirm("Hệ thống sẽ xóa dữ liệu cũ và nạp lại từ Google Sheets.\n\nQuy ước: 0 là Đã mất, 1 hoặc Trống là Còn sống.\n\nBạn có chắc chắn không?");
+    const confirmSync = confirm("Hệ thống sẽ xóa dữ liệu cũ và nạp lại từ Google Sheets.");
     if (!confirmSync) return;
 
     const btn = document.getElementById('btn-sync-sheets');
@@ -553,27 +677,7 @@ async function syncGoogleSheets() {
 let currentPostId = null;
 
 function renderPostsTab() {
-    const wrapper = document.getElementById('posts-content-wrapper');
-    if (!wrapper) return;
-    wrapper.innerHTML = `
-        <div class="members-header">
-            <h2 style="font-size: 20px; margin: 0;">Bài Viết & Thông Báo</h2>
-            <button class="btn-add" onclick="showPostForm()">+ Viết bài mới</button>
-        </div>
-        <div id="posts-list-container" class="posts-container" style="margin-top: 24px;">Đang tải...</div>
-        <!-- Form Thêm/Sửa bài viết (Mặc định ẩn) -->
-        <div id="post-form-container" style="display:none; margin-top: 24px;">
-            <h3 id="post-form-title">Viết bài mới</h3>
-            <div class="form-group"><label>Tiêu đề:</label><input type="text" id="post-title"></div>
-            <div class="form-group"><label>Danh mục:</label><select id="post-category"><option value="announcement">📢 Thông báo</option><option value="event">📅 Sự kiện</option><option value="news">📰 Tin tức</option></select></div>
-            <div class="form-group"><label>Nội dung:</label><textarea id="post-content" rows="10"></textarea></div>
-            <div class="form-group" style="flex-direction: row; gap: 10px; align-items: center;"><input type="checkbox" id="post-pinned" style="width: auto; flex-grow: 0;"><label for="post-pinned" style="flex-basis: auto;">Ghim lên đầu trang</label></div>
-            <div class="modal-actions">
-                <button class="btn-danger" onclick="hidePostForm()">Hủy</button>
-                <button class="btn-primary" onclick="savePost()">Lưu bài viết</button>
-            </div>
-        </div>
-    `;
+    // Chỉ cần load dữ liệu, HTML tĩnh đã có sẵn trong index.html
     loadPosts();
 }
 
@@ -597,20 +701,24 @@ async function loadPosts() {
                 const pinnedIcon = post.is_pinned ? '<span class="pinned-icon">📌 Đã ghim</span>' : '';
                 const catMap = { 'announcement': 'Thông báo', 'event': 'Sự kiện', 'news': 'Tin tức' };
                 const catClass = `cat-${post.category}`;
+                const shortContent = post.content.length > 150 ? post.content.substring(0, 150) + '...' : post.content;
                 
                 return `
                 <div class="post-card ${post.is_pinned ? 'pinned' : ''}">
                     <div class="post-header">
-                        <span class="post-category ${catClass}">${catMap[post.category]}</span>
+                        <h3 class="post-title" style="margin:0; font-size:18px;">${post.title}</h3>
+                        <div class="post-actions">
+                            <button class="btn-edit" onclick="openEditPostModal('${post._id}')" style="padding:4px 8px; font-size:12px;"><i class="fas fa-edit"></i></button>
+                            <button class="btn-delete" onclick="deletePost('${post._id}')" style="padding:4px 8px; font-size:12px;"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <div class="post-meta">
+                        <span class="post-category ${catClass}" style="background:#f3f4f6; padding:2px 8px; border-radius:4px;">${catMap[post.category]}</span>
+                        <span><i class="far fa-clock"></i> ${date}</span>
                         ${pinnedIcon}
-                        <span class="post-date">${date} - bởi <b>${post.author ? post.author.username : 'Ẩn danh'}</b></span>
                     </div>
-                    <h3 class="post-title">${post.title}</h3>
-                    <div class="post-content">${post.content.replace(/\n/g, '<br>')}</div>
-                    <div class="post-actions">
-                        <button class="btn-small" onclick="editPost('${post._id}')">✏️ Sửa</button>
-                        <button class="btn-small btn-delete" onclick="deletePost('${post._id}')">🗑️ Xóa</button>
-                    </div>
+                    <div class="post-content" style="flex-grow:1; color:#4b5563; margin-bottom:15px;">${shortContent}</div>
+                    <button onclick="alert('Chức năng xem chi tiết đang phát triển')" style="align-self:flex-start; background:none; border:none; color:#0ea5e9; cursor:pointer; padding:0; font-weight:600;">Đọc tiếp →</button>
                 </div>`;
             }).join('');
         }
@@ -619,43 +727,44 @@ async function loadPosts() {
     }
 }
 
-function showPostForm(post = null) {
-    document.getElementById('post-form-container').style.display = 'block';
-    document.querySelector('#posts-tab .members-header').style.display = 'none'; // Ẩn header
-    document.getElementById('posts-list-container').style.display = 'none'; // Ẩn danh sách
-
-    if (post) {
-        currentPostId = post._id;
-        document.getElementById('post-form-title').innerText = 'Sửa bài viết';
-        document.getElementById('post-title').value = post.title;
-        document.getElementById('post-content').value = post.content;
-        document.getElementById('post-category').value = post.category;
-        document.getElementById('post-pinned').checked = post.is_pinned;
-    } else {
-        currentPostId = null;
-        document.getElementById('post-form-title').innerText = 'Viết bài mới';
-        document.getElementById('post-title').value = '';
-        document.getElementById('post-content').value = '';
-        document.getElementById('post-category').value = 'announcement';
-        document.getElementById('post-pinned').checked = false;
-    }
+function openCreatePostModal() {
+    currentPostId = null;
+    document.getElementById('post-modal-title').innerText = 'Viết bài mới';
+    document.getElementById('post-title').value = '';
+    document.getElementById('post-content').value = '';
+    document.getElementById('post-category').value = 'announcement';
+    document.getElementById('post-pinned').checked = false;
+    
+    document.getElementById('post-modal').style.display = 'block';
 }
 
-function hidePostForm() {
-    document.getElementById('post-form-container').style.display = 'none';
-    document.querySelector('#posts-tab .members-header').style.display = 'flex';
-    document.getElementById('posts-list-container').style.display = 'block';
+function closePostModal() {
+    document.getElementById('post-modal').style.display = 'none';
+    currentPostId = null;
 }
 
-async function editPost(id) {
-    // Cần lấy lại dữ liệu chi tiết hoặc tìm trong DOM, ở đây fetch lại cho chắc
+async function openEditPostModal(id) {
     const token = localStorage.getItem('token');
-    const res = await fetch(`/api/posts/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
-    const data = await res.json();
-    if (data.success) {
-        showPostForm(data.post);
-    } else {
-        alert(data.message);
+    try {
+        const res = await fetch(`/api/posts/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        if (data.success) {
+            const post = data.post;
+            currentPostId = post._id;
+            
+            document.getElementById('post-modal-title').innerText = 'Sửa bài viết';
+            document.getElementById('post-title').value = post.title;
+            document.getElementById('post-content').value = post.content;
+            document.getElementById('post-category').value = post.category;
+            document.getElementById('post-pinned').checked = post.is_pinned;
+            
+            document.getElementById('post-modal').style.display = 'block';
+        } else {
+            alert(data.message);
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Lỗi tải thông tin bài viết');
     }
 }
 
@@ -679,7 +788,7 @@ async function savePost() {
         const data = await res.json();
         if (data.success) {
             alert('✅ Lưu thành công!');
-            hidePostForm();
+            closePostModal();
             loadPosts();
         } else {
             alert('❌ Lỗi: ' + data.message);
@@ -833,9 +942,15 @@ async function handleFileUpload() {
 }
 
 async function exportToCSV() {
-    const btn = document.querySelector('#settings-dropdown a[onclick="exportToCSV()"]');
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '⌛ Đang tạo file...';
+    // Cập nhật selector để tìm đúng thẻ card trong giao diện Settings mới
+    const btn = document.querySelector('.settings-card[onclick="exportToCSV()"]');
+    let originalText = '';
+    
+    if (btn) {
+        originalText = btn.innerHTML;
+        btn.innerHTML = '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;"><h3>⌛ Đang xử lý...</h3><p>Đang tạo file CSV</p></div>';
+        btn.style.pointerEvents = 'none'; // Chặn click nhiều lần
+    }
 
     try {
         const token = localStorage.getItem('token');
@@ -868,7 +983,10 @@ async function exportToCSV() {
         console.error('Lỗi xuất CSV:', error);
         alert('❌ Lỗi: ' + error.message);
     } finally {
-        btn.innerHTML = originalText;
+        if (btn) {
+            btn.innerHTML = originalText;
+            btn.style.pointerEvents = 'auto';
+        }
     }
 }
 
@@ -907,7 +1025,7 @@ function renderDashboardTab() {
 
     // Chèn HTML dashboard vào
     wrapper.innerHTML = `
-        <h2 style="text-align: center; margin-bottom: 20px;">Tổng quan Gia phả</h2>
+        <h2 style="text-align: center; margin-bottom: 20px; color: #ef4444; text-transform: uppercase;">Tổng quan Gia phả</h2>
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-icon" style="background: linear-gradient(135deg, #f97316, #fbbf24);">
@@ -950,19 +1068,46 @@ function renderDashboardTab() {
         <div class="dashboard-columns">
             <div class="dashboard-col">
                 <h3>Phân bố theo Thế hệ</h3>
-                <canvas id="chartGen"></canvas>
+                <div id="gen-list-container" style="max-height: 300px; overflow-y: auto;"></div>
             </div>
             <div class="dashboard-col">
                 <h3>Thành phần Gia tộc</h3>
-                <canvas id="chartComp"></canvas>
+                <div style="height: 300px; position: relative; width: 100%;">
+                    <canvas id="chartComp"></canvas>
+                </div>
             </div>
         </div>
         <div class="dashboard-columns">
             <div class="dashboard-col">
-                <h3>Sự kiện sắp tới</h3>
-                <div id="upcoming-events">
-                    <p>Chức năng đang phát triển (Sinh nhật, ngày giỗ...)</p>
+                <h3>Phân bổ theo Phái</h3>
+                <div id="branch-list-container" style="max-height: 300px; overflow-y: auto;"></div>
+            </div>
+            <div class="dashboard-col">
+                <h3>Tình trạng sinh tử</h3>
+                <div style="height: 300px; position: relative; width: 100%;">
+                    <canvas id="chartStatus"></canvas>
                 </div>
+            </div>
+        </div>
+        <div class="dashboard-columns">
+            <div class="dashboard-col">
+                <h3>🎂 Sinh nhật sắp tới (30 ngày)</h3>
+                <div id="upcoming-birthdays" style="max-height: 300px; overflow-y: auto;"></div>
+            </div>
+            <div class="dashboard-col">
+                <h3>🕯️ Ngày giỗ sắp tới (30 ngày)</h3>
+                <div id="upcoming-death-annivs" style="max-height: 300px; overflow-y: auto;"></div>
+            </div>
+        </div>
+        <div class="dashboard-columns">
+            <div class="dashboard-col" style="grid-column: 1 / -1;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0;">Hoạt động gần đây</h3>
+                    <button onclick="clearActivities()" style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85em; font-weight: 600; transition: background 0.2s;">
+                        <i class="fas fa-trash-alt"></i> Xóa lịch sử
+                    </button>
+                </div>
+                <div id="recent-activities" style="max-height: 300px; overflow-y: auto;">Đang tải...</div>
             </div>
         </div>
     `;
@@ -979,6 +1124,17 @@ function renderDashboardTab() {
     const spouses = allMembers.filter(m => m.pid && !m.fid && !m.mid).length;
     const coreMembers = total - spouses;
 
+    // Tính toán Tình trạng sinh tử
+    let deceasedCount = 0;
+    let aliveCount = 0;
+    allMembers.forEach(m => {
+        const hasDeathDate = m.death_date && String(m.death_date).trim() !== '';
+        const isDeadByFlag = m.is_live === 0 || m.is_live === '0' || m.is_live === false || m.is_alive === 0 || m.is_alive === '0' || m.is_alive === false;
+
+        if (hasDeathDate || isDeadByFlag) deceasedCount++;
+        else aliveCount++;
+    });
+
     // Tính toán cho biểu đồ thế hệ
     const genCounts = allMembers.reduce((acc, m) => {
         // Chỉ tính các thế hệ hợp lệ (số dương) để biểu đồ hiển thị đúng thứ tự
@@ -992,6 +1148,18 @@ function renderDashboardTab() {
     const genLabels = Object.keys(genCounts).sort((a, b) => parseInt(a) - parseInt(b));
     const genData = genLabels.map(label => genCounts[label]);
 
+    // Tính toán cho Phân bổ theo Phái
+    const branchCounts = allMembers.reduce((acc, m) => {
+        let b = m.branch;
+        // Nếu branch là 0, trống hoặc null thì quy về '0' (Tổ khảo, Tổ thúc)
+        if (!b || String(b).trim() === '' || String(b).trim() === '0') {
+            b = '0';
+        }
+        acc[b] = (acc[b] || 0) + 1;
+        return acc;
+    }, {});
+    const branchLabels = Object.keys(branchCounts).sort();
+
     // --- Cập nhật thẻ ---
     document.getElementById('totalMembers').innerText = total;
     document.getElementById('maleCount').innerText = males;
@@ -1002,12 +1170,258 @@ function renderDashboardTab() {
     Object.values(chartInstances).forEach(chart => chart.destroy());
     chartInstances = {};
     const chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } };
-
-    // Biểu đồ Phân bố thế hệ
-    const chartGenEl = document.getElementById('chartGen');
-    if (chartGenEl) chartInstances.gen = new Chart(chartGenEl, { type: 'bar', data: { labels: genLabels.map(l => `Đời ${l}`), datasets: [{ label: 'Số người', data: genData, backgroundColor: '#ff9f40' }] }, options: { ...chartOptions, plugins: { legend: { display: false } } } });
     
+    // Hiển thị danh sách Phân bố thế hệ (thay vì biểu đồ)
+    const genListContainer = document.getElementById('gen-list-container');
+    if (genListContainer) {
+        if (genLabels.length === 0) {
+            genListContainer.innerHTML = '<p style="text-align:center; color:#666; padding: 20px;">Chưa có dữ liệu.</p>';
+        } else {
+            let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
+            genLabels.forEach(label => {
+                const count = genCounts[label];
+                html += `<li style="padding: 12px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: #333; font-weight: 500;">Đời thứ ${label}</span>
+                            <span style="background: #fff3e0; color: #e67e22; padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 0.9em;">${count} người</span>
+                         </li>`;
+            });
+            html += '</ul>';
+            genListContainer.innerHTML = html;
+        }
+    }
+
     // Biểu đồ Thành phần
     const chartCompEl = document.getElementById('chartComp');
     if (chartCompEl) chartInstances.comp = new Chart(chartCompEl, { type: 'doughnut', data: { labels: ['Huyết thống', 'Dâu/Rể'], datasets: [{ data: [coreMembers, spouses], backgroundColor: ['#36a2eb', '#ff6384'] }] }, options: chartOptions });
+
+    // Biểu đồ Tình trạng sinh tử
+    const chartStatusEl = document.getElementById('chartStatus');
+    if (chartStatusEl) chartInstances.status = new Chart(chartStatusEl, { type: 'doughnut', data: { labels: ['Còn sống', 'Đã mất'], datasets: [{ data: [aliveCount, deceasedCount], backgroundColor: ['#10b981', '#9ca3af'] }] }, options: chartOptions });
+
+    // Hiển thị danh sách Phân bổ theo Phái
+    const branchListContainer = document.getElementById('branch-list-container');
+    if (branchListContainer) {
+        if (branchLabels.length === 0) {
+            branchListContainer.innerHTML = '<p style="text-align:center; color:#666; padding: 20px;">Chưa có dữ liệu phái.</p>';
+        } else {
+            let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
+            const branchMap = { 
+                '0': 'Tổ khảo, Tổ thúc',
+                '1': 'Phái Nhất', 
+                '2': 'Phái Nhì', 
+                '3': 'Phái Ba', 
+                '4': 'Phái Bốn' 
+            };
+            
+            branchLabels.forEach(label => {
+                const count = branchCounts[label];
+                // Lấy tên hiển thị, nếu không nằm trong 1-4 thì hiển thị nguyên gốc
+                const displayName = branchMap[label] || (label === 'Gốc' ? 'Gốc' : `Phái ${label}`);
+                
+                html += `<li style="padding: 12px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: #333; font-weight: 500;">${displayName}</span>
+                            <span style="background: #e0f2fe; color: #0284c7; padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 0.9em;">${count} người</span>
+                         </li>`;
+            });
+            html += '</ul>';
+            branchListContainer.innerHTML = html;
+        }
+    }
+
+    // --- Xử lý Sự kiện sắp tới ---
+    const birthdaysContainer = document.getElementById('upcoming-birthdays');
+    const deathAnnivsContainer = document.getElementById('upcoming-death-annivs');
+
+    if (birthdaysContainer || deathAnnivsContainer) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset giờ để so sánh chính xác
+        const currentYear = today.getFullYear();
+        const upcomingBirthdays = [];
+        const upcomingDeathAnnivs = [];
+        const checkDays = 30; // Số ngày kiểm tra trước
+
+        // Hàm parse ngày tháng từ chuỗi (hỗ trợ dd/mm/yyyy, dd-mm-yyyy)
+        const parseDayMonth = (dateStr) => {
+            if (!dateStr) return null;
+            
+            // 1. Ưu tiên check format ISO: YYYY-MM-DD (để tránh nhầm năm thành ngày)
+            const isoMatch = dateStr.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+            if (isoMatch) {
+                return { day: parseInt(isoMatch[3]), month: parseInt(isoMatch[2]) };
+            }
+
+            // 2. Check format thường: DD/MM/YYYY
+            const vnMatch = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})/);
+            if (vnMatch) {
+                return { day: parseInt(vnMatch[1]), month: parseInt(vnMatch[2]) };
+            }
+            return null;
+        };
+
+        allMembers.forEach(m => {
+            // Xác định trạng thái sống/mất dựa trên dữ liệu
+            // Nếu có death_date thì coi như đã mất. Nếu không, kiểm tra is_live (nếu có)
+            const hasDeathDate = m.death_date && String(m.death_date).trim() !== '' && String(m.death_date).trim() !== '0';
+            const isDeadByFlag = m.is_live === 0 || m.is_live === '0' || m.is_live === false || m.is_alive === 0 || m.is_alive === '0' || m.is_alive === false;
+            const isDeceased = hasDeathDate || isDeadByFlag;
+
+            // 1. Kiểm tra Sinh nhật (Chỉ áp dụng cho người còn sống)
+            if (!isDeceased && m.birth_date) {
+                const dm = parseDayMonth(m.birth_date);
+                if (dm) checkEvent(m, dm, 'birthday', '🎂 Sinh nhật', upcomingBirthdays);
+            }
+
+            // 2. Kiểm tra Ngày giỗ (Chỉ áp dụng cho người đã mất có ngày mất)
+            if (hasDeathDate) {
+                const dm = parseDayMonth(m.death_date);
+                if (dm) checkEvent(m, dm, 'death_anniv', '🕯️ Giỗ', upcomingDeathAnnivs);
+            }
+        });
+
+        function checkEvent(member, { day, month }, type, label, targetList) {
+            // Tạo ngày sự kiện trong năm nay
+            let eventDate = new Date(currentYear, month - 1, day);
+            
+            // Nếu ngày này trong năm nay đã qua, xét năm sau
+            if (eventDate < today) {
+                eventDate.setFullYear(currentYear + 1);
+            }
+
+            // Tính khoảng cách ngày
+            const diffTime = eventDate - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays >= 0 && diffDays <= checkDays) {
+                targetList.push({
+                    member: member,
+                    type: type,
+                    label: label,
+                    dateStr: `${day}/${month}`,
+                    daysLeft: diffDays,
+                    fullDate: eventDate
+                });
+            }
+        }
+
+        // Hàm render danh sách
+        const renderList = (container, list, emptyMsg) => {
+            if (!container) return;
+            
+            list.sort((a, b) => a.daysLeft - b.daysLeft);
+
+            if (list.length === 0) {
+                container.innerHTML = `<p style="text-align:center; color:#666; padding: 20px;">${emptyMsg}</p>`;
+                return;
+            }
+
+            let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
+            list.forEach(evt => {
+                const timeText = evt.daysLeft === 0 ? '<span style="color:red; font-weight:bold;">Hôm nay</span>' : 
+                                 evt.daysLeft === 1 ? '<span style="color:#e67e22; font-weight:bold;">Ngày mai</span>' : 
+                                 `${evt.daysLeft} ngày nữa`;
+                
+                const bgColor = evt.type === 'birthday' ? '#ecfdf5' : '#f3f4f6'; // Xanh lá nhạt cho SN, Xám cho Giỗ
+                const iconColor = evt.type === 'birthday' ? '#10b981' : '#6b7280';
+
+                html += `
+                <li style="padding: 12px; margin-bottom: 8px; background: ${bgColor}; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid ${iconColor};">
+                    <div>
+                        <div style="font-weight: 600; color: #374151;">${evt.label}: ${evt.member.full_name}</div>
+                        <div style="font-size: 0.85em; color: #6b7280;">Ngày: ${evt.dateStr} (Đời ${evt.member.generation})</div>
+                    </div>
+                    <div style="text-align: right; font-size: 0.9em;">
+                        ${timeText}
+                    </div>
+                </li>`;
+            });
+            html += '</ul>';
+            container.innerHTML = html;
+        };
+
+        // Render 2 danh sách
+        renderList(birthdaysContainer, upcomingBirthdays, 'Không có sinh nhật nào sắp tới.');
+        renderList(deathAnnivsContainer, upcomingDeathAnnivs, 'Không có ngày giỗ nào sắp tới.');
+    }
+
+    // --- Tải Hoạt động gần đây ---
+    loadRecentActivities();
+}
+
+async function loadRecentActivities() {
+    const container = document.getElementById('recent-activities');
+    if (!container) return;
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/activities', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            if (!data.logs || data.logs.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:#666; padding: 20px;">Chưa có hoạt động nào.</p>';
+                return;
+            }
+
+            let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
+            data.logs.forEach(log => {
+                const date = new Date(log.created_at).toLocaleString('vi-VN');
+                
+                // Icon tương ứng với hành động
+                let icon = '📝';
+                let colorClass = '#374151';
+                if (log.action_type === 'create') { icon = '✅'; colorClass = '#059669'; }
+                else if (log.action_type === 'update') { icon = '✏️'; colorClass = '#d97706'; }
+                else if (log.action_type === 'delete') { icon = '🗑️'; colorClass = '#dc2626'; }
+
+                // Badge cho vai trò
+                const roleBadge = (log.actor_role === 'owner' || log.actor_role === 'admin')
+                    ? '<span style="background:#ffedd5; color:#c2410c; padding:2px 6px; border-radius:4px; font-size:0.75em;">Admin</span>' 
+                    : '<span style="background:#dbeafe; color:#0369a1; padding:2px 6px; border-radius:4px; font-size:0.75em;">Viewer</span>';
+
+                html += `
+                <li style="padding: 12px; border-bottom: 1px solid #f0f0f0;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
+                        <span style="font-weight: 600; color: ${colorClass}; font-size: 0.95em;">${icon} ${log.description}</span>
+                        <span style="font-size: 0.8em; color: #9ca3af; white-space: nowrap; margin-left: 8px;">${date}</span>
+                    </div>
+                    <div style="font-size: 0.85em; color: #6b7280; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-user" style="font-size: 0.8em;"></i> ${log.actor_name} ${roleBadge}
+                    </div>
+                </li>`;
+            });
+            html += '</ul>';
+            container.innerHTML = html;
+        } else {
+            // Xử lý khi success = false (để không bị treo chữ Đang tải)
+            container.innerHTML = `<p style="text-align:center; color:#666; padding: 20px;">${data.message || 'Không có dữ liệu hoạt động.'}</p>`;
+        }
+    } catch (err) {
+        console.error('Lỗi tải hoạt động:', err);
+        container.innerHTML = '<p style="text-align:center; color:red; padding: 20px;">Không thể tải lịch sử hoạt động.</p>';
+    }
+}
+
+// Hàm xóa toàn bộ lịch sử hoạt động
+async function clearActivities() {
+    if (!confirm('⚠️ Bạn có chắc chắn muốn xóa toàn bộ lịch sử hoạt động không?\nHành động này không thể hoàn tác.')) return;
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/activities', {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            loadRecentActivities(); // Tải lại danh sách (sẽ trống)
+        } else {
+            alert('❌ ' + (data.message || 'Lỗi khi xóa lịch sử'));
+        }
+    } catch (err) {
+        console.error('Lỗi:', err);
+        alert('❌ Lỗi kết nối server');
+    }
 }

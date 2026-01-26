@@ -62,6 +62,7 @@ const createMember = async (req, res) => {
             await Member.updateOne({ id: newPid }, { $set: { pid: newId } });
         }
 
+        await logToDB(req, 'create', `Thêm thành viên: ${newMember.full_name}`);
         res.status(201).json(newMember);
     } catch (err) {
         res.status(400).json({ message: "Lỗi tạo thành viên: " + err.message });
@@ -81,6 +82,7 @@ const updateMember = async (req, res) => {
         // Nếu quan hệ vợ/chồng không đổi, chỉ cần cập nhật và thoát
         if (oldPid === newPid) {
             const updatedMember = await Member.findOneAndUpdate({ id: id }, req.body, { new: true });
+            await logToDB(req, 'update', `Cập nhật thông tin: ${updatedMember.full_name}`);
             return res.json(updatedMember);
         }
 
@@ -104,6 +106,7 @@ const updateMember = async (req, res) => {
             req.body, 
             { new: true } // Trả về dữ liệu mới sau khi update
         );
+        await logToDB(req, 'update', `Cập nhật thông tin: ${updatedMember.full_name}`);
         res.json(updatedMember);
     } catch (err) {
         res.status(400).json({ message: "Lỗi cập nhật: " + err.message });
@@ -126,6 +129,7 @@ const deleteMember = async (req, res) => {
         await Member.updateMany({ mid: id }, { $set: { mid: null } }); // Gỡ liên kết mẹ
         await Member.updateMany({ pid: id }, { $set: { pid: null } }); // Gỡ liên kết vợ/chồng
 
+        await logToDB(req, 'delete', `Xóa thành viên: ${memberToDelete.full_name}`);
         res.json({ message: `Đã xóa thành viên "${memberToDelete.full_name}"` });
     } catch (err) {
         console.error("Lỗi xóa thành viên:", err);
@@ -215,8 +219,15 @@ const importSheets = async (req, res) => {
                 mid: getCol(r, ['mid', 'mother_id', 'mẹ', 'id mẹ', 'ma me', 'mã mẹ', 'ma mẹ']),
                 pid: getCol(r, ['pid', 'partner_id', 'vợ/chồng', 'id vợ/chồng', 'ma vo chong', 'mã vợ chồng']),
                 full_name: getCol(r, ['full_name', 'fullname', 'họ tên', 'tên', 'hoten', 'name']) || 'Chưa có tên',
-                is_live: r.is_live !== '0',
+                is_live: getCol(r, ['is_live', 'is_alive', 'alive', 'còn sống', 'con song'], '1') !== '0',
                 gender: normalizeGender(getCol(r, ['gender', 'sex', 'giới tính', 'phái'])),
+                birth_date: getCol(r, ['birth_date', 'birth', 'ngày sinh', 'ngay sinh', 'dob'], ''),
+                death_date: getCol(r, ['death_date', 'death', 'ngày mất', 'ngay mat', 'dod'], ''),
+                branch: getCol(r, ['branch', 'nhánh', 'chi'], 'Gốc'),
+                address: getCol(r, ['address', 'địa chỉ', 'dia chi'], ''),
+                job: getCol(r, ['job', 'nghề nghiệp', 'nghe nghiep', 'công việc'], ''),
+                generation: parseInt(getCol(r, ['generation', 'gen', 'đời', 'thế hệ'], 1)) || 1,
+                order: parseInt(getCol(r, ['order', 'stt', 'thứ tự'], 1)) || 1,
                 temp_id: `blood_${clean(r.id)}`
             })),
             ...spouseRecords.map(r => ({
@@ -226,8 +237,15 @@ const importSheets = async (req, res) => {
                 mid: getCol(r, ['mid', 'mother_id', 'mẹ', 'id mẹ', 'ma me', 'mã mẹ', 'ma mẹ']),
                 pid: getCol(r, ['pid', 'partner_id', 'vợ/chồng', 'id vợ/chồng', 'ma vo chong', 'mã vợ chồng']),
                 full_name: getCol(r, ['full_name', 'fullname', 'họ tên', 'tên', 'hoten', 'name']) || 'Chưa có tên',
-                is_live: r.is_live !== '0',
+                is_live: getCol(r, ['is_live', 'is_alive', 'alive', 'còn sống', 'con song'], '1') !== '0',
                 gender: normalizeGender(getCol(r, ['gender', 'sex', 'giới tính', 'phái'])),
+                birth_date: getCol(r, ['birth_date', 'birth', 'ngày sinh', 'ngay sinh', 'dob'], ''),
+                death_date: getCol(r, ['death_date', 'death', 'ngày mất', 'ngay mat', 'dod'], ''),
+                branch: getCol(r, ['branch', 'nhánh', 'chi'], 'Gốc'),
+                address: getCol(r, ['address', 'địa chỉ', 'dia chi'], ''),
+                job: getCol(r, ['job', 'nghề nghiệp', 'nghe nghiep', 'công việc'], ''),
+                generation: parseInt(getCol(r, ['generation', 'gen', 'đời', 'thế hệ'], 1)) || 1,
+                order: parseInt(getCol(r, ['order', 'stt', 'thứ tự'], 1)) || 1,
                 temp_id: `spouse_${clean(r.id)}`
             }))
         ];
@@ -246,6 +264,7 @@ const importSheets = async (req, res) => {
         const uniquePeople = Array.from(uniquePeopleMap.values());
 
         const docs = await Member.insertMany(uniquePeople);
+        await logToDB(req, 'create', `Đồng bộ ${docs.length} thành viên từ Google Sheets`);
         res.json({ message: `Đã nạp thành công ${docs.length} thành viên từ Google Sheets!` });
     } catch (error) {
         console.error('Google Sheets Import Error:', error);

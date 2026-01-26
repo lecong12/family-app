@@ -2,6 +2,27 @@ const express = require('express');
 const router = express.Router();
 const Post = require('../models/Post');
 const auth = require('../middleware/auth'); // Sử dụng middleware xác thực có sẵn
+const mongoose = require('mongoose');
+
+// --- Activity Model & Helper (Thêm để ghi log) ---
+const ActivitySchema = new mongoose.Schema({
+    actor_name: String,
+    actor_role: String,
+    action_type: { type: String, enum: ['create', 'update', 'delete'] },
+    description: String,
+    created_at: { type: Date, default: Date.now }
+});
+const Activity = mongoose.models.Activity || mongoose.model('Activity', ActivitySchema);
+
+async function logToDB(req, type, description) {
+    try {
+        const name = (req.user && req.user.full_name) ? req.user.full_name : 'Admin';
+        const role = (req.user && req.user.role) ? req.user.role : 'owner';
+        await Activity.create({ actor_name: name, actor_role: role, action_type: type, description });
+    } catch (e) {
+        console.error("Logging failed:", e.message);
+    }
+}
 
 // 1. Lấy tất cả bài viết
 router.get('/', auth, async (req, res) => {
@@ -35,6 +56,7 @@ router.post('/', auth, async (req, res) => {
         });
 
         await newPost.save();
+        logToDB(req, 'create', `Đăng bài viết: ${title}`); // Ghi log
         res.status(201).json({ success: true, message: 'Đã tạo bài viết', post: newPost });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -62,7 +84,7 @@ router.put('/:id', auth, async (req, res) => {
 
         // Kiểm tra quyền: Chỉ tác giả hoặc admin (nếu có role) mới được sửa
         // Ở đây tạm thời chỉ kiểm tra tác giả
-        if (post.author.toString() !== req.user.id) {
+        if (post.author && post.author.toString() !== req.user.id) {
              // Nếu muốn cho phép admin sửa, cần check req.user.role === 'admin'
              return res.status(403).json({ success: false, message: 'Bạn không có quyền sửa bài viết này' });
         }
@@ -74,6 +96,7 @@ router.put('/:id', auth, async (req, res) => {
         post.updated_at = Date.now();
 
         await post.save();
+        logToDB(req, 'update', `Cập nhật bài viết: ${post.title}`); // Ghi log
         res.json({ success: true, message: 'Cập nhật thành công', post });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -85,13 +108,15 @@ router.delete('/:id', auth, async (req, res) => {
     try {
         const post = await Post.findById(req.params.id);
         if (!post) return res.status(404).json({ success: false, message: 'Không tìm thấy bài viết' });
+        const postTitle = post.title; // Lưu lại tiêu đề để ghi log
 
         // Kiểm tra quyền
-        if (post.author.toString() !== req.user.id) {
+        if (post.author && post.author.toString() !== req.user.id) {
             return res.status(403).json({ success: false, message: 'Bạn không có quyền xóa bài viết này' });
         }
 
         await Post.findByIdAndDelete(req.params.id);
+        logToDB(req, 'delete', `Xóa bài viết: ${postTitle}`); // Ghi log
         res.json({ success: true, message: 'Đã xóa bài viết' });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });

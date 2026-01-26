@@ -1,7 +1,12 @@
-﻿﻿const zoom = d3.zoom().on("zoom", (e) => g.attr("transform", e.transform));
+﻿﻿﻿﻿const zoom = d3.zoom()
+    .scaleExtent([0.1, 3]) // Giới hạn zoom: nhỏ nhất 0.1x, lớn nhất 3x
+    .on("zoom", (e) => g.attr("transform", e.transform));
+
 const svg = d3.select("#tree-canvas").append("svg")
     .attr("width", "100%").attr("height", "100%") // Sửa thành 100% để khớp với khung chứa
-    .call(zoom);
+    .call(zoom)
+    .on("dblclick.zoom", null); // Tắt tính năng double click để zoom (tránh nhảy hình)
+
 const g = svg.append("g");
 
 // Biến toàn cục để lưu trữ cây D3
@@ -247,10 +252,10 @@ function drawTree(data) {
             drawMemberBox(group, m, currentX, 0, boxWidth, boxHeight);
             
             if (index < members.length - 1) {
-                group.append("line")
+                group.append("line") // Đường nối hôn nhân
+                    .attr("class", "marriage-link")
                     .attr("x1", currentX + boxWidth).attr("y1", boxHeight/2)
                     .attr("x2", currentX + boxWidth + gap).attr("y2", boxHeight/2)
-                    .attr("stroke", "#e74c3c").attr("stroke-width", 2);
             }
             currentX += boxWidth + gap;
         });
@@ -262,7 +267,9 @@ function drawTree(data) {
 
 // Hàm vẽ hộp thông tin thành viên
 function drawMemberBox(group, member, x, y, w, h) {
-    const g = group.append("g").attr("transform", `translate(${x},${y})`)
+    const g = group.append("g")
+        .attr("class", "member-box")
+        .attr("transform", `translate(${x},${y})`)
         .style("cursor", "pointer")
         .on("click", (event) => {
             event.stopPropagation();
@@ -272,40 +279,33 @@ function drawMemberBox(group, member, x, y, w, h) {
         });
 
     const isSpouse = !!member.pid && !member.fid && !member.mid;
-    let strokeColor, fillColor;
+    const isDeceased = (member.death_date && String(member.death_date).trim() !== '' && String(member.death_date).trim() !== '0') || member.is_live === 0 || member.is_live === '0' || member.is_live === false || member.is_alive === 0 || member.is_alive === '0' || member.is_alive === false;
 
-    if (isSpouse) {
-        fillColor = member.gender === 'Nữ' ? "#e1bee7" : "#d7ccc8";
-        strokeColor = member.gender === 'Nữ' ? "#9c27b0" : "#5d4037";
-    } else {
-        fillColor = member.gender === "Nam" ? "#bbdefb" : "#ffcdd2";
-        strokeColor = member.gender === "Nam" ? "#2196f3" : "#e91e63";
-    }
+    // Thêm các class để CSS có thể tùy biến
+    g.classed(member.gender === 'Nam' ? 'male' : 'female', true);
+    g.classed(isSpouse ? 'spouse' : 'bloodline', true);
+    g.classed('deceased', isDeceased);
 
     g.append("rect")
         .attr("id", `rect-${member.id}`)
         .attr("class", "member-rect")
-        .attr("data-original-stroke", strokeColor)
-        .attr("width", w).attr("height", h).attr("rx", 4)
-        .attr("fill", fillColor)
-        .attr("stroke", strokeColor)
-        .attr("stroke-width", 1.5);
+        .attr("width", w).attr("height", h).attr("rx", 8); // Tăng bo tròn góc
 
-    g.append("text").text(member.full_name || "Chưa có tên").attr("x", w/2).attr("y", h/2 - 5).attr("text-anchor", "middle").style("font-size", "12px").style("font-weight", "bold").style("fill", "#333");
-    g.append("text").text(member.birth_date ? `NS: ${member.birth_date}` : `ID: ${member.id}`).attr("x", w/2).attr("y", h/2 + 15).attr("text-anchor", "middle").style("font-size", "10px").style("fill", "#666");
+    g.append("text").text(member.full_name || "Chưa có tên").attr("class", "member-name").attr("x", w/2).attr("y", h/2 - 5).attr("text-anchor", "middle");
+    g.append("text").text(member.birth_date ? `NS: ${member.birth_date}` : `ID: ${member.id}`).attr("class", "member-meta").attr("x", w/2).attr("y", h/2 + 15).attr("text-anchor", "middle");
 }
 
 // Hàm tìm kiếm và zoom tới node
 function zoomToNode(memberId, customScale = 0.7) {
     if (!globalRootD3) return;
 
-    d3.selectAll(".member-rect").attr("stroke", function() { return d3.select(this).attr("data-original-stroke"); }).attr("stroke-width", 1.5);
+    d3.selectAll(".member-rect").classed("highlighted", false);
 
     let targetNode = null;
     if (memberId) {
         const targetRect = document.getElementById(`rect-${memberId}`);
         if (targetRect) {
-            d3.select(targetRect).attr("stroke", "#ff9800").attr("stroke-width", 4);
+            d3.select(targetRect).classed("highlighted", true);
         }
         targetNode = globalRootD3.descendants().find(d => d.data.members && d.data.members.some(m => String(m.id) === String(memberId)));
     } else {
@@ -331,6 +331,7 @@ function zoomToNode(memberId, customScale = 0.7) {
             .translate(fullWidth / 2 - midX * scale, fullHeight / 2 - midY * scale)
             .scale(scale);
         
-        svg.transition().duration(750).call(zoom.transform, transform);
+        // Bỏ transition().duration(750) để zoom ngay lập tức, tránh cảm giác "tự chạy"
+        svg.call(zoom.transform, transform);
     }
 }

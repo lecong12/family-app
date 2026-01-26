@@ -83,10 +83,11 @@
         <!-- POSTS TAB -->
         <div id="posts-tab" class="tab-content">
             <div class="tree-section">
-                <div id="posts-content-wrapper">
-                    <!-- Nội dung bài viết sẽ được JS chèn vào đây -->
-                    <h2 style="text-align: center;">Đang tải bài viết...</h2>
+                <div class="members-header">
+                    <h2 style="font-size: 20px; margin: 0;">Bài Viết & Thông Báo</h2>
+                    <button class="btn-add" onclick="openCreatePostModal()">+ Viết bài mới</button>
                 </div>
+                <div id="posts-list-container" class="posts-grid">Đang tải...</div>
             </div>
         </div>
 
@@ -105,16 +106,60 @@
     <!-- ADD/EDIT MEMBER MODAL -->
     <div id="add-member-modal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <h2 id="modal-title">Thêm thành viên</h2>
-            <div class="form-group"><label for="m-name">Họ tên:</label><input type="text" id="m-name"></div>
-            <div class="form-group"><label for="m-gender">Giới tính:</label><select id="m-gender"><option value="Nam">Nam</option><option value="Nữ">Nữ</option></select></div>
-            <div class="form-group"><label for="m-fid-search">Cha:</label><div class="smart-select-wrapper"><input type="text" id="m-fid-search" autocomplete="off"><div class="smart-select-results"></div><input type="hidden" id="m-fid"></div></div>
-            <div class="form-group"><label for="m-mid-search">Mẹ:</label><div class="smart-select-wrapper"><input type="text" id="m-mid-search" autocomplete="off"><div class="smart-select-results"></div><input type="hidden" id="m-mid"></div></div>
-            <div class="form-group"><label for="m-pid-search">Vợ/Chồng:</label><div class="smart-select-wrapper"><input type="text" id="m-pid-search" autocomplete="off"><div class="smart-select-results"></div><input type="hidden" id="m-pid"></div></div>
-            <div class="modal-actions">
-                <button id="btn-delete-member" class="btn-danger" onclick="deleteMember()" style="display: none;">Xóa</button>
-                <button class="btn-primary" onclick="saveMember()">Lưu</button>
+            <div class="modal-header">
+                <h2 id="modal-title">Thêm thành viên</h2>
+                <button class="close-btn" onclick="closeModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <!-- Thông tin cơ bản -->
+                <label for="m-name">Họ tên <span style="color:red">*</span>:</label>
+                <input type="text" id="m-name" placeholder="Nhập họ và tên đầy đủ">
+                
+                <div class="form-row">
+                    <div class="col-half">
+                        <label for="m-gender">Giới tính:</label><select id="m-gender"><option value="Nam">Nam</option><option value="Nữ">Nữ</option></select>
+                    </div>
+                    <div class="col-half">
+                        <label for="m-birth">Ngày sinh:</label><input type="text" id="m-birth" placeholder="dd/mm/yyyy">
+                    </div>
+                </div>
+                <label for="m-death">Ngày mất (nếu có):</label><input type="text" id="m-death" placeholder="dd/mm/yyyy">
+
+                <div class="form-divider">Quan hệ gia đình</div>
+
+                <label for="m-fid">Cha:</label><input type="text" id="m-fid">
+                <label for="m-mid">Mẹ:</label><input type="text" id="m-mid">
+                <label for="m-pid">Vợ/Chồng:</label><input type="text" id="m-pid">
+
+                <div class="form-actions">
+                    <button id="btn-delete-member" class="btn-delete" onclick="deleteMember()" style="display: none; margin-right: auto;">Xóa thành viên</button>
+                    <button class="btn-cancel" onclick="closeModal()">Hủy</button>
+                    <button class="btn-save" onclick="saveMember()">Lưu thông tin</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- POST MODAL (Thêm/Sửa bài viết) -->
+    <div id="post-modal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2 id="post-modal-title">Viết bài mới</h2>
+                <button class="close-btn" onclick="closePostModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group"><label for="post-title">Tiêu đề:</label><input type="text" id="post-title" placeholder="Nhập tiêu đề bài viết..."></div>
+                    <div class="form-group"><label for="post-category">Danh mục:</label><select id="post-category"><option value="announcement">📢 Thông báo</option><option value="event">📅 Sự kiện</option><option value="news">📰 Tin tức</option></select></div>
+                </div>
+                <div class="form-group"><label for="post-content">Nội dung:</label><textarea id="post-content" rows="12" placeholder="Nhập nội dung chi tiết..."></textarea></div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="post-pinned"> <label for="post-pinned" style="display:inline; margin-left: 8px; cursor:pointer;">Ghim bài viết này lên đầu</label>
+                </div>
+                <div class="form-actions">
+                    <button class="btn-cancel" onclick="closePostModal()">Hủy</button>
+                    <button class="btn-save" onclick="savePost()">Lưu bài viết</button>
+                </div>
             </div>
         </div>
     </div>
@@ -122,26 +167,34 @@
     <!-- IMPORT CSV MODAL -->
     <div id="import-modal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="document.getElementById('import-modal').style.display='none'">&times;</span>
-            <h3>Nhập dữ liệu từ File CSV</h3>
-            <p>Chọn file CSV từ máy tính để thêm mới hoặc cập nhật dữ liệu gia phả.</p>
-            <div class="file-upload-area">
-                <input type="file" id="csv-file-input" accept=".csv" onchange="updateFileName(this)">
-                <label for="csv-file-input" class="file-upload-label">
-                    <span>Nhấn để chọn file hoặc kéo thả vào đây</span>
-                    <span class="small">Hỗ trợ file .csv</span>
-                </label>
-                <div id="file-name-display">Chưa có file nào được chọn</div>
+            <div class="modal-header">
+                <h2>Nhập dữ liệu từ File CSV</h2>
+                <button class="close-btn" onclick="document.getElementById('import-modal').style.display='none'"><i class="fas fa-times"></i></button>
             </div>
-            <div id="import-status"></div>
-            <div class="modal-actions">
-                <button id="btn-upload-csv" class="btn-primary" onclick="handleFileUpload()" disabled>Tải lên & Xử lý</button>
+            <div class="modal-body">
+                <p class="mb-4 text-center" style="color: #666;">Chọn file CSV từ máy tính để thêm mới hoặc cập nhật dữ liệu gia phả.</p>
+                
+                <div class="file-upload-area">
+                    <input type="file" id="csv-file-input" accept=".csv" onchange="updateFileName(this)">
+                    <label for="csv-file-input" class="file-upload-label">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <span>Nhấn để chọn file hoặc kéo thả vào đây</span>
+                        <span class="small" style="font-size: 12px; color: #999;">Hỗ trợ định dạng .csv</span>
+                    </label>
+                </div>
+                <div id="file-name-display" class="text-center mt-4" style="font-weight: 500; color: #374151;">Chưa có file nào được chọn</div>
+                
+                <div id="import-status" class="mt-4"></div>
+                
+                <div class="form-actions">
+                    <button class="btn-cancel" onclick="document.getElementById('import-modal').style.display='none'">Hủy bỏ</button>
+                    <button id="btn-upload-csv" class="btn-save" onclick="handleFileUpload()" disabled>Tải lên & Xử lý</button>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Scripts -->
-    <script src="js/d3-org-chart.js"></script>
     <script src="js/renderer.js"></script>
     <script src="js/main.js"></script>
 </body>
