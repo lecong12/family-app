@@ -141,15 +141,61 @@ function renderTreeTab() {
 }
 
 function renderMembersTab() {
-    renderMemberList(allMembers);
+    // 1. Tạo dropdown lọc nếu chưa có
     const searchInput = document.getElementById('member-search-input');
-    if(searchInput) {
-        searchInput.onkeyup = () => {
-            const query = searchInput.value.toLowerCase();
-            const filteredMembers = allMembers.filter(m => m.full_name.toLowerCase().includes(query));
-            renderMemberList(filteredMembers);
-        };
+    if (searchInput) {
+        const searchBar = searchInput.closest('.search-bar');
+        const header = searchBar ? searchBar.parentElement : null;
+        
+        if (header && !document.getElementById('member-filter-type')) {
+            const select = document.createElement('select');
+            select.id = 'member-filter-type';
+            // Style trực tiếp để khớp với giao diện
+            select.style.padding = '12px 16px';
+            select.style.border = '2px solid #e5e7eb';
+            select.style.borderRadius = '12px';
+            select.style.fontSize = '15px';
+            select.style.outline = 'none';
+            select.style.cursor = 'pointer';
+            select.style.minWidth = '180px';
+            select.style.marginRight = '10px';
+            
+            select.innerHTML = `
+                <option value="all">Tất cả thành viên</option>
+                <option value="bloodline">Huyết thống</option>
+                <option value="inlaw">Dâu/Rể</option>
+            `;
+            
+            // Chèn vào trước ô tìm kiếm
+            header.insertBefore(select, searchBar);
+        }
     }
+
+    // 2. Hàm xử lý lọc kết hợp (Tên + Loại)
+    const filterMembers = () => {
+        const query = searchInput ? searchInput.value.toLowerCase() : '';
+        const filterType = document.getElementById('member-filter-type') ? document.getElementById('member-filter-type').value : 'all';
+        
+        const filteredMembers = allMembers.filter(m => {
+            const matchesName = m.full_name.toLowerCase().includes(query);
+            
+            const isInLaw = !!m.pid && !m.fid && !m.mid;
+            let matchesType = true;
+            if (filterType === 'bloodline') matchesType = !isInLaw;
+            else if (filterType === 'inlaw') matchesType = isInLaw;
+            
+            return matchesName && matchesType;
+        });
+        renderMemberList(filteredMembers);
+    };
+
+    // 3. Gắn sự kiện
+    if (searchInput) searchInput.onkeyup = filterMembers;
+    const filterSelect = document.getElementById('member-filter-type');
+    if (filterSelect) filterSelect.onchange = filterMembers;
+
+    // 4. Render lần đầu
+    filterMembers();
 }
 
 // Hàm Đăng xuất: Xóa Token và Xóa Dữ liệu Cache
@@ -183,8 +229,8 @@ function renderMemberList(members) {
 
     // Đảm bảo container hiển thị dạng Grid
     container.style.display = 'grid';
-    container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(300px, 1fr))';
-    container.style.gap = '24px';
+    container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(250px, 1fr))';
+    container.style.gap = '16px';
 
     sortedMembers.forEach(m => {
         // Logic xác định sinh tử (đồng bộ với Dashboard và Cây gia phả)
@@ -230,7 +276,7 @@ function renderMemberList(members) {
         const avatarLetter = nameParts[nameParts.length - 1].charAt(0).toUpperCase();
 
         // Branch display
-        const branchMap = { '0': 'Tổ', '1': 'Phái Nhất', '2': 'Phái Nhì', '3': 'Phái Ba', '4': 'Phái Bốn' };
+        const branchMap = { '0': 'Tổ khảo', '1': 'Phái Nhất', '2': 'Phái Nhì', '3': 'Phái Ba', '4': 'Phái Bốn' };
         let branchDisplay = branchMap[m.branch] || (m.branch ? `Phái ${m.branch}` : 'Gốc');
         if (m.branch === 'Gốc') branchDisplay = 'Gốc';
 
@@ -242,7 +288,7 @@ function renderMemberList(members) {
                 <div class="member-card-info">
                     <h4 class="member-card-name">${m.full_name}</h4>
                     <div class="member-card-gender">
-                        ${m.gender === 'Nam' ? '<i class="fas fa-mars"></i> Nam' : '<i class="fas fa-venus"></i> Nữ'}
+                        ${m.gender === 'Nam' ? 'Nam' : 'Nữ'}
                         ${ageDisplay}
                     </div>
                 </div>
@@ -250,7 +296,7 @@ function renderMemberList(members) {
             </div>
             
             <div class="member-card-tags">
-                <span class="tag tag-gen">Đời ${m.generation}</span>
+                <span class="tag tag-gen">Đời thứ ${m.generation}</span>
                 <span class="tag tag-branch">${branchDisplay}</span>
                 ${isInLaw ? '<span class="tag tag-inlaw">Dâu/Rể</span>' : ''}
             </div>
