@@ -183,8 +183,8 @@ function renderMemberList(members) {
 
     // Đảm bảo container hiển thị dạng Grid
     container.style.display = 'grid';
-    container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(280px, 1fr))';
-    container.style.gap = '20px';
+    container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(300px, 1fr))';
+    container.style.gap = '24px';
 
     sortedMembers.forEach(m => {
         // Logic xác định sinh tử (đồng bộ với Dashboard và Cây gia phả)
@@ -226,66 +226,43 @@ function renderMemberList(members) {
         
         // Avatar color based on gender/status
         const avatarColor = isDeceased ? '#9ca3af' : (m.gender === 'Nam' ? '#3b82f6' : '#ec4899');
-        const avatarLetter = (m.full_name || '?').charAt(0).toUpperCase();
+        const nameParts = (m.full_name || '?').trim().split(/\s+/);
+        const avatarLetter = nameParts[nameParts.length - 1].charAt(0).toUpperCase();
 
         // Branch display
-        const branchMap = { '0': 'Tổ', '1': 'P.Nhất', '2': 'P.Nhì', '3': 'P.Ba', '4': 'P.Bốn' };
+        const branchMap = { '0': 'Tổ', '1': 'Phái Nhất', '2': 'Phái Nhì', '3': 'Phái Ba', '4': 'Phái Bốn' };
         let branchDisplay = branchMap[m.branch] || (m.branch ? `Phái ${m.branch}` : 'Gốc');
         if (m.branch === 'Gốc') branchDisplay = 'Gốc';
 
-        // Style inline để đảm bảo giao diện đẹp ngay lập tức
-        card.style.cssText = `
-            background: ${isDeceased ? '#f9fafb' : '#fff'};
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            padding: 0;
-            border: 1px solid #e5e7eb;
-            overflow: hidden;
-            transition: transform 0.2s, box-shadow 0.2s;
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-        `;
-
         card.innerHTML = `
-            <div style="padding: 15px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #f0f0f0;">
-                <div style="width: 45px; height: 45px; border-radius: 50%; background: ${avatarColor}; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2em; flex-shrink: 0;">
+            <div class="member-card-header">
+                <div class="member-card-avatar" style="background-color: ${avatarColor};">
                     ${avatarLetter}
                 </div>
-                <div style="flex-grow: 1; min-width: 0;">
-                    <h4 style="margin: 0; font-size: 1.1em; color: #1f2937; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${m.full_name}</h4>
-                    <div style="font-size: 0.85em; color: #6b7280; margin-top: 2px;">
-                        ${m.gender === 'Nam' ? '<i class="fas fa-mars" style="color:#3b82f6"></i> Nam' : '<i class="fas fa-venus" style="color:#ec4899"></i> Nữ'}
+                <div class="member-card-info">
+                    <h4 class="member-card-name">${m.full_name}</h4>
+                    <div class="member-card-gender">
+                        ${m.gender === 'Nam' ? '<i class="fas fa-mars"></i> Nam' : '<i class="fas fa-venus"></i> Nữ'}
                         ${ageDisplay}
                     </div>
                 </div>
-                ${isDeceased ? '<i class="fas fa-cross" style="color: #9ca3af; font-size: 1.2em;" title="Đã mất"></i>' : ''}
+                ${isDeceased ? '<i class="fas fa-cross member-card-status-icon" title="Đã mất"></i>' : ''}
             </div>
             
-            <div style="padding: 10px 15px; display: flex; gap: 8px; flex-wrap: wrap; background: #f9fafb;">
-                <span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; font-weight: 600;">Đời ${m.generation}</span>
-                <span style="background: #f3f4f6; color: #4b5563; padding: 2px 8px; border-radius: 12px; font-size: 0.75em;">${branchDisplay}</span>
-                ${isInLaw ? '<span style="background: #fef3c7; color: #d97706; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; font-weight: 600;">Dâu/Rể</span>' : ''}
+            <div class="member-card-tags">
+                <span class="tag tag-gen">Đời ${m.generation}</span>
+                <span class="tag tag-branch">${branchDisplay}</span>
+                ${isInLaw ? '<span class="tag tag-inlaw">Dâu/Rể</span>' : ''}
             </div>
 
-            <div style="padding: 15px; font-size: 0.9em; color: #4b5563; flex-grow: 1;">
-                <div style="margin-bottom: 6px;"><i class="fas fa-birthday-cake" style="width: 20px; text-align: center; color: #10b981;"></i> ${m.birth_date || 'Unknown'}</div>
-                ${isDeceased ? `<div style="margin-bottom: 6px;"><i class="fas fa-star-of-life" style="width: 20px; text-align: center; color: #6b7280;"></i> Mất: ${m.death_date || 'Unknown'}</div>` : ''}
-                ${spouseName ? `<div style="margin-bottom: 6px;"><i class="fas fa-ring" style="width: 20px; text-align: center; color: #ec4899;"></i> VC: ${spouseName}</div>` : ''}
-                ${m.job ? `<div style="margin-bottom: 6px;"><i class="fas fa-briefcase" style="width: 20px; text-align: center; color: #f59e0b;"></i> ${m.job}</div>` : ''}
+            <div class="member-card-body">
+                <p><i class="fas fa-birthday-cake icon-birth"></i> ${m.birth_date || 'Không rõ'}</p>
+                ${isDeceased ? `<p><i class="fas fa-star-of-life icon-death"></i> Mất: ${m.death_date || 'Không rõ'}</p>` : ''}
+                ${spouseName ? `<p><i class="fas fa-ring icon-spouse"></i> VC: ${spouseName}</p>` : ''}
+                ${m.job ? `<p><i class="fas fa-briefcase icon-job"></i> ${m.job}</p>` : ''}
             </div>
         `;
 
-        // Hiệu ứng Hover
-        card.onmouseenter = () => { 
-            card.style.transform = 'translateY(-3px)'; 
-            card.style.boxShadow = '0 10px 15px rgba(0,0,0,0.1)';
-        };
-        card.onmouseleave = () => { 
-            card.style.transform = 'translateY(0)'; 
-            card.style.boxShadow = '0 4px 6px rgba(0,0,0,0.05)';
-        };
-        
         // Thêm sự kiện click để zoom đến người đó trên cây
         card.onclick = () => { 
             openEditModal(m.id);
