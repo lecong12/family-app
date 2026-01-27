@@ -1,3 +1,4 @@
+
 // Biến toàn cục lưu danh sách thành viên
 let allMembers = [];
 let chartInstances = {};
@@ -162,19 +163,35 @@ function renderMembersTab() {
             
             select.innerHTML = `
                 <option value="all">Tất cả thành viên</option>
-                <option value="bloodline">Huyết thống</option>
-                <option value="inlaw">Dâu/Rể</option>
+                <option value="bloodline">🩸 Huyết thống</option>
+                <option value="inlaw">💍 Dâu/Rể</option>
             `;
             
             // Chèn vào trước ô tìm kiếm
             header.insertBefore(select, searchBar);
+
+            // --- BỔ SUNG: Nút Tìm kiếm nâng cao ---
+            const advBtn = document.createElement('button');
+            advBtn.innerHTML = '<i class="fas fa-filter"></i> Tìm nâng cao';
+            advBtn.className = 'btn-primary'; // Sử dụng class có sẵn hoặc style trực tiếp
+            advBtn.style.marginLeft = '10px';
+            advBtn.style.padding = '10px 15px';
+            advBtn.style.borderRadius = '8px';
+            advBtn.style.cursor = 'pointer';
+            advBtn.onclick = openAdvancedSearchModal;
+            
+            // Chèn vào sau search bar (nằm giữa search bar và nút Thêm thành viên)
+            header.insertBefore(advBtn, searchBar.nextSibling);
         }
     }
 
     // 2. Hàm xử lý lọc kết hợp (Tên + Loại)
     const filterMembers = () => {
+        const searchInput = document.getElementById('member-search-input');
+        const filterSelect = document.getElementById('member-filter-type');
+        
         const query = searchInput ? searchInput.value.toLowerCase() : '';
-        const filterType = document.getElementById('member-filter-type') ? document.getElementById('member-filter-type').value : 'all';
+        const filterType = filterSelect ? filterSelect.value : 'all';
         
         const filteredMembers = allMembers.filter(m => {
             const matchesName = m.full_name.toLowerCase().includes(query);
@@ -229,8 +246,8 @@ function renderMemberList(members) {
 
     // Đảm bảo container hiển thị dạng Grid
     container.style.display = 'grid';
-    container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(250px, 1fr))';
-    container.style.gap = '16px';
+    container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(300px, 1fr))';
+    container.style.gap = '24px';
 
     sortedMembers.forEach(m => {
         // Logic xác định sinh tử (đồng bộ với Dashboard và Cây gia phả)
@@ -270,15 +287,15 @@ function renderMemberList(members) {
         const card = document.createElement('div');
         card.className = `member-card ${m.gender === 'Nam' ? 'male' : 'female'} ${isDeceased ? 'deceased' : ''}`;
         
-        // Avatar color based on gender/status
+        // Branch display
+        const branchMap = { '0': 'Tổ', '1': 'Phái Nhất', '2': 'Phái Nhì', '3': 'Phái Ba', '4': 'Phái Bốn' };
+        let branchDisplay = branchMap[m.branch] || (m.branch ? `Phái ${m.branch}` : 'Gốc');
+        if (m.branch === 'Gốc') branchDisplay = 'Gốc';
+
+        // --- BỔ SUNG LẠI LOGIC BỊ THIẾU ---
         const avatarColor = isDeceased ? '#9ca3af' : (m.gender === 'Nam' ? '#3b82f6' : '#ec4899');
         const nameParts = (m.full_name || '?').trim().split(/\s+/);
         const avatarLetter = nameParts[nameParts.length - 1].charAt(0).toUpperCase();
-
-        // Branch display
-        const branchMap = { '0': 'Tổ khảo', '1': 'Phái Nhất', '2': 'Phái Nhì', '3': 'Phái Ba', '4': 'Phái Bốn' };
-        let branchDisplay = branchMap[m.branch] || (m.branch ? `Phái ${m.branch}` : 'Gốc');
-        if (m.branch === 'Gốc') branchDisplay = 'Gốc';
 
         card.innerHTML = `
             <div class="member-card-header">
@@ -288,7 +305,7 @@ function renderMemberList(members) {
                 <div class="member-card-info">
                     <h4 class="member-card-name">${m.full_name}</h4>
                     <div class="member-card-gender">
-                        ${m.gender === 'Nam' ? 'Nam' : 'Nữ'}
+                        ${m.gender === 'Nam' ? '<i class="fas fa-mars"></i> Nam' : '<i class="fas fa-venus"></i> Nữ'}
                         ${ageDisplay}
                     </div>
                 </div>
@@ -296,9 +313,9 @@ function renderMemberList(members) {
             </div>
             
             <div class="member-card-tags">
-                <span class="tag tag-gen">Đời thứ ${m.generation}</span>
+                <span class="tag tag-gen">Đời ${m.generation}</span>
                 <span class="tag tag-branch">${branchDisplay}</span>
-                ${isInLaw ? '<span class="tag tag-inlaw">Dâu/Rể</span>' : ''}
+                ${isInLaw ? '<span class="tag tag-inlaw"><i class="fas fa-ring"></i> Dâu/Rể</span>' : ''}
             </div>
 
             <div class="member-card-body">
@@ -741,7 +758,7 @@ async function loadPosts() {
                         ${pinnedIcon}
                     </div>
                     <div class="post-content" style="flex-grow:1; color:#4b5563; margin-bottom:15px;">${shortContent}</div>
-                    <button onclick="alert('Chức năng xem chi tiết đang phát triển')" style="align-self:flex-start; background:none; border:none; color:#0ea5e9; cursor:pointer; padding:0; font-weight:600;">Đọc tiếp →</button>
+                    <button onclick="openViewPostModal('${post._id}')" style="align-self:flex-start; background:none; border:none; color:#0ea5e9; cursor:pointer; padding:0; font-weight:600;">Đọc tiếp →</button>
                 </div>`;
             }).join('');
         }
@@ -1446,5 +1463,204 @@ async function clearActivities() {
     } catch (err) {
         console.error('Lỗi:', err);
         alert('❌ Lỗi kết nối server');
+    }
+}
+
+// --- Back to Top Feature ---
+window.addEventListener('scroll', () => {
+    const btn = document.getElementById('btn-back-to-top');
+    if (btn) {
+        // Hiện nút khi cuộn xuống quá 300px
+        if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
+            btn.classList.add('show');
+        } else {
+            btn.classList.remove('show');
+        }
+    }
+});
+
+function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ==========================================
+// BỔ SUNG: CHỨC NĂNG TÌM KIẾM NÂNG CAO
+// ==========================================
+
+function createAdvancedSearchModal() {
+    if (document.getElementById('advanced-search-modal')) return;
+
+    const modalHtml = `
+    <div id="advanced-search-modal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5);">
+        <div class="modal-content" style="background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 90%; max-width: 600px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+            <h2 style="text-align: center; margin-bottom: 20px; color: #2c3e50;">Tìm kiếm Nâng cao</h2>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <!-- Họ và tên (Input) -->
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Họ và tên</label>
+                    <input type="text" id="adv-name" placeholder="Nhập tên thành viên..." style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                </div>
+
+                <!-- Đời (Select) -->
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Đời (Thế hệ)</label>
+                    <select id="adv-gen" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                        <option value="">Tất cả</option>
+                        ${Array.from({length: 15}, (_, i) => `<option value="${i+1}">Đời ${i+1}</option>`).join('')}
+                    </select>
+                </div>
+
+                <!-- Phái (Select) -->
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Phái / Chi</label>
+                    <select id="adv-branch" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                        <option value="">Tất cả</option>
+                        <option value="0">Gốc (Tổ)</option>
+                        <option value="1">Phái Nhất</option>
+                        <option value="2">Phái Nhì</option>
+                        <option value="3">Phái Ba</option>
+                        <option value="4">Phái Bốn</option>
+                    </select>
+                </div>
+
+                <!-- Giới tính (Select) -->
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Giới tính</label>
+                    <select id="adv-gender" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                        <option value="">Tất cả</option>
+                        <option value="Nam">Nam</option>
+                        <option value="Nữ">Nữ</option>
+                    </select>
+                </div>
+
+                <!-- Trạng thái (Select) -->
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Trạng thái</label>
+                    <select id="adv-status" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                        <option value="">Tất cả</option>
+                        <option value="alive">Còn sống</option>
+                        <option value="deceased">Đã mất</option>
+                    </select>
+                </div>
+
+                <!-- Nghề nghiệp (Input) -->
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Nghề nghiệp</label>
+                    <input type="text" id="adv-job" placeholder="VD: Giáo viên, Kỹ sư..." style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                </div>
+
+                <!-- Địa chỉ (Input) -->
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Địa chỉ</label>
+                    <input type="text" id="adv-address" placeholder="Nhập địa chỉ..." style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                </div>
+            </div>
+
+            <div style="margin-top: 25px; text-align: right;">
+                <button onclick="resetAdvancedSearch()" style="padding: 10px 20px; border: none; background: #f39c12; color: white; border-radius: 6px; cursor: pointer; margin-right: 10px;">Đặt lại</button>
+                <button onclick="document.getElementById('advanced-search-modal').style.display='none'" style="padding: 10px 20px; border: none; background: #95a5a6; color: white; border-radius: 6px; cursor: pointer; margin-right: 10px;">Đóng</button>
+                <button onclick="performAdvancedSearch()" style="padding: 10px 20px; border: none; background: #3498db; color: white; border-radius: 6px; cursor: pointer; font-weight: bold;">🔍 Tìm kiếm</button>
+            </div>
+        </div>
+    </div>`;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function openAdvancedSearchModal() {
+    createAdvancedSearchModal();
+    document.getElementById('advanced-search-modal').style.display = 'block';
+}
+
+function resetAdvancedSearch() {
+    document.getElementById('adv-name').value = '';
+    document.getElementById('adv-gen').value = '';
+    document.getElementById('adv-branch').value = '';
+    document.getElementById('adv-gender').value = '';
+    document.getElementById('adv-status').value = '';
+    document.getElementById('adv-job').value = '';
+    document.getElementById('adv-address').value = '';
+    
+    renderMemberList(allMembers);
+}
+
+function performAdvancedSearch() {
+    const name = document.getElementById('adv-name').value.toLowerCase();
+    const gen = document.getElementById('adv-gen').value;
+    const branch = document.getElementById('adv-branch').value;
+    const gender = document.getElementById('adv-gender').value;
+    const status = document.getElementById('adv-status').value;
+    const job = document.getElementById('adv-job').value.toLowerCase();
+    const address = document.getElementById('adv-address').value.toLowerCase();
+
+    const filtered = allMembers.filter(m => {
+        // Logic xác định sinh tử
+        const hasDeathDate = m.death_date && String(m.death_date).trim() !== '' && String(m.death_date).trim() !== '0';
+        const isDeadByFlag = m.is_live === 0 || m.is_live === '0' || m.is_live === false || m.is_alive === 0 || m.is_alive === '0' || m.is_alive === false;
+        const isDeceased = hasDeathDate || isDeadByFlag;
+
+        // Kiểm tra từng tiêu chí
+        if (name && !(m.full_name || '').toLowerCase().includes(name)) return false;
+        if (gen && String(m.generation) !== gen) return false;
+        if (branch && String(m.branch || '0') !== branch) return false;
+        if (gender && m.gender !== gender) return false;
+        if (status === 'alive' && isDeceased) return false;
+        if (status === 'deceased' && !isDeceased) return false;
+        if (job && (!m.job || !m.job.toLowerCase().includes(job))) return false;
+        if (address && (!m.address || !m.address.toLowerCase().includes(address))) return false;
+
+        return true;
+    });
+
+    document.getElementById('advanced-search-modal').style.display = 'none';
+    renderMemberList(filtered);
+    
+    // Reset ô tìm kiếm thường để tránh nhầm lẫn
+    const simpleSearch = document.getElementById('member-search-input');
+    if (simpleSearch) simpleSearch.value = '';
+}
+
+// ==========================================
+// BỔ SUNG: CHỨC NĂNG XEM CHI TIẾT BÀI VIẾT
+// ==========================================
+
+async function openViewPostModal(postId) {
+    // Tạo modal nếu chưa có
+    if (!document.getElementById('view-post-modal')) {
+        const modalHtml = `
+        <div id="view-post-modal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5);">
+            <div class="modal-content" style="background-color: #fff; margin: 5% auto; padding: 30px; border: none; width: 90%; max-width: 800px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                    <h2 id="view-post-title" style="margin: 0; color: #1f2937; font-size: 24px;"></h2>
+                    <button onclick="document.getElementById('view-post-modal').style.display='none'" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280;">&times;</button>
+                </div>
+                <div style="margin-bottom: 20px; color: #6b7280; font-size: 14px; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px;">
+                    <span id="view-post-cat" style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; margin-right: 10px; font-weight: 600;"></span>
+                    <span id="view-post-date"><i class="far fa-clock"></i> </span>
+                </div>
+                <div id="view-post-content" style="line-height: 1.8; color: #374151; font-size: 16px; white-space: pre-wrap;"></div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch(`/api/posts/${postId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        if (data.success) {
+            const post = data.post;
+            const catMap = { 'announcement': 'Thông báo', 'event': 'Sự kiện', 'news': 'Tin tức' };
+            
+            document.getElementById('view-post-title').innerText = post.title;
+            document.getElementById('view-post-cat').innerText = catMap[post.category] || post.category;
+            document.getElementById('view-post-date').innerHTML = `<i class="far fa-clock"></i> ${new Date(post.created_at).toLocaleDateString('vi-VN')}`;
+            document.getElementById('view-post-content').innerText = post.content;
+            
+            document.getElementById('view-post-modal').style.display = 'block';
+        }
+    } catch (err) {
+        alert('Không thể tải bài viết.');
     }
 }
