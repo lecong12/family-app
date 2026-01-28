@@ -129,12 +129,44 @@ function renderTreeTab() {
     const treeContainer = document.querySelector('#tree-tab #tree-canvas');
     if (!treeContainer) return;
     
-    // Luôn vẽ lại cây để đảm bảo dữ liệu mới nhất (renderer.js đã tạo SVG sẵn nên không check rỗng)
+    // 1. Tạo UI chọn số đời (nếu chưa có)
+    const searchInput = document.getElementById('tree-search-input');
+    if (searchInput && !document.getElementById('tree-gen-limit')) {
+        const select = document.createElement('select');
+        select.id = 'tree-gen-limit';
+        select.style.padding = '8px';
+        select.style.marginLeft = '10px';
+        select.style.borderRadius = '6px';
+        select.style.border = '1px solid #ccc';
+        select.style.cursor = 'pointer';
+        
+        const options = [
+            {val: 5, text: 'Hiển thị: 5 Đời đầu'},
+            {val: 10, text: 'Hiển thị: 10 Đời đầu'},
+            {val: 0, text: 'Hiển thị: Tất cả'}
+        ];
+        
+        options.forEach(opt => {
+            const o = document.createElement('option');
+            o.value = opt.val;
+            o.textContent = opt.text;
+            select.appendChild(o);
+        });
+        
+        select.value = 5; // Mặc định 5 đời
+        select.onchange = () => renderTreeTab(); // Vẽ lại khi thay đổi
+        
+        searchInput.parentNode.insertBefore(select, searchInput.nextSibling);
+    }
+
+    // 2. Lọc dữ liệu và Vẽ cây
+    const limit = document.getElementById('tree-gen-limit') ? parseInt(document.getElementById('tree-gen-limit').value) : 5;
+    const dataToDraw = (limit > 0) ? allMembers.filter(m => (parseInt(m.generation) || 999) <= limit) : allMembers;
+
     if (typeof drawTree === 'function') {
-        drawTree(allMembers);
+        drawTree(dataToDraw);
     }
     // Cập nhật ô tìm kiếm của cây
-    const searchInput = document.getElementById('tree-search-input');
     const searchResults = document.getElementById('tree-search-results');
     if (searchInput) {
         searchInput.onkeyup = () => handleTreeSearch(searchInput, searchResults);
@@ -229,19 +261,60 @@ function renderMemberList(members) {
     
     container.innerHTML = ''; // Xóa danh sách cũ trước khi render lại
     
-    // 1. Sắp xếp danh sách: Đời (tăng dần) -> Phái (tăng dần) -> Thứ tự (tăng dần)
+    // --- Logic sắp xếp nâng cao theo dòng huyết thống ---
+    const memberMap = new Map(allMembers.map(m => [String(m.id), m]));
+    // Xóa cache sắp xếp cũ trước mỗi lần chạy để đảm bảo tính đúng đắn
+    allMembers.forEach(m => delete m._ancestryOrder);
+
+    const getBloodlineAncestryOrder = (member) => {
+        if (!member) return [];
+        if (member._ancestryOrder) return member._ancestryOrder; // Lấy từ cache nếu đã tính
+
+        let bloodlineMember = member;
+        // Nếu là dâu/rể, tìm người phối ngẫu để lấy dòng huyết thống
+        if (bloodlineMember.pid && !bloodlineMember.fid && !bloodlineMember.mid) {
+            const partner = memberMap.get(String(bloodlineMember.pid));
+            if (partner) bloodlineMember = partner;
+        }
+        
+        const getOrderChain = (m) => {
+            if (!m) return [];
+            if (m._ancestryOrder) return m._ancestryOrder;
+
+            const parentId = m.fid || m.mid;
+            const parent = parentId ? memberMap.get(String(parentId)) : null;
+            const parentOrderChain = parent ? getOrderChain(parent) : [];
+            const ancestryOrder = [...parentOrderChain, parseInt(m.order) || 999];
+            
+            m._ancestryOrder = ancestryOrder; // Cache lại kết quả
+            return ancestryOrder;
+        };
+
+        const finalOrderChain = getOrderChain(bloodlineMember);
+        member._ancestryOrder = finalOrderChain; // Cache cho cả thành viên gốc (dâu/rể)
+        return finalOrderChain;
+    };
+
     const sortedMembers = [...members].sort((a, b) => {
+        // Rule 1: Sắp xếp theo Đời (Generation)
         const genA = parseInt(a.generation) || 999;
         const genB = parseInt(b.generation) || 999;
         if (genA !== genB) return genA - genB;
 
-        const branchA = String(a.branch || '0');
-        const branchB = String(b.branch || '0');
-        if (branchA !== branchB) return branchA.localeCompare(branchB);
+        // Rule 2: Sắp xếp theo "dòng" tổ tiên (con ông anh trước, con ông em sau)
+        const ancestryA = getBloodlineAncestryOrder(a);
+        const ancestryB = getBloodlineAncestryOrder(b);
+        const minLength = Math.min(ancestryA.length, ancestryB.length);
+        for (let i = 0; i < minLength; i++) {
+            if (ancestryA[i] !== ancestryB[i]) return ancestryA[i] - ancestryB[i];
+        }
 
-        const orderA = parseInt(a.order) || 0;
-        const orderB = parseInt(b.order) || 0;
-        return orderA - orderB;
+        // Rule 3: Nếu dòng họ y hệt (vợ/chồng), xếp Nam trước Nữ
+        if (a.gender !== b.gender) {
+            return a.gender === 'Nam' ? -1 : 1;
+        }
+
+        return 0;
     });
 
     // Đảm bảo container hiển thị dạng Grid

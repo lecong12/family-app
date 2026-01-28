@@ -1,4 +1,4 @@
-﻿﻿﻿﻿const zoom = d3.zoom()
+﻿﻿﻿﻿﻿﻿const zoom = d3.zoom()
     .scaleExtent([0.1, 3]) // Giới hạn zoom: nhỏ nhất 0.1x, lớn nhất 3x
     .on("zoom", (e) => g.attr("transform", e.transform));
 
@@ -11,6 +11,9 @@ const g = svg.append("g");
 
 // Biến toàn cục để lưu trữ cây D3
 let globalRootD3 = null;
+// Biến toàn cục để lưu offset của cây, giúp hàm zoom tính toán chính xác
+let treeOffsetX = 0;
+let treeStartY = 0;
 
 function drawTree(data) {
     g.selectAll("*").remove();
@@ -179,8 +182,8 @@ function drawTree(data) {
     });
     if (minX === Infinity) minX = 0;
 
-    const startY = 20; // Giảm khoảng trắng ở trên
-    const offsetX = -minX + 100;
+    treeStartY = 20; // Giảm khoảng trắng ở trên
+    treeOffsetX = -minX + 100;
 
     // Vẽ đường nối (Vuông góc - Orthogonal)
     g.selectAll(".link")
@@ -190,13 +193,13 @@ function drawTree(data) {
         .attr("d", d => {
             const parentMembers = d.source.data.members;
             const childMembers = d.target.data.members;
-            const targetX = d.target.x + offsetX;
-            const targetY = d.target.y + startY;
+            const targetX = d.target.x + treeOffsetX;
+            const targetY = d.target.y + treeStartY;
 
             // Trường hợp 1 Vợ 1 Chồng: Nối từ điểm giữa (nơi có đường hôn nhân và đường sổ dọc)
             if (parentMembers.length === 2) {
-                const sourceX = d.source.x + offsetX;
-                const sourceY = d.source.y + startY + boxHeight; // Bắt đầu từ đáy node nơi có đường sổ dọc
+                const sourceX = d.source.x + treeOffsetX;
+                const sourceY = d.source.y + treeStartY + boxHeight; // Bắt đầu từ đáy node nơi có đường sổ dọc
                 const midY = sourceY + (targetY - sourceY) / 2;
                 return `M${sourceX},${sourceY} V${midY} H${targetX} V${targetY}`;
             }
@@ -217,8 +220,8 @@ function drawTree(data) {
                 const motherCenterX = startXLocal + motherIndex * (boxWidth + gap) + (boxWidth / 2);
                 const husbandCenterX = startXLocal + husbandIndex * (boxWidth + gap) + (boxWidth / 2);
                 const parentCenterOffset = (motherCenterX + husbandCenterX) / 2;
-                sourceX = d.source.x + offsetX + parentCenterOffset;
-                sourceY = d.source.y + startY + boxHeight;
+                sourceX = d.source.x + treeOffsetX + parentCenterOffset;
+                sourceY = d.source.y + treeStartY + boxHeight;
             } else {
                 let parentIndex = -1;
                 if (motherIndex !== -1) { parentIndex = motherIndex; }
@@ -226,8 +229,8 @@ function drawTree(data) {
                 if (parentIndex === -1) parentIndex = 0;
                 
                 const parentCenterOffset = startXLocal + parentIndex * (boxWidth + gap) + (boxWidth / 2);
-                sourceX = d.source.x + offsetX + parentCenterOffset;
-                sourceY = d.source.y + startY + boxHeight;
+                sourceX = d.source.x + treeOffsetX + parentCenterOffset;
+                sourceY = d.source.y + treeStartY + boxHeight;
             }
             
             const midY = sourceY + (targetY - sourceY) / 2;
@@ -239,7 +242,7 @@ function drawTree(data) {
         .data(rootD3.descendants().filter(d => d.data.id !== 'super-root'))
         .enter().append("g")
         .attr("class", "node")
-        .attr("transform", d => `translate(${d.x + offsetX},${d.y + startY})`);
+        .attr("transform", d => `translate(${d.x + treeOffsetX},${d.y + treeStartY})`);
 
     nodeGroup.each(function(d) {
         const group = d3.select(this);
@@ -297,41 +300,77 @@ function drawMemberBox(group, member, x, y, w, h) {
 
 // Hàm tìm kiếm và zoom tới node
 function zoomToNode(memberId, customScale = 0.7) {
-    if (!globalRootD3) return;
+    if (!globalRootD3) {
+        console.warn("Cây chưa được vẽ, không thể zoom.");
+        return;
+    }
 
     d3.selectAll(".member-rect").classed("highlighted", false);
 
-    let targetNode = null;
-    if (memberId) {
-        const targetRect = document.getElementById(`rect-${memberId}`);
-        if (targetRect) {
-            d3.select(targetRect).classed("highlighted", true);
-        }
-        targetNode = globalRootD3.descendants().find(d => d.data.members && d.data.members.some(m => String(m.id) === String(memberId)));
-    } else {
-        // Nếu không có memberId, zoom ra toàn bộ cây
-        targetNode = globalRootD3;
+    const parent = g.node().parentElement;
+    const fullWidth = parent.clientWidth;
+    const fullHeight = parent.clientHeight;
+
+    // Nếu container không hiển thị, không thể tính toán kích thước
+    if (fullWidth === 0 || fullHeight === 0) {
+        console.warn("Zoom thất bại: Container có kích thước bằng 0. Tab có đang hiển thị không?");
+        return;
     }
 
-    if (targetNode) {
-        const bounds = g.node().getBBox();
-        const parent = g.node().parentElement;
-        const fullWidth = parent.clientWidth;
-        const fullHeight = parent.clientHeight;
+    if (memberId) {
+        // --- Trường hợp 1: Zoom vào một thành viên cụ thể ---
+        const targetNode = globalRootD3.descendants().find(d => 
+            d.data.members && d.data.members.some(m => String(m.id) === String(memberId))
+        );
+        
+        if (targetNode) {
+            // Đánh dấu node được chọn
+            const targetRect = document.getElementById(`rect-${memberId}`);
+            if (targetRect) {
+                d3.select(targetRect).classed("highlighted", true);
+            }
 
+            // Tính toán tọa độ và scale để đưa node vào trung tâm
+            const targetX = targetNode.x + treeOffsetX;
+            const targetY = targetNode.y + treeStartY;
+            const scale = customScale;
+
+            const transform = d3.zoomIdentity
+                .translate(fullWidth / 2 - targetX * scale, fullHeight / 2 - targetY * scale)
+                .scale(scale);
+            
+            // Dùng transition để zoom mượt mà
+            svg.transition().duration(750).call(zoom.transform, transform);
+        }
+    } else {
+        // --- Trường hợp 2: Zoom để xem toàn bộ cây (khi tải lần đầu) ---
+        const bounds = g.node().getBBox();
         const width = bounds.width;
         const height = bounds.height;
+
+        if (width === 0 || height === 0) return; // Cây rỗng, không cần zoom
+
         const midX = bounds.x + width / 2;
         const midY = bounds.y + height / 2;
 
-        if (width === 0 || height === 0) return; // nothing to fit
+        let scale = Math.min(fullWidth / width, fullHeight / height) * 0.9;
+        
+        // --- CẢI TIẾN: Giới hạn zoom tối thiểu để nhìn rõ chữ ---
+        if (scale < 0.6) scale = 0.6; // Không cho phép nhỏ hơn 0.6x
+        if (scale > 1.2) scale = 1.2; // Không cho phép quá to lúc đầu
 
-        const scale = Math.min(fullWidth / width, fullHeight / height) * 0.9;
+        // Tính toán vị trí dịch chuyển (Translate)
+        // Nếu cây cao hơn khung hình (do scale lớn), căn đỉnh cây lên trên (padding 40px)
+        // Nếu cây nhỏ hơn khung hình, căn giữa theo chiều dọc
+        const translateY = (height * scale < fullHeight) 
+            ? fullHeight / 2 - midY * scale 
+            : 40 - bounds.y * scale;
+
         const transform = d3.zoomIdentity
-            .translate(fullWidth / 2 - midX * scale, fullHeight / 2 - midY * scale)
+            .translate(fullWidth / 2 - midX * scale, translateY)
             .scale(scale);
         
-        // Bỏ transition().duration(750) để zoom ngay lập tức, tránh cảm giác "tự chạy"
+        // Áp dụng ngay lập tức, không cần transition
         svg.call(zoom.transform, transform);
     }
 }

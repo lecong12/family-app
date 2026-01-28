@@ -571,6 +571,8 @@ body {
     fill: var(--gray-600);
 }
 
+/* Hiệu ứng khi hover */
+
 /* ===== TREE CONTROLS ===== */
 .tree-section {
     background: white;
