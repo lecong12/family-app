@@ -134,11 +134,7 @@ function renderTreeTab() {
     if (searchInput && !document.getElementById('tree-gen-limit')) {
         const select = document.createElement('select');
         select.id = 'tree-gen-limit';
-        select.style.padding = '8px';
-        select.style.marginLeft = '10px';
-        select.style.borderRadius = '6px';
-        select.style.border = '1px solid #ccc';
-        select.style.cursor = 'pointer';
+        select.className = 'tree-select'; // Sử dụng class CSS thay vì inline style
         
         const options = [
             {val: 5, text: 'Hiển thị: 5 Đời đầu'},
@@ -157,6 +153,25 @@ function renderTreeTab() {
         select.onchange = () => renderTreeTab(); // Vẽ lại khi thay đổi
         
         searchInput.parentNode.insertBefore(select, searchInput.nextSibling);
+
+        // --- BỔ SUNG: Nút Đặt lại (Reset) ---
+        const controls = document.querySelector('.tree-controls');
+        if (controls && !document.getElementById('btn-reset-tree')) {
+            const resetBtn = document.createElement('button');
+            resetBtn.id = 'btn-reset-tree';
+            resetBtn.className = 'btn-control';
+            resetBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Đặt lại';
+            resetBtn.onclick = () => {
+                const select = document.getElementById('tree-gen-limit');
+                if (select) select.value = 5; // Reset về 5 đời
+                renderTreeTab(); // Vẽ lại và tự động zoom chuẩn
+            };
+            
+            // Chèn vào trước nút "Xem toàn bộ"
+            const viewAllBtn = controls.querySelector('button[onclick*="zoomToNode"]');
+            if (viewAllBtn) controls.insertBefore(resetBtn, viewAllBtn);
+            else controls.appendChild(resetBtn);
+        }
     }
 
     // 2. Lọc dữ liệu và Vẽ cây

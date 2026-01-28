@@ -276,10 +276,30 @@ function drawMemberBox(group, member, x, y, w, h) {
         .style("cursor", "pointer")
         .on("click", (event) => {
             event.stopPropagation();
-            if (window.openEditModal) {
-                window.openEditModal(member.id);
-            }
+            // LOGIC MỚI: Click để zoom/focus vào thành viên
+            // Zoom 1.2x là mức vừa đủ để xem rõ người đó và các đời xung quanh
+            zoomToNode(member.id, 1.2);
+        })
+        .on("dblclick", (event) => {
+            event.stopPropagation();
+            // Chuyển tính năng Sửa sang Double Click
+            if (window.openEditModal) window.openEditModal(member.id);
         });
+
+    // Thêm nút Sửa nhỏ (hiện khi hover) để người dùng dễ nhận biết
+    const editBtn = g.append("g")
+        .attr("class", "edit-btn")
+        .attr("transform", `translate(${w - 22}, -10)`) // Góc trên phải
+        .style("opacity", 0)
+        .on("click", (e) => {
+            e.stopPropagation();
+            if (window.openEditModal) window.openEditModal(member.id);
+        });
+    editBtn.append("circle").attr("r", 10).attr("cx", 10).attr("cy", 10).attr("fill", "white").attr("stroke", "#ccc");
+    editBtn.append("text").text("✎").attr("x", 10).attr("y", 14).attr("text-anchor", "middle").attr("font-size", "12px").attr("fill", "#333");
+
+    g.on("mouseenter", function() { d3.select(this).select(".edit-btn").transition().duration(200).style("opacity", 1); })
+     .on("mouseleave", function() { d3.select(this).select(".edit-btn").transition().duration(200).style("opacity", 0); });
 
     const isSpouse = !!member.pid && !member.fid && !member.mid;
     const isDeceased = (member.death_date && String(member.death_date).trim() !== '' && String(member.death_date).trim() !== '0') || member.is_live === 0 || member.is_live === '0' || member.is_live === false || member.is_alive === 0 || member.is_alive === '0' || member.is_alive === false;
@@ -343,31 +363,35 @@ function zoomToNode(memberId, customScale = 0.7) {
             svg.transition().duration(750).call(zoom.transform, transform);
         }
     } else {
-        // --- Trường hợp 2: Zoom để xem toàn bộ cây (khi tải lần đầu) ---
+        // --- Trường hợp 2: Zoom mặc định, CĂN GIỮA THỦY TỔ ---
         const bounds = g.node().getBBox();
         const width = bounds.width;
         const height = bounds.height;
 
         if (width === 0 || height === 0) return; // Cây rỗng, không cần zoom
 
-        const midX = bounds.x + width / 2;
-        const midY = bounds.y + height / 2;
+        // 1. Tìm node thủy tổ (đời 1) để lấy làm mốc căn giữa
+        const ancestorNode = globalRootD3.descendants().find(d => d.data.data && d.data.data.generation == 1);
 
+        // 2. Xác định tọa độ X cần căn giữa.
+        // Nếu tìm thấy thủy tổ, dùng tọa độ X của họ. Nếu không, dùng tọa độ giữa của cả cây làm dự phòng.
+        const centerX = ancestorNode ? (ancestorNode.x + treeOffsetX) : (bounds.x + width / 2);
+
+        // 3. Giữ nguyên logic scale đã có để đảm bảo độ phóng to hợp lý
         let scale = Math.min(fullWidth / width, fullHeight / height) * 0.9;
         
         // --- CẢI TIẾN: Giới hạn zoom tối thiểu để nhìn rõ chữ ---
-        if (scale < 0.6) scale = 0.6; // Không cho phép nhỏ hơn 0.6x
+        if (scale < 0.8) scale = 0.8; // Đặt tối thiểu 0.8 để chữ luôn rõ ràng (chấp nhận có thanh cuộn nếu cây quá to)
         if (scale > 1.2) scale = 1.2; // Không cho phép quá to lúc đầu
 
-        // Tính toán vị trí dịch chuyển (Translate)
-        // Nếu cây cao hơn khung hình (do scale lớn), căn đỉnh cây lên trên (padding 40px)
-        // Nếu cây nhỏ hơn khung hình, căn giữa theo chiều dọc
-        const translateY = (height * scale < fullHeight) 
-            ? fullHeight / 2 - midY * scale 
-            : 40 - bounds.y * scale;
+        // 4. Tính toán vị trí dịch chuyển (Translate)
+        // - TranslateX: Đưa "centerX" của thủy tổ vào giữa màn hình (fullWidth / 2)
+        // - TranslateY: Luôn đẩy đỉnh của cây lên gần trên cùng (cách 40px) để thấy rõ các đời đầu
+        const translateX = fullWidth / 2 - centerX * scale;
+        const translateY = 40 - bounds.y * scale;
 
         const transform = d3.zoomIdentity
-            .translate(fullWidth / 2 - midX * scale, translateY)
+            .translate(translateX, translateY)
             .scale(scale);
         
         // Áp dụng ngay lập tức, không cần transition
