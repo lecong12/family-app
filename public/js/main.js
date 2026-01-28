@@ -7,6 +7,13 @@ let chartInstances = {};
 // Biến trạng thái để biết đang Thêm hay Sửa
 let currentEditingId = null;
 
+// Biến quản lý phân trang
+let pagination = {
+    currentPage: 1,
+    itemsPerPage: 12, // Số lượng thẻ trên mỗi trang
+    data: []
+};
+
 // 1. Khởi tạo khi trang tải xong
 document.addEventListener('DOMContentLoaded', () => {
     const token = localStorage.getItem('token');
@@ -211,6 +218,35 @@ function logout() {
 
 // Hàm render tab Thành viên (Bổ sung hàm bị thiếu)
 function renderMembersTab() {
+    // --- BỔ SUNG: Khôi phục các nút chức năng trong Header của Tab Thành viên ---
+    const header = document.querySelector('#members-tab .members-header');
+    // Kiểm tra xem đã có nút chưa để tránh tạo trùng
+    if (header && !document.getElementById('btn-adv-search')) {
+        const addBtn = header.querySelector('.btn-add'); // Nút Thêm thành viên (đã có sẵn)
+        
+        // 1. Nút Tìm nâng cao
+        const advBtn = document.createElement('button');
+        advBtn.id = 'btn-adv-search';
+        advBtn.innerHTML = '<i class="fas fa-filter"></i> <span class="btn-text">Tìm nâng cao</span>';
+        advBtn.title = 'Tìm kiếm nâng cao';
+        advBtn.className = 'btn-control';
+        advBtn.style.padding = '0 15px'; // Padding nhỏ gọn
+        advBtn.onclick = openAdvancedSearchModal;
+        
+        // 2. Nút Tải xuống PDF
+        const pdfBtn = document.createElement('button');
+        pdfBtn.innerHTML = '<i class="fas fa-file-pdf"></i> <span class="btn-text">Xuất PDF</span>';
+        pdfBtn.title = 'Xuất danh sách PDF';
+        pdfBtn.className = 'btn-control';
+        pdfBtn.style.padding = '0 15px';
+        pdfBtn.style.color = '#ef4444';
+        pdfBtn.onclick = downloadMemberPDF;
+
+        // Chèn vào trước nút Thêm thành viên
+        header.insertBefore(advBtn, addBtn);
+        header.insertBefore(pdfBtn, addBtn);
+    }
+
     renderMemberList(allMembers);
 }
 
@@ -278,12 +314,27 @@ function renderMemberList(members) {
         return 0;
     });
 
+    // Cập nhật dữ liệu phân trang và render trang đầu tiên
+    pagination.data = sortedMembers;
+    pagination.currentPage = 1;
+    renderPagination();
+}
+
+function renderPagination() {
+    const container = document.getElementById('membersGrid');
+    if (!container) return;
+    container.innerHTML = '';
+
     // Đảm bảo container hiển thị dạng Grid
     container.style.display = 'grid';
     container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(300px, 1fr))';
-    container.style.gap = '24px';
+    container.style.gap = '12px'; // Giảm khoảng cách từ 24px xuống 12px
 
-    sortedMembers.forEach(m => {
+    const start = (pagination.currentPage - 1) * pagination.itemsPerPage;
+    const end = start + pagination.itemsPerPage;
+    const pageMembers = pagination.data.slice(start, end);
+
+    pageMembers.forEach(m => {
         // Logic xác định sinh tử (đồng bộ với Dashboard và Cây gia phả)
         const hasDeathDate = m.death_date && String(m.death_date).trim() !== '' && String(m.death_date).trim() !== '0';
         const isDeadByFlag = m.is_live === 0 || m.is_live === '0' || m.is_live === false || m.is_alive === 0 || m.is_alive === '0' || m.is_alive === false;
@@ -292,10 +343,10 @@ function renderMemberList(members) {
         // Logic Dâu/Rể (nếu có pid mà không có fid/mid)
         const isInLaw = !!m.pid && !m.fid && !m.mid;
 
-        // Tìm tên vợ/chồng
+        // Tìm tên vợ/chồng (Sử dụng allMembers để tìm chính xác ngay cả khi bị lọc)
         let spouseName = '';
         if (m.pid) {
-            const spouse = members.find(s => String(s.id) === String(m.pid));
+            const spouse = allMembers.find(s => String(s.id) === String(m.pid));
             if (spouse) spouseName = spouse.full_name;
         }
 
@@ -367,6 +418,62 @@ function renderMemberList(members) {
         
         container.appendChild(card);
     });
+
+    renderPaginationControls(container);
+}
+
+function renderPaginationControls(container) {
+    const totalPages = Math.ceil(pagination.data.length / pagination.itemsPerPage);
+    if (totalPages <= 1) return;
+
+    const controls = document.createElement('div');
+    controls.className = 'pagination-controls';
+    controls.style.gridColumn = '1 / -1';
+    controls.style.display = 'flex';
+    controls.style.justifyContent = 'center';
+    controls.style.alignItems = 'center';
+    controls.style.gap = '15px';
+    controls.style.marginTop = '20px';
+    controls.style.padding = '20px 0';
+
+    const prevBtn = document.createElement('button');
+    prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i> Trước';
+    prevBtn.className = 'btn-control';
+    prevBtn.style.width = 'auto';
+    prevBtn.disabled = pagination.currentPage === 1;
+    if (pagination.currentPage === 1) prevBtn.style.opacity = '0.5';
+    prevBtn.onclick = () => changePage(pagination.currentPage - 1);
+    
+    const info = document.createElement('span');
+    info.innerText = `Trang ${pagination.currentPage} / ${totalPages}`;
+    info.style.fontWeight = '600';
+    info.style.color = '#4b5563';
+
+    const nextBtn = document.createElement('button');
+    nextBtn.innerHTML = 'Sau <i class="fas fa-chevron-right"></i>';
+    nextBtn.className = 'btn-control';
+    nextBtn.style.width = 'auto';
+    nextBtn.disabled = pagination.currentPage === totalPages;
+    if (pagination.currentPage === totalPages) nextBtn.style.opacity = '0.5';
+    nextBtn.onclick = () => changePage(pagination.currentPage + 1);
+
+    controls.appendChild(prevBtn);
+    controls.appendChild(info);
+    controls.appendChild(nextBtn);
+
+    container.appendChild(controls);
+}
+
+function changePage(page) {
+    const totalPages = Math.ceil(pagination.data.length / pagination.itemsPerPage);
+    if (page < 1 || page > totalPages) return;
+    pagination.currentPage = page;
+    renderPagination();
+    const grid = document.getElementById('membersGrid');
+    if (grid) {
+        const y = grid.getBoundingClientRect().top + window.pageYOffset - 100;
+        window.scrollTo({top: y, behavior: 'smooth'});
+    }
 }
 
 // 5. Các hàm Modal (Tách riêng Thêm/Sửa và Import)
@@ -892,8 +999,6 @@ async function deletePost(id) {
 }
 
 function renderSettingsTab() {
-// --- Chức năng Import File từ Máy tính ---
-
     const wrapper = document.getElementById('settings-content-wrapper');
     if (!wrapper) return;
     
@@ -901,51 +1006,81 @@ function renderSettingsTab() {
     wrapper.classList.remove('settings-grid');
     
     wrapper.innerHTML = `
-        <div class="settings-grid">
-            <div class="settings-card" onclick="syncGoogleSheets()">
-                <i class="fas fa-cloud-download-alt" style="color: #3498db;"></i>
-                <h3>Đồng bộ Google Sheets</h3>
-                <p>Xóa dữ liệu cũ và nạp lại từ Google Sheets.</p>
-            </div>
-            <div class="settings-card" onclick="openImportModal()">
-                <i class="fas fa-file-csv" style="color: #27ae60;"></i>
-                <h3>Nhập từ File CSV</h3>
-                <p>Thêm hoặc cập nhật thành viên từ file CSV.</p>
-            </div>
-            <div class="settings-card" onclick="exportToCSV()">
-                <i class="fas fa-file-export" style="color: #f39c12;"></i>
-                <h3>Xuất ra File CSV</h3>
-                <p>Tải xuống toàn bộ dữ liệu gia phả hiện tại.</p>
-            </div>
-            <div class="settings-card" onclick="alert('Gia Phả Online v1.0\\n\\nỨng dụng quản lý gia phả dòng họ.\\nPhát triển bởi: Admin\\nLiên hệ: admin@giapha.com')">
-                <i class="fas fa-info-circle" style="color: #8e44ad;"></i>
-                <h3>Thông tin ứng dụng</h3>
-                <p>Phiên bản, tác giả và thông tin liên hệ.</p>
+        <!-- PHẦN TRÊN: CÔNG CỤ & THÔNG TIN (NGANG - 4 CỘT) -->
+        <div class="settings-section">
+            <h3 class="settings-section-title">Công cụ & Thông tin</h3>
+            <div class="settings-row">
+                <div class="settings-card" onclick="syncGoogleSheets()">
+                    <i class="fas fa-cloud-download-alt" style="color: #3498db;"></i>
+                    <h3>Đồng bộ Sheets</h3>
+                    <p>Nạp lại từ Google Sheets.</p>
+                </div>
+                <div class="settings-card" onclick="openImportModal()">
+                    <i class="fas fa-file-csv" style="color: #27ae60;"></i>
+                    <h3>Nhập File CSV</h3>
+                    <p>Thêm/Cập nhật từ CSV.</p>
+                </div>
+                <div class="settings-card" onclick="exportToCSV()">
+                    <i class="fas fa-file-export" style="color: #f39c12;"></i>
+                    <h3>Xuất File CSV</h3>
+                    <p>Tải dữ liệu hiện tại.</p>
+                </div>
+                <div class="settings-card" onclick="alert('Gia Phả Họ Lê Công v2.5\\n\\nỨng dụng quản lý gia phả dòng họ.\\nPhát triển bởi: Lê Công Kỷ\\nLiên hệ: lecong12@giapha.com')">
+                    <i class="fas fa-info-circle" style="color: #8e44ad;"></i>
+                    <h3>Thông tin App</h3>
+                    <p>Phiên bản V 2.5.</p>
+                </div>
             </div>
         </div>
 
-        <div style="margin-top: 40px; border-top: 1px solid #e5e7eb; padding-top: 24px;">
-            <h3 style="margin-bottom: 16px; color: #1f2937; font-size: 18px;"><i class="fas fa-book-reader" style="color: #f59e0b; margin-right: 8px;"></i> Hướng dẫn sử dụng</h3>
-            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; color: #4b5563; line-height: 1.6;">
-                <p style="margin-bottom: 10px;"><strong>1. Cây Gia Phả:</strong></p>
-                <ul style="margin-left: 20px; margin-bottom: 15px;">
-                    <li>Sử dụng chuột để kéo và di chuyển cây. Lăn chuột để phóng to/thu nhỏ.</li>
-                    <li>Nhấn vào thẻ thành viên để xem chi tiết và chỉnh sửa.</li>
-                    <li>Sử dụng thanh tìm kiếm để định vị nhanh thành viên trên cây.</li>
-                </ul>
+        <!-- PHẦN DƯỚI: HƯỚNG DẪN CHI TIẾT (DỌC) -->
+        <div class="settings-section" style="margin-top: 40px; border-top: 1px solid var(--gray-200); padding-top: 30px;">
+            <h3 class="settings-section-title">Hướng dẫn sử dụng chi tiết</h3>
+            <div class="settings-col">
                 
-                <p style="margin-bottom: 10px;"><strong>2. Quản lý Thành viên:</strong></p>
-                <ul style="margin-left: 20px; margin-bottom: 15px;">
-                    <li>Vào tab "Thành viên" để xem danh sách dạng lưới.</li>
-                    <li>Sử dụng "Tìm nâng cao" để lọc theo nhiều tiêu chí (Đời, Phái, Năm sinh...).</li>
-                    <li>Nhấn "Thêm thành viên" để nhập liệu thủ công.</li>
-                </ul>
+                <div class="settings-card guide-card">
+                    <div class="guide-header">
+                        <i class="fas fa-sitemap"></i>
+                        <h3>1. Cây Gia Phả</h3>
+                    </div>
+                    <div class="guide-body">
+                        <ul>
+                            <li><strong>Di chuyển & Phóng to:</strong> Nhấn giữ chuột trái để kéo cây. Lăn chuột để phóng to/thu nhỏ.</li>
+                            <li><strong>Xem thông tin:</strong> Nhấn chuột trái (Click) vào thẻ thành viên.</li>
+                            <li><strong>Chỉnh sửa:</strong> Nhấn đúp chuột (Double Click) vào thẻ thành viên.</li>
+                            <li><strong>Công cụ:</strong> Tìm kiếm, chọn số đời, tải cây PDF.</li>
+                        </ul>
+                    </div>
+                </div>
 
-                <p style="margin-bottom: 10px;"><strong>3. Nhập/Xuất dữ liệu:</strong></p>
-                <ul style="margin-left: 20px;">
-                    <li>Hỗ trợ nhập liệu từ file CSV hoặc đồng bộ trực tiếp từ Google Sheets.</li>
-                    <li>Có thể xuất dữ liệu ra file CSV hoặc tải cây gia phả dưới dạng PDF để in ấn.</li>
-                </ul>
+                <div class="settings-card guide-card">
+                    <div class="guide-header">
+                        <i class="fas fa-users"></i>
+                        <h3>2. Quản lý Thành viên</h3>
+                    </div>
+                    <div class="guide-body">
+                        <ul>
+                            <li><strong>Danh sách:</strong> Xem dạng lưới, tự động phân trang.</li>
+                            <li><strong>Thêm/Sửa:</strong> Nhập liệu thủ công hoặc sửa thông tin chi tiết.</li>
+                            <li><strong>Tìm kiếm:</strong> Dùng "Tìm nâng cao" để lọc theo nhiều tiêu chí.</li>
+                            <li><strong>Xuất PDF:</strong> Tải danh sách thành viên đang hiển thị.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="settings-card guide-card">
+                    <div class="guide-header">
+                        <i class="fas fa-database"></i>
+                        <h3>3. Dữ liệu & Hệ thống</h3>
+                    </div>
+                    <div class="guide-body">
+                        <ul>
+                            <li><strong>Đồng bộ Sheets:</strong> Nạp lại dữ liệu từ Google Sheets.</li>
+                            <li><strong>Nhập/Xuất CSV:</strong> Sao lưu và phục hồi dữ liệu qua file Excel/CSV.</li>
+                        </ul>
+                    </div>
+                </div>
+
             </div>
         </div>
     `;
