@@ -223,6 +223,23 @@ function renderMembersTab() {
     // Kiểm tra xem đã có nút chưa để tránh tạo trùng
     if (header && !document.getElementById('btn-adv-search')) {
         const addBtn = header.querySelector('.btn-add'); // Nút Thêm thành viên (đã có sẵn)
+        const searchBar = header.querySelector('.search-bar');
+
+        // --- KHÔI PHỤC: Dropdown lọc Huyết thống / Dâu rể ---
+        const select = document.createElement('select');
+        select.id = 'member-filter-type';
+        select.className = 'tree-select'; // Dùng chung class với cây gia phả cho đồng bộ
+        select.style.height = '48px'; // Chỉnh lại chiều cao cho khớp
+        select.style.minWidth = '180px';
+        
+        select.innerHTML = `
+            <option value="all">Tất cả thành viên</option>
+            <option value="bloodline">🩸 Huyết thống</option>
+            <option value="inlaw">💍 Dâu/Rể</option>
+        `;
+        
+        // Chèn vào sau ô tìm kiếm
+        if (searchBar) searchBar.parentNode.insertBefore(select, searchBar.nextSibling);
         
         // 1. Nút Tìm nâng cao
         const advBtn = document.createElement('button');
@@ -247,7 +264,34 @@ function renderMembersTab() {
         header.insertBefore(pdfBtn, addBtn);
     }
 
-    renderMemberList(allMembers);
+    // --- CẬP NHẬT: Hàm xử lý lọc kết hợp (Tên + Loại) ---
+    const filterMembers = () => {
+        const searchInput = document.getElementById('member-search-input');
+        const filterSelect = document.getElementById('member-filter-type');
+        
+        const query = searchInput ? searchInput.value.toLowerCase() : '';
+        const filterType = filterSelect ? filterSelect.value : 'all';
+        
+        const filteredMembers = allMembers.filter(m => {
+            const matchesName = m.full_name.toLowerCase().includes(query);
+            
+            const isInLaw = !!m.pid && !m.fid && !m.mid;
+            let matchesType = true;
+            if (filterType === 'bloodline') matchesType = !isInLaw;
+            else if (filterType === 'inlaw') matchesType = isInLaw;
+            
+            return matchesName && matchesType;
+        });
+        renderMemberList(filteredMembers);
+    };
+
+    // Gắn sự kiện và render lần đầu
+    const searchInput = document.getElementById('member-search-input');
+    if (searchInput) searchInput.onkeyup = filterMembers;
+    const filterSelect = document.getElementById('member-filter-type');
+    if (filterSelect) filterSelect.onchange = filterMembers;
+
+    filterMembers(); // Render lần đầu với bộ lọc mặc định
 }
 
 // 3. Render danh sách thành viên (Sidebar)
@@ -385,7 +429,7 @@ function renderPagination() {
         card.innerHTML = `
             <div class="member-card-header">
                 <div class="member-card-avatar" style="background-color: ${avatarColor};">
-                    ${avatarLetter}
+                    
                 </div>
                 <div class="member-card-info">
                     <h4 class="member-card-name">${m.full_name}</h4>
@@ -1015,17 +1059,20 @@ function renderSettingsTab() {
                     <h3>Đồng bộ Sheets</h3>
                     <p>Nạp lại từ Google Sheets.</p>
                 </div>
-                <div class="settings-card" onclick="openImportModal()">
+                <div class="settings-card" onclick="openImportModal()" style="position: relative;">
                     <i class="fas fa-file-csv" style="color: #27ae60;"></i>
                     <h3>Nhập File CSV</h3>
                     <p>Thêm/Cập nhật từ CSV.</p>
+                    <button onclick="event.stopPropagation(); downloadSampleCSV()" class="btn-sample-download" title="Tải file mẫu cấu trúc chuẩn">
+                        <i class="fas fa-file-download"></i> Tải file mẫu
+                    </button>
                 </div>
                 <div class="settings-card" onclick="exportToCSV()">
                     <i class="fas fa-file-export" style="color: #f39c12;"></i>
                     <h3>Xuất File CSV</h3>
                     <p>Tải dữ liệu hiện tại.</p>
                 </div>
-                <div class="settings-card" onclick="alert('Gia Phả Họ Lê Công v2.5\\n\\nỨng dụng quản lý gia phả dòng họ.\\nPhát triển bởi: Lê Công Kỷ\\nLiên hệ: lecong12@giapha.com')">
+                <div class="settings-card" onclick="alert('Gia Phả Họ Lê Công v2.5\\n\\nỨng dụng quản lý gia phả dòng họ.\\nPhát triển bởi: Lê Công Kỷ\\nLiên hệ: lecong12@gmail.com')">
                     <i class="fas fa-info-circle" style="color: #8e44ad;"></i>
                     <h3>Thông tin App</h3>
                     <p>Phiên bản V 2.5.</p>
@@ -1045,10 +1092,16 @@ function renderSettingsTab() {
                     </div>
                     <div class="guide-body">
                         <ul>
-                            <li><strong>Di chuyển & Phóng to:</strong> Nhấn giữ chuột trái để kéo cây. Lăn chuột để phóng to/thu nhỏ.</li>
-                            <li><strong>Xem thông tin:</strong> Nhấn chuột trái (Click) vào thẻ thành viên.</li>
-                            <li><strong>Chỉnh sửa:</strong> Nhấn đúp chuột (Double Click) vào thẻ thành viên.</li>
-                            <li><strong>Công cụ:</strong> Tìm kiếm, chọn số đời, tải cây PDF.</li>
+                            <li><strong>Hiển thị:</strong> Cây gia phả được vẽ tự động dựa trên mối quan hệ Cha-Con và Vợ-Chồng.
+                                <ul>
+                                    <li><span style="color:#3b82f6">🟦 Nam</span> / <span style="color:#ec4899">🟥 Nữ</span>: Phân biệt bằng màu sắc viền và nền.</li>
+                                    <li><span style="color:#9ca3af">⬜ Xám</span>: Thành viên đã mất.</li>
+                                    <li><strong>Nét đứt:</strong> Biểu thị quan hệ Dâu/Rể (không cùng huyết thống).</li>
+                                </ul>
+                            </li>
+                            <li><strong>Di chuyển & Zoom:</strong> Nhấn giữ chuột trái vào vùng trống để kéo. Lăn chuột để phóng to/thu nhỏ.</li>
+                            <li><strong>Xem & Sửa:</strong> Click chuột trái vào thẻ để xem. <strong>Double click</strong> (nhấn đúp) để mở cửa sổ chỉnh sửa thông tin.</li>
+                            <li><strong>Công cụ:</strong> Thanh công cụ phía trên cho phép tìm kiếm nhanh, lọc số đời hiển thị và tải cây về dạng ảnh PDF.</li>
                         </ul>
                     </div>
                 </div>
@@ -1060,10 +1113,9 @@ function renderSettingsTab() {
                     </div>
                     <div class="guide-body">
                         <ul>
-                            <li><strong>Danh sách:</strong> Xem dạng lưới, tự động phân trang.</li>
-                            <li><strong>Thêm/Sửa:</strong> Nhập liệu thủ công hoặc sửa thông tin chi tiết.</li>
-                            <li><strong>Tìm kiếm:</strong> Dùng "Tìm nâng cao" để lọc theo nhiều tiêu chí.</li>
-                            <li><strong>Xuất PDF:</strong> Tải danh sách thành viên đang hiển thị.</li>
+                            <li><strong>Thêm thành viên:</strong> Nhấn nút "Thêm Thành viên" ở góc phải. Nhập đầy đủ Họ tên, Giới tính, và liên kết Cha/Mẹ/Vợ/Chồng (nếu có).</li>
+                            <li><strong>Tìm kiếm nâng cao:</strong> Sử dụng bộ lọc để tìm theo Đời, Phái, Năm sinh, Nghề nghiệp... Kết quả có thể xuất ra file PDF.</li>
+                            <li><strong>Sửa/Xóa:</strong> Có thể sửa hoặc xóa thành viên bằng cách click vào tên họ trong danh sách. <em>Lưu ý: Xóa thành viên sẽ xóa cả các mối quan hệ liên quan.</em></li>
                         </ul>
                     </div>
                 </div>
@@ -1075,8 +1127,9 @@ function renderSettingsTab() {
                     </div>
                     <div class="guide-body">
                         <ul>
-                            <li><strong>Đồng bộ Sheets:</strong> Nạp lại dữ liệu từ Google Sheets.</li>
-                            <li><strong>Nhập/Xuất CSV:</strong> Sao lưu và phục hồi dữ liệu qua file Excel/CSV.</li>
+                            <li><strong>Nhập từ CSV:</strong> Dùng để thêm hàng loạt thành viên. Hãy tải <strong>File mẫu</strong> ở mục trên để biết cấu trúc cột (id, full_name, fid, mid, pid...).</li>
+                            <li><strong>Xuất ra CSV:</strong> Sao lưu toàn bộ dữ liệu hiện tại về máy tính để lưu trữ hoặc chỉnh sửa trên Excel.</li>
+                            <li><strong>Đồng bộ Google Sheets:</strong> Tính năng nâng cao dành cho Quản trị viên để nạp dữ liệu từ nguồn online.</li>
                         </ul>
                     </div>
                 </div>
@@ -1233,6 +1286,38 @@ async function exportToCSV() {
             btn.style.pointerEvents = 'auto';
         }
     }
+}
+
+// Hàm tải file CSV mẫu
+function downloadSampleCSV() {
+    const headers = [
+        'id', 'full_name', 'gender', 'pid', 'fid', 'mid', 
+        'generation', 'order', 'branch', 
+        'birth_date', 'death_date', 'address', 'job', 'is_live'
+    ];
+    
+    // Dữ liệu mẫu demo
+    const demoData = [
+        ['M001', 'Lê Công Tổ', 'Nam', '', '', '', '1', '1', 'Gốc', '1900', '1980', 'Quê quán', 'Nông dân', '0'],
+        ['S001', 'Nguyễn Thị Bà', 'Nữ', 'M001', '', '', '1', '1', 'Gốc', '1905', '1985', 'Quê quán', 'Nội trợ', '0'],
+        ['M002', 'Lê Công Con', 'Nam', '', 'M001', 'S001', '2', '1', '1', '1930', '', 'Hà Nội', 'Giáo viên', '1'],
+        ['M003', 'Lê Thị Gái', 'Nữ', '', 'M001', 'S001', '2', '2', '1', '1935', '', 'TP.HCM', 'Bác sĩ', '1']
+    ];
+
+    let csvContent = headers.join(',') + '\n';
+    demoData.forEach(row => {
+        csvContent += row.join(',') + '\n';
+    });
+
+    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "mau_nhap_lieu_giapha.csv");
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 function handleTreeSearch(input, resultsContainer) {
