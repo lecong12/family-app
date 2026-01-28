@@ -1,6 +1,7 @@
 
 // Biến toàn cục lưu danh sách thành viên
 let allMembers = [];
+let currentDisplayedMembers = []; // Biến lưu danh sách đang hiển thị để xuất PDF
 let chartInstances = {};
 
 // Biến trạng thái để biết đang Thêm hay Sửa
@@ -149,21 +150,22 @@ function renderTreeTab() {
             select.appendChild(o);
         });
         
-        select.value = 5; // Mặc định 5 đời
+        select.value = 0; // Mặc định hiển thị tất cả
         select.onchange = () => renderTreeTab(); // Vẽ lại khi thay đổi
         
         searchInput.parentNode.insertBefore(select, searchInput.nextSibling);
 
         // --- BỔ SUNG: Nút Đặt lại (Reset) ---
         const controls = document.querySelector('.tree-controls');
-        if (controls && !document.getElementById('btn-reset-tree')) {
+        if (controls) {
+            if (!document.getElementById('btn-reset-tree')) {
             const resetBtn = document.createElement('button');
             resetBtn.id = 'btn-reset-tree';
             resetBtn.className = 'btn-control';
             resetBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Đặt lại';
             resetBtn.onclick = () => {
                 const select = document.getElementById('tree-gen-limit');
-                if (select) select.value = 5; // Reset về 5 đời
+                if (select) select.value = 0; // Reset về Tất cả
                 renderTreeTab(); // Vẽ lại và tự động zoom chuẩn
             };
             
@@ -171,95 +173,33 @@ function renderTreeTab() {
             const viewAllBtn = controls.querySelector('button[onclick*="zoomToNode"]');
             if (viewAllBtn) controls.insertBefore(resetBtn, viewAllBtn);
             else controls.appendChild(resetBtn);
+            }
+
+            // --- BỔ SUNG: Nút Tải xuống (Download) ---
+            if (!document.getElementById('btn-download-tree')) {
+                const downloadBtn = document.createElement('button');
+                downloadBtn.id = 'btn-download-tree';
+                downloadBtn.className = 'btn-control';
+                downloadBtn.innerHTML = '<i class="fas fa-file-download"></i> Tải cây';
+                downloadBtn.onclick = downloadTreePDF;
+                controls.appendChild(downloadBtn);
+            }
         }
     }
 
     // 2. Lọc dữ liệu và Vẽ cây
-    const limit = document.getElementById('tree-gen-limit') ? parseInt(document.getElementById('tree-gen-limit').value) : 5;
+    const limit = document.getElementById('tree-gen-limit') ? parseInt(document.getElementById('tree-gen-limit').value) : 0;
     const dataToDraw = (limit > 0) ? allMembers.filter(m => (parseInt(m.generation) || 999) <= limit) : allMembers;
 
     if (typeof drawTree === 'function') {
         drawTree(dataToDraw);
     }
-    // Cập nhật ô tìm kiếm của cây
+
+    // 3. Cập nhật ô tìm kiếm của cây
     const searchResults = document.getElementById('tree-search-results');
     if (searchInput) {
         searchInput.onkeyup = () => handleTreeSearch(searchInput, searchResults);
     }
-}
-
-function renderMembersTab() {
-    // 1. Tạo dropdown lọc nếu chưa có
-    const searchInput = document.getElementById('member-search-input');
-    if (searchInput) {
-        const searchBar = searchInput.closest('.search-bar');
-        const header = searchBar ? searchBar.parentElement : null;
-        
-        if (header && !document.getElementById('member-filter-type')) {
-            const select = document.createElement('select');
-            select.id = 'member-filter-type';
-            // Style trực tiếp để khớp với giao diện
-            select.style.padding = '12px 16px';
-            select.style.border = '2px solid #e5e7eb';
-            select.style.borderRadius = '12px';
-            select.style.fontSize = '15px';
-            select.style.outline = 'none';
-            select.style.cursor = 'pointer';
-            select.style.minWidth = '180px';
-            select.style.marginRight = '10px';
-            
-            select.innerHTML = `
-                <option value="all">Tất cả thành viên</option>
-                <option value="bloodline">🩸 Huyết thống</option>
-                <option value="inlaw">💍 Dâu/Rể</option>
-            `;
-            
-            // Chèn vào trước ô tìm kiếm
-            header.insertBefore(select, searchBar);
-
-            // --- BỔ SUNG: Nút Tìm kiếm nâng cao ---
-            const advBtn = document.createElement('button');
-            advBtn.innerHTML = '<i class="fas fa-filter"></i> Tìm nâng cao';
-            advBtn.className = 'btn-primary'; // Sử dụng class có sẵn hoặc style trực tiếp
-            advBtn.style.marginLeft = '10px';
-            advBtn.style.padding = '10px 15px';
-            advBtn.style.borderRadius = '8px';
-            advBtn.style.cursor = 'pointer';
-            advBtn.onclick = openAdvancedSearchModal;
-            
-            // Chèn vào sau search bar (nằm giữa search bar và nút Thêm thành viên)
-            header.insertBefore(advBtn, searchBar.nextSibling);
-        }
-    }
-
-    // 2. Hàm xử lý lọc kết hợp (Tên + Loại)
-    const filterMembers = () => {
-        const searchInput = document.getElementById('member-search-input');
-        const filterSelect = document.getElementById('member-filter-type');
-        
-        const query = searchInput ? searchInput.value.toLowerCase() : '';
-        const filterType = filterSelect ? filterSelect.value : 'all';
-        
-        const filteredMembers = allMembers.filter(m => {
-            const matchesName = m.full_name.toLowerCase().includes(query);
-            
-            const isInLaw = !!m.pid && !m.fid && !m.mid;
-            let matchesType = true;
-            if (filterType === 'bloodline') matchesType = !isInLaw;
-            else if (filterType === 'inlaw') matchesType = isInLaw;
-            
-            return matchesName && matchesType;
-        });
-        renderMemberList(filteredMembers);
-    };
-
-    // 3. Gắn sự kiện
-    if (searchInput) searchInput.onkeyup = filterMembers;
-    const filterSelect = document.getElementById('member-filter-type');
-    if (filterSelect) filterSelect.onchange = filterMembers;
-
-    // 4. Render lần đầu
-    filterMembers();
 }
 
 // Hàm Đăng xuất: Xóa Token và Xóa Dữ liệu Cache
@@ -269,11 +209,17 @@ function logout() {
     window.location.href = '/login.html';
 }
 
+// Hàm render tab Thành viên (Bổ sung hàm bị thiếu)
+function renderMembersTab() {
+    renderMemberList(allMembers);
+}
+
 // 3. Render danh sách thành viên (Sidebar)
 function renderMemberList(members) {
     const container = document.getElementById('membersGrid');
     if (!container) return;
     
+    currentDisplayedMembers = members; // Cập nhật danh sách hiện tại để dùng cho xuất PDF
     container.innerHTML = ''; // Xóa danh sách cũ trước khi render lại
     
     // --- Logic sắp xếp nâng cao theo dòng huyết thống ---
@@ -950,21 +896,57 @@ function renderSettingsTab() {
 
     const wrapper = document.getElementById('settings-content-wrapper');
     if (!wrapper) return;
+    
+    // Xóa class grid mặc định của wrapper để có thể bố trí tự do (Grid + Hướng dẫn)
+    wrapper.classList.remove('settings-grid');
+    
     wrapper.innerHTML = `
-        <div class="settings-card" onclick="syncGoogleSheets()">
-            <i class="fas fa-cloud-download-alt" style="color: #3498db;"></i>
-            <h3>Đồng bộ Google Sheets</h3>
-            <p>Xóa dữ liệu cũ và nạp lại từ Google Sheets.</p>
+        <div class="settings-grid">
+            <div class="settings-card" onclick="syncGoogleSheets()">
+                <i class="fas fa-cloud-download-alt" style="color: #3498db;"></i>
+                <h3>Đồng bộ Google Sheets</h3>
+                <p>Xóa dữ liệu cũ và nạp lại từ Google Sheets.</p>
+            </div>
+            <div class="settings-card" onclick="openImportModal()">
+                <i class="fas fa-file-csv" style="color: #27ae60;"></i>
+                <h3>Nhập từ File CSV</h3>
+                <p>Thêm hoặc cập nhật thành viên từ file CSV.</p>
+            </div>
+            <div class="settings-card" onclick="exportToCSV()">
+                <i class="fas fa-file-export" style="color: #f39c12;"></i>
+                <h3>Xuất ra File CSV</h3>
+                <p>Tải xuống toàn bộ dữ liệu gia phả hiện tại.</p>
+            </div>
+            <div class="settings-card" onclick="alert('Gia Phả Online v1.0\\n\\nỨng dụng quản lý gia phả dòng họ.\\nPhát triển bởi: Admin\\nLiên hệ: admin@giapha.com')">
+                <i class="fas fa-info-circle" style="color: #8e44ad;"></i>
+                <h3>Thông tin ứng dụng</h3>
+                <p>Phiên bản, tác giả và thông tin liên hệ.</p>
+            </div>
         </div>
-        <div class="settings-card" onclick="openImportModal()">
-            <i class="fas fa-file-csv" style="color: #27ae60;"></i>
-            <h3>Nhập từ File CSV</h3>
-            <p>Thêm hoặc cập nhật thành viên từ file CSV.</p>
-        </div>
-        <div class="settings-card" onclick="exportToCSV()">
-            <i class="fas fa-file-export" style="color: #f39c12;"></i>
-            <h3>Xuất ra File CSV</h3>
-            <p>Tải xuống toàn bộ dữ liệu gia phả hiện tại.</p>
+
+        <div style="margin-top: 40px; border-top: 1px solid #e5e7eb; padding-top: 24px;">
+            <h3 style="margin-bottom: 16px; color: #1f2937; font-size: 18px;"><i class="fas fa-book-reader" style="color: #f59e0b; margin-right: 8px;"></i> Hướng dẫn sử dụng</h3>
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; color: #4b5563; line-height: 1.6;">
+                <p style="margin-bottom: 10px;"><strong>1. Cây Gia Phả:</strong></p>
+                <ul style="margin-left: 20px; margin-bottom: 15px;">
+                    <li>Sử dụng chuột để kéo và di chuyển cây. Lăn chuột để phóng to/thu nhỏ.</li>
+                    <li>Nhấn vào thẻ thành viên để xem chi tiết và chỉnh sửa.</li>
+                    <li>Sử dụng thanh tìm kiếm để định vị nhanh thành viên trên cây.</li>
+                </ul>
+                
+                <p style="margin-bottom: 10px;"><strong>2. Quản lý Thành viên:</strong></p>
+                <ul style="margin-left: 20px; margin-bottom: 15px;">
+                    <li>Vào tab "Thành viên" để xem danh sách dạng lưới.</li>
+                    <li>Sử dụng "Tìm nâng cao" để lọc theo nhiều tiêu chí (Đời, Phái, Năm sinh...).</li>
+                    <li>Nhấn "Thêm thành viên" để nhập liệu thủ công.</li>
+                </ul>
+
+                <p style="margin-bottom: 10px;"><strong>3. Nhập/Xuất dữ liệu:</strong></p>
+                <ul style="margin-left: 20px;">
+                    <li>Hỗ trợ nhập liệu từ file CSV hoặc đồng bộ trực tiếp từ Google Sheets.</li>
+                    <li>Có thể xuất dữ liệu ra file CSV hoặc tải cây gia phả dưới dạng PDF để in ấn.</li>
+                </ul>
+            </div>
         </div>
     `;
 }
@@ -1751,4 +1733,106 @@ async function openViewPostModal(postId) {
     } catch (err) {
         alert('Không thể tải bài viết.');
     }
+}
+
+// ==========================================
+// BỔ SUNG: CHỨC NĂNG XUẤT PDF
+// ==========================================
+
+function downloadMemberPDF() {
+    if (!currentDisplayedMembers || currentDisplayedMembers.length === 0) {
+        alert("Không có dữ liệu để tải xuống.");
+        return;
+    }
+
+    // Tạo nội dung HTML tạm thời để in
+    const tempDiv = document.createElement('div');
+    tempDiv.style.padding = '20px';
+    tempDiv.style.fontFamily = 'Arial, sans-serif';
+    
+    let html = `<h2 style="text-align:center; margin-bottom:20px; color:#1f2937;">Danh sách Thành viên</h2>`;
+    html += `<p style="margin-bottom:15px;"><strong>Tổng số:</strong> ${currentDisplayedMembers.length} thành viên</p>`;
+    html += `<table style="width:100%; border-collapse:collapse; font-size:12px; border: 1px solid #e5e7eb;">`;
+    html += `<thead>
+                <tr style="background-color:#f3f4f6; color:#374151;">
+                    <th style="border:1px solid #d1d5db; padding:10px; text-align:left;">Họ tên</th>
+                    <th style="border:1px solid #d1d5db; padding:10px; text-align:left;">Giới tính</th>
+                    <th style="border:1px solid #d1d5db; padding:10px; text-align:left;">Ngày sinh</th>
+                    <th style="border:1px solid #d1d5db; padding:10px; text-align:left;">Đời</th>
+                    <th style="border:1px solid #d1d5db; padding:10px; text-align:left;">Phái</th>
+                    <th style="border:1px solid #d1d5db; padding:10px; text-align:left;">Trạng thái</th>
+                </tr>
+             </thead><tbody>`;
+             
+    currentDisplayedMembers.forEach(m => {
+        const hasDeathDate = m.death_date && String(m.death_date).trim() !== '' && String(m.death_date).trim() !== '0';
+        const isDeadByFlag = m.is_live === 0 || m.is_live === '0' || m.is_live === false || m.is_alive === 0 || m.is_alive === '0' || m.is_alive === false;
+        const isDeceased = hasDeathDate || isDeadByFlag;
+        
+        html += `<tr>
+                    <td style="border:1px solid #d1d5db; padding:8px;"><strong>${m.full_name}</strong></td>
+                    <td style="border:1px solid #d1d5db; padding:8px;">${m.gender}</td>
+                    <td style="border:1px solid #d1d5db; padding:8px;">${m.birth_date || ''}</td>
+                    <td style="border:1px solid #d1d5db; padding:8px;">${m.generation}</td>
+                    <td style="border:1px solid #d1d5db; padding:8px;">${m.branch === '0' || m.branch === 'Gốc' ? 'Gốc' : 'Phái ' + (m.branch || '?')}</td>
+                    <td style="border:1px solid #d1d5db; padding:8px; color:${isDeceased ? '#dc2626' : '#059669'};">${isDeceased ? 'Đã mất' : 'Còn sống'}</td>
+                 </tr>`;
+    });
+    html += `</tbody></table>`;
+    html += `<p style="margin-top:20px; font-size:10px; text-align:right; color:#6b7280;">Xuất ngày: ${new Date().toLocaleDateString('vi-VN')}</p>`;
+    
+    tempDiv.innerHTML = html;
+    
+    // Cấu hình cho html2pdf
+    const opt = {
+        margin: 10,
+        filename: `danh_sach_thanh_vien_${new Date().toISOString().slice(0,10)}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    // Thực hiện xuất PDF
+    html2pdf().set(opt).from(tempDiv).save();
+}
+
+// ==========================================
+// BỔ SUNG: CHỨC NĂNG TẢI CÂY GIA PHẢ
+// ==========================================
+
+function downloadTreePDF() {
+    const element = document.getElementById('tree-canvas');
+    if (!element) {
+        alert("Không tìm thấy cây gia phả để tải.");
+        return;
+    }
+
+    const btn = document.getElementById('btn-download-tree');
+    const originalText = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xử lý...';
+        btn.disabled = true;
+    }
+
+    const opt = {
+        margin: 0,
+        filename: `cay_gia_pha_${new Date().toISOString().slice(0,10)}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
+
+    html2pdf().set(opt).from(element).save().then(() => {
+        if (btn) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }).catch(err => {
+        console.error(err);
+        alert("Lỗi khi tải xuống: " + err.message);
+        if (btn) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    });
 }
