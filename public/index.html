@@ -45,14 +45,12 @@
                     <h2 style="font-size: 20px; margin: 0;">📢 Bài Viết & Thông Báo</h2>
                     <button class="btn-add" onclick="openCreatePostModal()">+ Viết bài mới</button>
                 </div>
-                <div id="posts-list-container" class="posts-grid">Đang tải danh sách bài viết...</div>
+                <div id="posts-list-container" class="posts-grid">Đang tải bài viết...</div>
             </div>
         </div>
 
         <div id="dashboard-tab" class="tab-content" style="display:none;">
-            <div id="stats-content-wrapper">
-                <h2 style="text-align: center;">Đang phân tích dữ liệu gia phả...</h2>
-            </div>
+            <div id="stats-content-wrapper"></div>
         </div>
 
         <div id="tree-tab" class="tab-content" style="display:none;">
@@ -62,44 +60,59 @@
                         <input type="text" id="tree-search-input" class="search-input" placeholder="Tìm người trên cây...">
                         <div id="tree-search-results" class="search-results"></div>
                     </div>
-                    <button class="btn-control" onclick="zoomToNode(null)">
-                        <i class="fas fa-project-diagram"></i> Xem toàn bộ
-                    </button>
+                    <button class="btn-control" onclick="zoomToNode(null)">Xem toàn bộ</button>
                 </div>
-                <div id="tree-canvas" style="height: calc(100vh - 200px); border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9;"></div>
+                <div id="tree-canvas" style="height: 500px; background: #f9f9f9;"></div>
             </div>
         </div>
 
         <div id="members-tab" class="tab-content" style="display:none;">
             <div class="tree-section">
                 <div class="members-header">
-                    <div class="search-bar">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="member-search-input" placeholder="Tìm kiếm thành viên...">
-                    </div>
-                    <button class="btn-add" onclick="openAddModal()">
-                        <i class="fas fa-plus"></i> Thêm Thành viên
-                    </button>
+                    <input type="text" id="member-search-input" placeholder="Tìm kiếm...">
+                    <button class="btn-add" onclick="openAddModal()">+ Thêm Thành viên</button>
                 </div>
                 <div class="members-grid" id="membersGrid"></div>
             </div>
         </div>
 
         <div id="settings-tab" class="tab-content" style="display:none;">
-            <div class="tree-section">
-                <h2 style="margin-bottom: 24px; font-size: 20px;">⚙️ Cài đặt hệ thống</h2>
-                <div id="settings-content-wrapper" class="settings-grid"></div>
+            <div id="settings-content-wrapper" class="settings-grid"></div>
+        </div>
+    </div>
+
+    <div id="post-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2 id="post-modal-title">Tạo Bài Viết</h2>
+            <input type="hidden" id="edit-post-id">
+            <input type="text" id="post-title-input" placeholder="Tiêu đề...">
+            <textarea id="post-content-input" placeholder="Nội dung..."></textarea>
+            <div class="modal-actions">
+                <button onclick="closePostModal()">Hủy</button>
+                <button class="btn-save" onclick="savePost()">Lưu bài viết</button>
             </div>
         </div>
     </div>
 
-    <div id="modal-container"></div>
+    <div id="member-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2 id="modalTitle">Thành viên</h2>
+            <form id="memberForm">
+                <input type="hidden" id="memberId">
+                <input type="text" id="name" placeholder="Họ và tên" required>
+                <select id="gender"><option value="Nam">Nam</option><option value="Nữ">Nữ</option></select>
+                <div class="modal-actions">
+                    <button type="button" onclick="closeModal()">Đóng</button>
+                    <button type="submit" class="btn-save">Lưu lại</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script src="js/renderer.js"></script>
     <script src="js/main.js"></script>
 
     <script>
-        // Logic điều khiển tab thủ công để đảm bảo không lỗi
         document.addEventListener('DOMContentLoaded', function() {
             const tabs = document.querySelectorAll('.tab-btn');
             const contents = document.querySelectorAll('.tab-content');
@@ -107,24 +120,20 @@
             tabs.forEach(btn => {
                 btn.addEventListener('click', function() {
                     const target = this.getAttribute('data-target');
-                    
-                    // Ẩn tất cả và bỏ active
                     contents.forEach(c => c.style.display = 'none');
                     tabs.forEach(t => t.classList.remove('active'));
-                    
-                    // Hiển thị tab được chọn
-                    const activeContent = document.querySelector(target);
-                    if (activeContent) {
-                        activeContent.style.display = 'block';
-                        this.classList.add('active');
-                    }
+                    document.querySelector(target).style.display = 'block';
+                    this.classList.add('active');
                 });
             });
 
-            // Kích hoạt tab bài viết mặc định
-            const defaultTab = document.querySelector('[data-tab="posts"]');
-            if (defaultTab) defaultTab.click();
+            // Mặc định mở tab Bài Viết
+            if(tabs[0]) tabs[0].click();
         });
+
+        // Hàm hỗ trợ đóng modal nếu main.js chưa có
+        function closePostModal() { document.getElementById('post-modal').style.display = 'none'; }
+        function closeModal() { document.getElementById('member-modal').style.display = 'none'; }
     </script>
 </body>
 </html>
