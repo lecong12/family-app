@@ -3,25 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gia Phả Họ Lê Công - Dashboard</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Gia Phả Họ Lê Công - Quản lý</title>
+    
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="../tree.css">
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Thư viện biểu đồ Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Thư viện D3.js để vẽ cây -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    <!-- Thư viện html2pdf để xuất PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body class="dashboard-page">
-    <!-- HEADER -->
     <header class="header">
         <div class="header-container">
             <div class="header-left">
                 <div class="logo"><i class="fas fa-sitemap"></i></div>
                 <div class="header-info">
                     <h1>Gia Phả Họ Lê Công</h1>
-                    <p class="user-role" id="userRole">Quản trị viên</p>
+                    <p class="user-role" id="userRole">Đang tải...</p>
                 </div>
             </div>
             <div class="header-right">
@@ -31,26 +30,31 @@
         </div>
     </header>
 
-    <!-- TABS -->
-    <div class="tabs-container">
-        <button class="tab-btn active" data-tab="dashboard" data-target="#dashboard-tab"><i class="fas fa-chart-line"></i> Dashboard</button>
+    <div class="tabs-container" id="mainTabs">
+        <button class="tab-btn" data-tab="posts" data-target="#posts-tab"><i class="fas fa-newspaper"></i> Bài Viết</button>
+        <button class="tab-btn" data-tab="dashboard" data-target="#dashboard-tab"><i class="fas fa-chart-line"></i> Dashboard</button>
         <button class="tab-btn" data-tab="tree" data-target="#tree-tab"><i class="fas fa-sitemap"></i> Cây Gia Phả</button>
         <button class="tab-btn" data-tab="members" data-target="#members-tab"><i class="fas fa-users"></i> Thành viên</button>
-        <button class="tab-btn" data-tab="posts" data-target="#posts-tab"><i class="fas fa-newspaper"></i> Bài Viết</button>
         <button class="tab-btn" data-tab="settings" data-target="#settings-tab"><i class="fas fa-cog"></i> Cài Đặt</button>
     </div>
 
-    <!-- MAIN CONTENT -->
     <div class="main-content">
-        <!-- DASHBOARD TAB -->
-        <div id="dashboard-tab" class="tab-content active">
-            <div id="stats-content-wrapper">
-                <!-- Nội dung dashboard sẽ được JS chèn vào đây -->
-                <h2 style="text-align: center;">Đang tải dữ liệu...</h2>
+        <div id="posts-tab" class="tab-content">
+            <div class="tree-section">
+                <div class="members-header">
+                    <h2 style="font-size: 20px; margin: 0;">📢 Bài Viết & Thông Báo</h2>
+                    <button class="btn-add" onclick="openCreatePostModal()">+ Viết bài mới</button>
+                </div>
+                <div id="posts-list-container" class="posts-grid">Đang tải danh sách bài viết...</div>
             </div>
         </div>
 
-        <!-- FAMILY TREE TAB -->
+        <div id="dashboard-tab" class="tab-content">
+            <div id="stats-content-wrapper">
+                <h2 style="text-align: center;">Đang phân tích dữ liệu gia phả...</h2>
+            </div>
+        </div>
+
         <div id="tree-tab" class="tab-content">
             <div class="tree-section">
                 <div class="tree-controls">
@@ -62,11 +66,10 @@
                         <i class="fas fa-project-diagram"></i> Xem toàn bộ
                     </button>
                 </div>
-                <div id="tree-canvas" style="height: calc(100vh - 200px); border: 1px solid #ddd; border-radius: 8px;"></div>
+                <div id="tree-canvas" style="height: calc(100vh - 200px); border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9;"></div>
             </div>
         </div>
 
-        <!-- MEMBERS TAB -->
         <div id="members-tab" class="tab-content">
             <div class="tree-section">
                 <div class="members-header">
@@ -82,127 +85,23 @@
             </div>
         </div>
 
-        <!-- POSTS TAB -->
-        <div id="posts-tab" class="tab-content">
-            <div class="tree-section">
-                <div class="members-header">
-                    <h2 style="font-size: 20px; margin: 0;">Bài Viết & Thông Báo</h2>
-                    <button class="btn-add" onclick="openCreatePostModal()">+ Viết bài mới</button>
-                </div>
-                <div id="posts-list-container" class="posts-grid">Đang tải...</div>
-            </div>
-        </div>
-
-        <!-- SETTINGS TAB -->
         <div id="settings-tab" class="tab-content">
             <div class="tree-section">
-                <h2 style="margin-bottom: 24px; font-size: 20px;">⚙️ Cài đặt & Công cụ</h2>
-                <div id="settings-content-wrapper" class="settings-grid">
-                    <!-- Các card cài đặt sẽ được JS chèn vào đây -->
-                </div>
+                <h2 style="margin-bottom: 24px; font-size: 20px;">⚙️ Cài đặt hệ thống</h2>
+                <div id="settings-content-wrapper" class="settings-grid"></div>
             </div>
         </div>
     </div>
 
-    <!-- MODALS (giữ nguyên, chỉ gọi khi cần) -->
-    <!-- ADD/EDIT MEMBER MODAL -->
-    <div id="add-member-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modal-title">Thêm thành viên</h2>
-                <button class="close-btn" onclick="closeModal()"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="modal-body">
-                <!-- Thông tin cơ bản -->
-                <label for="m-name">Họ tên <span style="color:red">*</span>:</label>
-                <input type="text" id="m-name" placeholder="Nhập họ và tên đầy đủ">
-                
-                <div class="form-row">
-                    <div class="col-half">
-                        <label for="m-gender">Giới tính:</label><select id="m-gender"><option value="Nam">Nam</option><option value="Nữ">Nữ</option></select>
-                    </div>
-                    <div class="col-half">
-                        <label for="m-birth">Ngày sinh:</label><input type="text" id="m-birth" placeholder="dd/mm/yyyy">
-                    </div>
-                </div>
-                <label for="m-death">Ngày mất (nếu có):</label><input type="text" id="m-death" placeholder="dd/mm/yyyy">
-
-                <div class="form-divider">Quan hệ gia đình</div>
-
-                <label for="m-fid">Cha:</label><input type="text" id="m-fid">
-                <label for="m-mid">Mẹ:</label><input type="text" id="m-mid">
-                <label for="m-pid">Vợ/Chồng:</label><input type="text" id="m-pid">
-
-                <div class="form-actions">
-                    <button id="btn-delete-member" class="btn-delete" onclick="deleteMember()" style="display: none; margin-right: auto;">Xóa thành viên</button>
-                    <button class="btn-cancel" onclick="closeModal()">Hủy</button>
-                    <button class="btn-save" onclick="saveMember()">Lưu thông tin</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- POST MODAL (Thêm/Sửa bài viết) -->
-    <div id="post-modal" class="modal">
-        <div class="modal-content" style="max-width: 800px;">
-            <div class="modal-header">
-                <h2 id="post-modal-title">Viết bài mới</h2>
-                <button class="close-btn" onclick="closePostModal()"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="modal-body">
-                <div class="form-row">
-                    <div class="form-group"><label for="post-title">Tiêu đề:</label><input type="text" id="post-title" placeholder="Nhập tiêu đề bài viết..."></div>
-                    <div class="form-group"><label for="post-category">Danh mục:</label><select id="post-category"><option value="announcement">📢 Thông báo</option><option value="event">📅 Sự kiện</option><option value="news">📰 Tin tức</option></select></div>
-                </div>
-                <div class="form-group"><label for="post-content">Nội dung:</label><textarea id="post-content" rows="12" placeholder="Nhập nội dung chi tiết..."></textarea></div>
-                <div class="form-group checkbox-group">
-                    <input type="checkbox" id="post-pinned"> <label for="post-pinned" style="display:inline; margin-left: 8px; cursor:pointer;">Ghim bài viết này lên đầu</label>
-                </div>
-                <div class="form-actions">
-                    <button class="btn-cancel" onclick="closePostModal()">Hủy</button>
-                    <button class="btn-save" onclick="savePost()">Lưu bài viết</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- IMPORT CSV MODAL -->
-    <div id="import-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Nhập dữ liệu từ File CSV</h2>
-                <button class="close-btn" onclick="document.getElementById('import-modal').style.display='none'"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="modal-body">
-                <p class="mb-4 text-center" style="color: #666;">Chọn file CSV từ máy tính để thêm mới hoặc cập nhật dữ liệu gia phả.</p>
-                
-                <div class="file-upload-area">
-                    <input type="file" id="csv-file-input" accept=".csv" onchange="updateFileName(this)">
-                    <label for="csv-file-input" class="file-upload-label">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        <span>Nhấn để chọn file hoặc kéo thả vào đây</span>
-                        <span class="small" style="font-size: 12px; color: #999;">Hỗ trợ định dạng .csv</span>
-                    </label>
-                </div>
-                <div id="file-name-display" class="text-center mt-4" style="font-weight: 500; color: #374151;">Chưa có file nào được chọn</div>
-                
-                <div id="import-status" class="mt-4"></div>
-                
-                <div class="form-actions">
-                    <button class="btn-cancel" onclick="document.getElementById('import-modal').style.display='none'">Hủy bỏ</button>
-                    <button id="btn-upload-csv" class="btn-save" onclick="handleFileUpload()" disabled>Tải lên & Xử lý</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Back to Top Button -->
-    <button id="btn-back-to-top" class="btn-back-to-top" onclick="scrollToTop()" title="Lên đầu trang">
-        <i class="fas fa-arrow-up"></i>
-    </button>
-
-    <!-- Scripts -->
     <script src="js/renderer.js"></script>
     <script src="js/main.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tự động kích hoạt tab Bài viết khi vừa tải trang
+            const postTabBtn = document.querySelector('[data-tab="posts"]');
+            if (postTabBtn) postTabBtn.click();
+        });
+    </script>
 </body>
 </html>
