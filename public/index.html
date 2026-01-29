@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gia Phả Họ Lê Công - Quản lý</title>
+    
     <link rel="stylesheet" href="../style.css">
     <link rel="stylesheet" href="../tree.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -40,45 +42,71 @@
         <div id="posts-tab" class="tab-content">
             <div class="tree-section">
                 <div class="members-header">
-                    <h2>📢 Bài Viết & Thông Báo</h2>
+                    <h2 style="font-size: 20px; margin: 0;">📢 Bài Viết & Thông Báo</h2>
                     <button class="btn-add" onclick="openCreatePostModal()">+ Viết bài mới</button>
                 </div>
-                <div id="posts-list-container" class="posts-grid">Đang tải...</div>
+                <div id="posts-list-container" class="posts-grid">Đang tải danh sách bài viết...</div>
             </div>
         </div>
 
-        <div id="dashboard-tab" class="tab-content" style="display:none;"><div id="stats-content-wrapper"></div></div>
-        <div id="tree-tab" class="tab-content" style="display:none;"><div id="tree-canvas" style="height:500px;"></div></div>
-        <div id="members-tab" class="tab-content" style="display:none;">
-            <div class="members-header">
-                <input type="text" id="member-search-input" placeholder="Tìm kiếm...">
-                <button class="btn-add" onclick="openAddModal()">+ Thêm</button>
-            </div>
-            <div id="membersGrid" class="members-grid"></div>
+        <div id="dashboard-tab" class="tab-content" style="display:none;">
+            <div id="stats-content-wrapper"></div>
         </div>
-        <div id="settings-tab" class="tab-content" style="display:none;"><div id="settings-content-wrapper"></div></div>
+
+        <div id="tree-tab" class="tab-content" style="display:none;">
+            <div class="tree-section">
+                <div id="tree-canvas" style="height: calc(100vh - 250px); border: 1px solid #ddd; background: #f9f9f9;"></div>
+            </div>
+        </div>
+
+        <div id="members-tab" class="tab-content" style="display:none;">
+            <div class="tree-section">
+                <div class="members-header">
+                    <input type="text" id="member-search-input" placeholder="Tìm kiếm thành viên...">
+                    <button class="btn-add" onclick="openAddModal()">+ Thêm Thành viên</button>
+                </div>
+                <div class="members-grid" id="membersGrid"></div>
+            </div>
+        </div>
+
+        <div id="settings-tab" class="tab-content" style="display:none;">
+            <div id="settings-content-wrapper" class="settings-grid"></div>
+        </div>
     </div>
 
-    <div id="post-modal" class="modal" style="display: none; position: fixed; z-index: 999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);">
-        <div class="modal-content" style="background: white; margin: 10% auto; padding: 20px; width: 50%; border-radius: 8px;">
-            <h2 id="post-modal-title">Bài Viết</h2>
+    <div id="post-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2 id="post-modal-title">Thông tin bài viết</h2>
             <input type="hidden" id="edit-post-id">
-            <input type="hidden" id="postId"> 
-            
-            <div style="margin-bottom: 10px;">
-                <label>Tiêu đề:</label><br>
-                <input type="text" id="post-title-input" class="form-control" style="width: 100%;">
-                <input type="hidden" id="postTitle"> </div>
-            
-            <div style="margin-bottom: 10px;">
-                <label>Nội dung:</label><br>
-                <textarea id="post-content-input" rows="5" style="width: 100%;"></textarea>
-                <textarea id="postContent" style="display:none;"></textarea> </div>
-
-            <div class="modal-actions">
-                <button onclick="closePostModal()">Hủy</button>
-                <button class="btn-save" onclick="savePost()">Lưu bài viết</button>
+            <div class="form-group">
+                <label>Tiêu đề</label>
+                <input type="text" id="post-title-input" placeholder="Nhập tiêu đề...">
+                <input type="hidden" id="postTitle"> 
             </div>
+            <div class="form-group">
+                <label>Nội dung</label>
+                <textarea id="post-content-input" rows="6" placeholder="Nhập nội dung..."></textarea>
+                <textarea id="postContent" style="display:none;"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closePostModal()">Hủy</button>
+                <button class="btn-save" onclick="savePost()">Lưu lại</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="member-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2 id="modalTitle">Thành viên</h2>
+            <form id="memberForm" onsubmit="event.preventDefault(); saveMember();">
+                <input type="hidden" id="memberId">
+                <div class="form-grid">
+                    <input type="text" id="name" placeholder="Họ và tên" required>
+                    <select id="gender"><option value="Nam">Nam</option><option value="Nữ">Nữ</option></select>
+                </div>
+                <button type="submit" class="btn-save">Xác nhận</button>
+                <button type="button" onclick="closeModal()">Đóng</button>
+            </form>
         </div>
     </div>
 
@@ -86,44 +114,26 @@
     <script src="js/main.js"></script>
 
     <script>
-        // LOGIC ĐIỀU KHIỂN TAB
         document.addEventListener('DOMContentLoaded', function() {
             const tabs = document.querySelectorAll('.tab-btn');
             const contents = document.querySelectorAll('.tab-content');
-            tabs.forEach(btn => {
-                btn.addEventListener('click', function() {
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const target = tab.getAttribute('data-target');
                     contents.forEach(c => c.style.display = 'none');
                     tabs.forEach(t => t.classList.remove('active'));
-                    document.querySelector(this.dataset.target).style.display = 'block';
-                    this.classList.add('active');
+                    
+                    document.querySelector(target).style.display = 'block';
+                    tab.classList.add('active');
                 });
             });
-            if(tabs[0]) tabs[0].click();
+            if (tabs[0]) tabs[0].click();
         });
 
-        // HÀM CẦU NỐI (Sửa lỗi lệch ID giữa HTML và main.js)
-        function syncInputs() {
-            // Nếu main.js dùng postTitle thay vì post-title-input
-            const t1 = document.getElementById('post-title-input');
-            const t2 = document.getElementById('postTitle');
-            if(t1 && t2) t2.value = t1.value;
-
-            const c1 = document.getElementById('post-content-input');
-            const c2 = document.getElementById('postContent');
-            if(c1 && c2) c2.value = c1.value;
-        }
-
-        // Ghi đè nhẹ hàm savePost để đảm bảo dữ liệu luôn được đồng bộ trước khi lưu
-        const originalSavePost = window.savePost;
-        window.savePost = function() {
-            syncInputs();
-            if(typeof originalSavePost === 'function') originalSavePost();
-        };
-
-        function closePostModal() {
-            const modal = document.getElementById('post-modal') || document.getElementById('postModal');
-            if(modal) modal.style.display = 'none';
-        }
+        // Hàm đóng modal dự phòng
+        function closePostModal() { document.getElementById('post-modal').style.display = 'none'; }
+        function closeModal() { document.getElementById('member-modal').style.display = 'none'; }
     </script>
 </body>
 </html>
