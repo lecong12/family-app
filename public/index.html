@@ -20,120 +20,174 @@
                 <div class="logo"><i class="fas fa-sitemap"></i></div>
                 <div class="header-info">
                     <h1>Gia Phả Họ Lê Công</h1>
-                    <p class="user-role" id="userRole">Đang tải...</p>
+                    <p class="user-role" id="userRole">Quản trị viên</p>
                 </div>
             </div>
             <div class="header-right">
-                <span class="user-name" id="userName"></span>
+                <span class="user-name" id="userName">Admin</span>
                 <button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Đăng Xuất</button>
             </div>
         </div>
     </header>
 
     <div class="tabs-container" id="mainTabs">
-        <button class="tab-btn" data-tab="posts" data-target="#posts-tab"><i class="fas fa-newspaper"></i> Bài Viết</button>
-        <button class="tab-btn" data-tab="dashboard" data-target="#dashboard-tab"><i class="fas fa-chart-line"></i> Dashboard</button>
-        <button class="tab-btn" data-tab="tree" data-target="#tree-tab"><i class="fas fa-sitemap"></i> Cây Gia Phả</button>
-        <button class="tab-btn" data-tab="members" data-target="#members-tab"><i class="fas fa-users"></i> Thành viên</button>
-        <button class="tab-btn" data-tab="settings" data-target="#settings-tab"><i class="fas fa-cog"></i> Cài Đặt</button>
+        <button class="tab-btn active" data-target="#dashboard-tab"><i class="fas fa-chart-line"></i> Dashboard</button>
+        <button class="tab-btn" data-target="#tree-tab"><i class="fas fa-sitemap"></i> Cây Gia Phả</button>
+        <button class="tab-btn" data-target="#members-tab"><i class="fas fa-users"></i> Thành viên</button>
+        <button class="tab-btn" data-target="#posts-tab"><i class="fas fa-newspaper"></i> Bài Viết</button>
+        <button class="tab-btn" data-target="#settings-tab"><i class="fas fa-cog"></i> Cài Đặt</button>
     </div>
 
     <div class="main-content">
+        <div id="dashboard-tab" class="tab-content active">
+            <div id="stats-content-wrapper">
+                </div>
+        </div>
+
+        <div id="tree-tab" class="tab-content">
+            <div class="tree-controls" style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                <div class="search-box" style="position: relative;">
+                    <input type="text" id="tree-search-input" placeholder="Tìm người trên cây...">
+                    <div id="tree-search-results" class="search-results-dropdown"></div>
+                </div>
+                </div>
+            <div class="tree-section">
+                <div id="tree-canvas"></div>
+            </div>
+        </div>
+
+        <div id="members-tab" class="tab-content">
+            <div class="members-header">
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="member-search-input" placeholder="Tìm kiếm thành viên...">
+                </div>
+                <button class="btn-add" onclick="openAddModal()">+ Thêm Thành viên</button>
+            </div>
+            <div class="members-grid" id="membersGrid"></div>
+        </div>
+
         <div id="posts-tab" class="tab-content">
             <div class="tree-section">
-                <div class="members-header">
-                    <h2 style="font-size: 20px; margin: 0;">📢 Bài Viết & Thông Báo</h2>
+                <div class="members-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0; font-size: 20px; color: var(--primary-color);">📢 Bài Viết & Thông Báo</h2>
                     <button class="btn-add" onclick="openCreatePostModal()">+ Viết bài mới</button>
                 </div>
-                <div id="posts-list-container" class="posts-grid">Đang tải danh sách bài viết...</div>
+                <div id="posts-list-container" class="posts-grid">
+                    </div>
             </div>
         </div>
 
-        <div id="dashboard-tab" class="tab-content" style="display:none;">
-            <div id="stats-content-wrapper"></div>
-        </div>
-
-        <div id="tree-tab" class="tab-content" style="display:none;">
-            <div class="tree-section">
-                <div id="tree-canvas" style="height: calc(100vh - 250px); border: 1px solid #ddd; background: #f9f9f9;"></div>
-            </div>
-        </div>
-
-        <div id="members-tab" class="tab-content" style="display:none;">
-            <div class="tree-section">
-                <div class="members-header">
-                    <input type="text" id="member-search-input" placeholder="Tìm kiếm thành viên...">
-                    <button class="btn-add" onclick="openAddModal()">+ Thêm Thành viên</button>
+        <div id="settings-tab" class="tab-content">
+            <div id="settings-content-wrapper">
                 </div>
-                <div class="members-grid" id="membersGrid"></div>
-            </div>
         </div>
+    </div>
 
-        <div id="settings-tab" class="tab-content" style="display:none;">
-            <div id="settings-content-wrapper" class="settings-grid"></div>
+    <div id="add-member-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Thông tin thành viên</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <form id="member-form" onsubmit="event.preventDefault(); saveMember();">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="m-name">Họ và tên</label>
+                        <input type="text" id="m-name" required placeholder="VD: Lê Công A">
+                    </div>
+                    <div class="form-group">
+                        <label for="m-gender">Giới tính</label>
+                        <select id="m-gender">
+                            <option value="Nam">Nam</option>
+                            <option value="Nữ">Nữ</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="m-birth">Ngày sinh</label>
+                        <input type="text" id="m-birth" placeholder="DD/MM/YYYY hoặc YYYY">
+                    </div>
+                    <div class="form-group">
+                        <label for="m-death">Ngày mất (nếu có)</label>
+                        <input type="text" id="m-death" placeholder="Để trống nếu còn sống">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="m-fid">Cha (nếu có)</label>
+                        <select id="m-fid"></select> </div>
+                    <div class="form-group">
+                        <label for="m-mid">Mẹ (nếu có)</label>
+                        <select id="m-mid"></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="m-pid">Vợ / Chồng (nếu có)</label>
+                        <select id="m-pid"></select>
+                    </div>
+                </div>
+                
+                <div class="modal-footer" style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" id="btn-delete-member" class="btn-delete" onclick="deleteMember()" style="display: none; background: #ef4444; color: white;">Xóa</button>
+                    <button type="button" class="btn-cancel" onclick="closeModal()">Hủy</button>
+                    <button type="submit" class="btn-save">Lưu dữ liệu</button>
+                </div>
+            </form>
         </div>
     </div>
 
     <div id="post-modal" class="modal" style="display: none;">
         <div class="modal-content">
-            <h2 id="post-modal-title">Thông tin bài viết</h2>
-            <input type="hidden" id="edit-post-id">
-            <div class="form-group">
-                <label>Tiêu đề</label>
-                <input type="text" id="post-title-input" placeholder="Nhập tiêu đề...">
-                <input type="hidden" id="postTitle"> 
+            <div class="modal-header">
+                <h2 id="post-modal-title">Viết bài mới</h2>
+                <span class="close" onclick="closePostModal()">&times;</span>
             </div>
             <div class="form-group">
-                <label>Nội dung</label>
-                <textarea id="post-content-input" rows="6" placeholder="Nhập nội dung..."></textarea>
-                <textarea id="postContent" style="display:none;"></textarea>
+                <label for="post-title">Tiêu đề bài viết</label>
+                <input type="text" id="post-title" class="form-input" placeholder="Nhập tiêu đề...">
             </div>
-            <div class="modal-footer">
-                <button class="btn-cancel" onclick="closePostModal()">Hủy</button>
-                <button class="btn-save" onclick="savePost()">Lưu lại</button>
+            <div class="form-group">
+                <label for="post-category">Thể loại</label>
+                <select id="post-category" class="form-input">
+                    <option value="announcement">Thông báo</option>
+                    <option value="event">Sự kiện</option>
+                    <option value="news">Tin tức</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="post-content">Nội dung chi tiết</label>
+                <textarea id="post-content" rows="8" class="form-input" placeholder="Viết nội dung vào đây..."></textarea>
+            </div>
+            <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="post-pinned" style="width: 18px; height: 18px;">
+                <label for="post-pinned" style="margin: 0; cursor: pointer;">Ghim bài viết này lên đầu</label>
+            </div>
+            <div class="modal-footer" style="margin-top: 20px; text-align: right;">
+                <button class="btn-cancel" onclick="closePostModal()" style="margin-right: 10px;">Hủy</button>
+                <button class="btn-save" onclick="savePost()">Lưu bài viết</button>
             </div>
         </div>
     </div>
 
-    <div id="member-modal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <h2 id="modalTitle">Thành viên</h2>
-            <form id="memberForm" onsubmit="event.preventDefault(); saveMember();">
-                <input type="hidden" id="memberId">
-                <div class="form-grid">
-                    <input type="text" id="name" placeholder="Họ và tên" required>
-                    <select id="gender"><option value="Nam">Nam</option><option value="Nữ">Nữ</option></select>
-                </div>
-                <button type="submit" class="btn-save">Xác nhận</button>
-                <button type="button" onclick="closeModal()">Đóng</button>
-            </form>
+    <div id="import-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <h2>Nhập dữ liệu từ file CSV</h2>
+            <div class="import-container" style="padding: 20px; border: 2px dashed #ccc; text-align: center; border-radius: 8px;">
+                <input type="file" id="csv-file-input" accept=".csv" style="display: none;" onchange="updateFileName(this)">
+                <label for="csv-file-input" style="cursor: pointer; color: #3498db;">
+                    <i class="fas fa-file-upload" style="font-size: 40px; margin-bottom: 10px;"></i>
+                    <p id="file-name-display">Chọn tệp .csv từ máy tính</p>
+                </label>
+            </div>
+            <div id="import-status" style="margin-top: 15px; font-size: 14px;"></div>
+            <div class="modal-footer" style="margin-top: 20px; text-align: right;">
+                <button class="btn-cancel" onclick="document.getElementById('import-modal').style.display='none'">Đóng</button>
+                <button id="btn-upload-csv" class="btn-save" onclick="handleFileUpload()" disabled>Tải lên & Xử lý</button>
+            </div>
         </div>
     </div>
+
+    <button id="btn-back-to-top" onclick="scrollToTop()" title="Lên đầu trang"><i class="fas fa-chevron-up"></i></button>
 
     <script src="js/renderer.js"></script>
     <script src="js/main.js"></script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const tabs = document.querySelectorAll('.tab-btn');
-            const contents = document.querySelectorAll('.tab-content');
-
-            tabs.forEach(tab => {
-                tab.addEventListener('click', () => {
-                    const target = tab.getAttribute('data-target');
-                    contents.forEach(c => c.style.display = 'none');
-                    tabs.forEach(t => t.classList.remove('active'));
-                    
-                    document.querySelector(target).style.display = 'block';
-                    tab.classList.add('active');
-                });
-            });
-            if (tabs[0]) tabs[0].click();
-        });
-
-        // Hàm đóng modal dự phòng
-        function closePostModal() { document.getElementById('post-modal').style.display = 'none'; }
-        function closeModal() { document.getElementById('member-modal').style.display = 'none'; }
-    </script>
 </body>
 </html>
