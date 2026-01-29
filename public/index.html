@@ -3,104 +3,170 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gia Phả Họ Lê Công - Quản lý</title>
+    <title>Gia Phả Họ Lê Công - Hệ Thống Quản Lý</title>
     
     <link rel="stylesheet" href="../style.css">
     <link rel="stylesheet" href="../tree.css">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body class="dashboard-page">
+
     <header class="header">
         <div class="header-container">
             <div class="header-left">
-                <div class="logo"><i class="fas fa-sitemap"></i></div>
+                <div class="logo">
+                    <i class="fas fa-sitemap"></i>
+                </div>
                 <div class="header-info">
                     <h1>Gia Phả Họ Lê Công</h1>
-                    <p class="user-role" id="userRole">Đang tải...</p>
+                    <p class="user-role" id="userRole"><i class="fas fa-spinner fa-spin"></i> Đang xác thực...</p>
                 </div>
             </div>
             <div class="header-right">
-                <span class="user-name" id="userName"></span>
-                <button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Đăng Xuất</button>
+                <div class="user-profile">
+                    <span class="user-name" id="userName">Admin</span>
+                    <button class="btn-logout" onclick="logout()" title="Đăng xuất">
+                        <i class="fas fa-sign-out-alt"></i> <span>Đăng Xuất</span>
+                    </button>
+                </div>
             </div>
         </div>
     </header>
 
-    <div class="tabs-container" id="mainTabs">
-        <button class="tab-btn" data-tab="posts" data-target="#posts-tab"><i class="fas fa-newspaper"></i> Bài Viết</button>
-        <button class="tab-btn" data-tab="dashboard" data-target="#dashboard-tab"><i class="fas fa-chart-line"></i> Dashboard</button>
-        <button class="tab-btn" data-tab="tree" data-target="#tree-tab"><i class="fas fa-sitemap"></i> Cây Gia Phả</button>
-        <button class="tab-btn" data-tab="members" data-target="#members-tab"><i class="fas fa-users"></i> Thành viên</button>
-        <button class="tab-btn" data-tab="settings" data-target="#settings-tab"><i class="fas fa-cog"></i> Cài Đặt</button>
-    </div>
+    <nav class="tabs-container" id="mainTabs">
+        <button class="tab-btn active" data-tab="posts" data-target="#posts-tab">
+            <i class="fas fa-newspaper"></i> <span>Bài Viết</span>
+        </button>
+        <button class="tab-btn" data-tab="dashboard" data-target="#dashboard-tab">
+            <i class="fas fa-chart-line"></i> <span>Dashboard</span>
+        </button>
+        <button class="tab-btn" data-tab="tree" data-target="#tree-tab">
+            <i class="fas fa-tree"></i> <span>Cây Gia Phả</span>
+        </button>
+        <button class="tab-btn" data-tab="members" data-target="#members-tab">
+            <i class="fas fa-users"></i> <span>Thành viên</span>
+        </button>
+        <button class="tab-btn" data-tab="settings" data-target="#settings-tab">
+            <i class="fas fa-cog"></i> <span>Cài Đặt</span>
+        </button>
+    </nav>
 
-    <div class="main-content">
-        <div id="posts-tab" class="tab-content">
+    <main class="main-content">
+        
+        <section id="posts-tab" class="tab-content active">
             <div class="tree-section">
-                <div class="members-header">
-                    <h2 style="font-size: 20px; margin: 0;">📢 Bài Viết & Thông Báo</h2>
-                    <button class="btn-add" onclick="openCreatePostModal()">+ Viết bài mới</button>
+                <div class="section-header">
+                    <div class="header-title">
+                        <i class="fas fa-bullhorn"></i>
+                        <h2>Bài Viết & Thông Báo</h2>
+                    </div>
+                    <button class="btn-primary" onclick="openCreatePostModal()">
+                        <i class="fas fa-plus"></i> Viết bài mới
+                    </button>
                 </div>
-                <div id="posts-list-container" class="posts-grid">Đang tải danh sách bài viết...</div>
+                <div id="posts-list-container" class="posts-grid">
+                    <div class="loading-state">Đang tải danh sách bài viết...</div>
+                </div>
             </div>
-        </div>
+        </section>
 
-        <div id="dashboard-tab" class="tab-content">
-            <div id="stats-content-wrapper">
-                <h2 style="text-align: center;">Đang phân tích dữ liệu gia phả...</h2>
+        <section id="dashboard-tab" class="tab-content">
+            <div id="stats-content-wrapper" class="dashboard-wrapper">
+                <div class="loading-overlay">
+                    <i class="fas fa-chart-pie fa-3x"></i>
+                    <p>Đang phân tích dữ liệu gia phả...</p>
+                </div>
             </div>
-        </div>
+        </section>
 
-        <div id="tree-tab" class="tab-content">
+        <section id="tree-tab" class="tab-content">
             <div class="tree-section">
                 <div class="tree-controls">
-                    <div class="search-container">
-                        <input type="text" id="tree-search-input" class="search-input" placeholder="Tìm người trên cây...">
-                        <div id="tree-search-results" class="search-results"></div>
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="tree-search-input" class="search-input" placeholder="Tìm người trong dòng họ...">
+                        <div id="tree-search-results" class="search-results-dropdown"></div>
                     </div>
-                    <button class="btn-control" onclick="zoomToNode(null)">
-                        <i class="fas fa-project-diagram"></i> Xem toàn bộ
-                    </button>
+                    <div class="action-buttons">
+                        <button class="btn-secondary" onclick="zoomToNode(null)">
+                            <i class="fas fa-expand-arrows-alt"></i> Toàn cảnh
+                        </button>
+                        <button class="btn-secondary" id="export-tree-pdf">
+                            <i class="fas fa-file-pdf"></i> Xuất PDF
+                        </button>
+                    </div>
                 </div>
-                <div id="tree-canvas" style="height: calc(100vh - 200px); border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9;"></div>
+                <div id="tree-canvas-container">
+                    <div id="tree-canvas"></div>
+                </div>
             </div>
-        </div>
+        </section>
 
-        <div id="members-tab" class="tab-content">
+        <section id="members-tab" class="tab-content">
             <div class="tree-section">
-                <div class="members-header">
+                <div class="section-header">
                     <div class="search-bar">
                         <i class="fas fa-search"></i>
-                        <input type="text" id="member-search-input" placeholder="Tìm kiếm thành viên...">
+                        <input type="text" id="member-search-input" placeholder="Tên, địa chỉ hoặc đời thứ...">
                     </div>
-                    <button class="btn-add" onclick="openAddModal()">
-                        <i class="fas fa-plus"></i> Thêm Thành viên
+                    <button class="btn-primary" onclick="openAddModal()">
+                        <i class="fas fa-user-plus"></i> Thêm Thành viên
                     </button>
                 </div>
-                <div class="members-grid" id="membersGrid"></div>
+                <div class="members-grid" id="membersGrid">
+                    </div>
             </div>
-        </div>
+        </section>
 
-        <div id="settings-tab" class="tab-content">
+        <section id="settings-tab" class="tab-content">
             <div class="tree-section">
-                <h2 style="margin-bottom: 24px; font-size: 20px;">⚙️ Cài đặt hệ thống</h2>
-                <div id="settings-content-wrapper" class="settings-grid"></div>
+                <div class="section-header">
+                    <h2><i class="fas fa-tools"></i> Cài đặt hệ thống</h2>
+                </div>
+                <div id="settings-content-wrapper" class="settings-grid">
+                    </div>
             </div>
-        </div>
-    </div>
+        </section>
+    </main>
+
+    <div id="modal-container"></div>
 
     <script src="js/renderer.js"></script>
     <script src="js/main.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Tự động kích hoạt tab Bài viết khi vừa tải trang
-            const postTabBtn = document.querySelector('[data-tab="posts"]');
-            if (postTabBtn) postTabBtn.click();
+            // Logic chuyển Tab đồng bộ với UI
+            const tabs = document.querySelectorAll('.tab-btn');
+            const contents = document.querySelectorAll('.tab-content');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const target = tab.getAttribute('data-target');
+
+                    // Remove active classes
+                    tabs.forEach(t => t.classList.remove('active'));
+                    contents.forEach(c => c.classList.remove('active'));
+
+                    // Add active classes
+                    tab.classList.add('active');
+                    document.querySelector(target).classList.add('active');
+                    
+                    // Trigger lại logic cho Tree nếu chuyển sang tab Tree
+                    if(tab.dataset.tab === 'tree' && typeof renderTree === 'function') {
+                        renderTree(); 
+                    }
+                });
+            });
+
+            // Tự động kích hoạt tab đầu tiên
+            if (tabs.length > 0) tabs[0].click();
         });
     </script>
 </body>
