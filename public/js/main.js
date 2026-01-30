@@ -1290,6 +1290,11 @@ function renderSettingsTab() {
                             <i class="fas fa-file-download"></i> Tải file mẫu
                         </button>
                     </div>
+                    <div class="settings-card" onclick="openUserManagementModal()">
+                        <i class="fas fa-users-cog" style="color: #4b5563;"></i>
+                        <h3>Quản lý Tài khoản</h3>
+                        <p>Thêm/Xóa người dùng.</p>
+                    </div>
                 ` : ''}
                 <div class="settings-card" onclick="exportToCSV()">
                     <i class="fas fa-file-export" style="color: #f39c12;"></i>
@@ -2306,4 +2311,133 @@ function downloadTreePDF() {
             btn.disabled = false;
         }
     });
+}
+
+// ==========================================
+// BỔ SUNG: QUẢN LÝ TÀI KHOẢN (USER MANAGEMENT)
+// ==========================================
+
+function openUserManagementModal() {
+    // Tạo modal nếu chưa có
+    if (!document.getElementById('user-mgmt-modal')) {
+        const modalHtml = `
+        <div id="user-mgmt-modal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5);">
+            <div class="modal-content" style="background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 90%; max-width: 700px; border-radius: 12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px;">
+                    <h2 style="margin:0; color:#374151;">Quản lý Tài khoản</h2>
+                    <button onclick="document.getElementById('user-mgmt-modal').style.display='none'" style="background:none; border:none; font-size:24px; cursor:pointer;">&times;</button>
+                </div>
+                
+                <!-- Form thêm mới -->
+                <div style="background:#f9fafb; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #e5e7eb;">
+                    <h4 style="margin-top:0; margin-bottom:10px;">Thêm tài khoản mới</h4>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:10px; align-items:end;">
+                        <div>
+                            <label style="font-size:12px; font-weight:600;">Tên đăng nhập</label>
+                            <input type="text" id="new-u-name" placeholder="Ví dụ: khach1" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                        </div>
+                        <div>
+                            <label style="font-size:12px; font-weight:600;">Mật khẩu</label>
+                            <input type="text" id="new-u-pass" placeholder="Mật khẩu" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                        </div>
+                        <div>
+                            <label style="font-size:12px; font-weight:600;">Vai trò</label>
+                            <select id="new-u-role" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                                <option value="viewer">Người xem (Khách)</option>
+                                <option value="admin">Quản trị viên</option>
+                            </select>
+                        </div>
+                        <button onclick="createNewUser()" style="padding:8px 16px; background:#10b981; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:600; height:35px;">Thêm</button>
+                    </div>
+                </div>
+
+                <!-- Danh sách -->
+                <div id="user-list-container" style="max-height:400px; overflow-y:auto;">
+                    <p style="text-align:center;">Đang tải danh sách...</p>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+    
+    document.getElementById('user-mgmt-modal').style.display = 'block';
+    loadUserList();
+}
+
+async function loadUserList() {
+    const container = document.getElementById('user-list-container');
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/auth/users', { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        
+        if (data.success) {
+            if (data.users.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:#666;">Chưa có tài khoản nào.</p>';
+                return;
+            }
+            
+            let html = '<table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f3f4f6; text-align:left;"><th style="padding:10px;">Tên đăng nhập</th><th style="padding:10px;">Vai trò</th><th style="padding:10px; text-align:right;">Hành động</th></tr></thead><tbody>';
+            
+            data.users.forEach(u => {
+                const roleLabel = u.role === 'owner' ? '<span style="color:#f97316; font-weight:bold;">Chủ sở hữu</span>' : 
+                                  (u.role === 'admin' ? '<span style="color:#0ea5e9; font-weight:bold;">Quản trị viên</span>' : 'Người xem');
+                
+                const deleteBtn = (u.role === 'owner' || u.username === 'admin') ? '' : 
+                    `<button onclick="deleteUser('${u._id}', '${u.username}')" style="color:red; background:none; border:none; cursor:pointer; font-weight:600;">Xóa</button>`;
+                
+                html += `<tr style="border-bottom:1px solid #eee;">
+                            <td style="padding:10px;">${u.username}</td>
+                            <td style="padding:10px;">${roleLabel}</td>
+                            <td style="padding:10px; text-align:right;">${deleteBtn}</td>
+                         </tr>`;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+    } catch (err) {
+        container.innerHTML = `<p style="color:red;">Lỗi tải danh sách: ${err.message}</p>`;
+    }
+}
+
+async function createNewUser() {
+    const username = document.getElementById('new-u-name').value.trim();
+    const password = document.getElementById('new-u-pass').value.trim();
+    const role = document.getElementById('new-u-role').value;
+    
+    if (!username || !password) return alert('Vui lòng nhập tên và mật khẩu!');
+    
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/auth/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ username, password, role })
+    });
+    const data = await res.json();
+    
+    if (data.success) {
+        alert('✅ ' + data.message);
+        document.getElementById('new-u-name').value = '';
+        document.getElementById('new-u-pass').value = '';
+        loadUserList();
+    } else {
+        alert('❌ ' + data.message);
+    }
+}
+
+async function deleteUser(id, name) {
+    if (!confirm(`Bạn có chắc muốn xóa tài khoản "${name}" không?`)) return;
+    
+    const token = localStorage.getItem('token');
+    const res = await fetch(`/api/auth/users/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    
+    if (data.success) {
+        loadUserList();
+    } else {
+        alert('❌ ' + data.message);
+    }
 }

@@ -4,6 +4,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs'); // Thêm thư viện để kiểm tra mật khẩu mã hóa
 const User = require('../models/User'); // Import model User
+const auth = require('../middleware/auth'); // Import middleware xác thực
 
 // Secret key (Nên đặt trong file .env)
 const JWT_SECRET = process.env.JWT_SECRET || 'family-secret-key-123';
@@ -62,6 +63,75 @@ router.post('/login', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Lỗi server khi đăng nhập' });
+    }
+});
+
+// --- CÁC API QUẢN LÝ TÀI KHOẢN (Dành cho Owner/Admin) ---
+
+// Middleware kiểm tra quyền Admin/Owner
+const adminOnly = (req, res, next) => {
+    if (req.user && (req.user.role === 'admin' || req.user.role === 'owner')) {
+        next();
+    } else {
+        res.status(403).json({ success: false, message: 'Bạn không có quyền thực hiện hành động này.' });
+    }
+};
+
+// 1. Lấy danh sách tài khoản
+router.get('/users', auth, adminOnly, async (req, res) => {
+    try {
+        // Lấy tất cả user, trừ password, sắp xếp mới nhất lên đầu
+        const users = await User.find({}, '-password').sort({ _id: -1 });
+        res.json({ success: true, users });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 2. Tạo tài khoản mới từ Web
+router.post('/users', auth, adminOnly, async (req, res) => {
+    try {
+        const { username, password, role } = req.body;
+        if (!username || !password) return res.status(400).json({ success: false, message: 'Vui lòng nhập tên và mật khẩu.' });
+
+        const existing = await User.findOne({ username });
+        if (existing) return res.status(400).json({ success: false, message: 'Tên đăng nhập đã tồn tại.' });
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        const newUser = new User({ 
+            username, 
+            password: hashedPassword, 
+            role: role || 'viewer' 
+        });
+        await newUser.save();
+
+        res.json({ success: true, message: 'Tạo tài khoản thành công!', user: { username, role } });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 3. Xóa tài khoản
+router.delete('/users/:id', auth, adminOnly, async (req, res) => {
+    try {
+        // Không cho phép tự xóa chính mình
+        if (req.user.id === req.params.id) {
+            return res.status(400).json({ success: false, message: 'Không thể tự xóa tài khoản của mình.' });
+        }
+        
+        const userToDelete = await User.findById(req.params.id);
+        if (!userToDelete) return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản.' });
+        
+        if (userToDelete.username === 'admin') {
+            return res.status(400).json({ success: false, message: 'Không thể xóa tài khoản Admin gốc.' });
+        }
+
+        await User.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: 'Đã xóa tài khoản.' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
     }
 });
 

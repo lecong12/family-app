@@ -19,7 +19,9 @@ async function createAccounts() {
         // Danh sách tài khoản cần tạo
         const accounts = [
             { username: 'admin', password: '123', role: 'owner', label: 'QUẢN TRỊ VIÊN' },
-            { username: 'khach', password: '123', role: 'viewer', label: 'NGƯỜI XEM (KHÁCH)' }
+            { username: 'khach', password: '123', role: 'viewer', label: 'NGƯỜI XEM (KHÁCH)' },
+            // Bạn có thể thêm nhiều dòng dưới đây cho từng người trong họ
+            { username: 'conchau', password: '123', role: 'viewer', label: 'THÀNH VIÊN (CON CHÁU)' }
         ];
 
         const salt = await bcrypt.genSalt(10);
