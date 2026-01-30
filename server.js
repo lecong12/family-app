@@ -15,14 +15,18 @@ const connectDB = async () => {
 
         // --- DEBUG: Kiểm tra dữ liệu thực tế trong DB ---
         const collections = await mongoose.connection.db.listCollections().toArray();
-        const collectionNames = collections.map(c => c.name);
-        console.log('📂 Các Collection hiện có trong DB:', collectionNames.join(', '));
+        console.log('📂 Danh sách Collection trong Database:');
+        
+        let hasMembers = false;
+        for (const col of collections) {
+            const count = await mongoose.connection.db.collection(col.name).countDocuments();
+            console.log(`   👉 Collection "${col.name}": ${count} bản ghi`);
+            if (col.name === 'members') hasMembers = true;
+        }
 
-        if (collectionNames.includes('members')) {
-            const count = await mongoose.connection.db.collection('members').countDocuments();
-            console.log(`📊 Collection 'members' đang có: ${count} bản ghi.`);
-        } else {
-            console.warn(`⚠️ CẢNH BÁO: Không tìm thấy collection 'members'. Có thể dữ liệu của bạn đang nằm ở collection khác (ví dụ: 'people', 'Member'...).`);
+        if (!hasMembers) {
+            console.warn(`⚠️ CẢNH BÁO: Không tìm thấy collection 'members'. Code đang tìm dữ liệu ở bảng 'members'.`);
+            console.warn(`👉 Nếu dữ liệu của bạn nằm ở bảng khác (ví dụ 'people'), hãy đổi tên collection trong DB hoặc sửa code Model.`);
         }
         // ------------------------------------------------
     }

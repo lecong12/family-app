@@ -65,6 +65,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.querySelector('.user-name')) document.querySelector('.user-name').textContent = userName || 'User';
     if (document.querySelector('.user-role')) document.querySelector('.user-role').textContent = userRole === 'owner' ? 'Chủ sở hữu' : (userRole === 'admin' ? 'Quản trị viên' : 'Người xem');
     
+    // --- FIX: Gắn sự kiện cho nút đăng xuất (đảm bảo hoạt động 100%) ---
+    const logoutBtns = document.querySelectorAll('.btn-logout, #btn-logout, [onclick="logout()"]');
+    logoutBtns.forEach(btn => {
+        btn.onclick = (e) => {
+            e.preventDefault();
+            logout();
+        };
+    });
+
     // Khởi tạo các ô tìm kiếm thông minh và cấu trúc form
     initSmartSelects();
     
@@ -313,6 +322,8 @@ function logout() {
     localStorage.removeItem('familyData'); // Xóa sạch dữ liệu gia phả đã lưu
     window.location.href = '/login.html';
 }
+// Đảm bảo hàm logout có thể gọi được từ bất kỳ đâu
+window.logout = logout;
 
 // Hàm render tab Thành viên (Bổ sung hàm bị thiếu)
 function renderMembersTab() {
