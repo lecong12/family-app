@@ -14,6 +14,18 @@ let pagination = {
     data: []
 };
 
+// --- Bổ sung: Hàm giải mã Token để lấy quyền chính xác từ Server ---
+function parseJwt(token) {
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+    } catch (e) { return null; }
+}
+
 // --- Bổ sung: Hàm kiểm tra quyền Admin ---
 const isAdmin = () => {
     const role = localStorage.getItem('userRole');
@@ -25,10 +37,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const token = localStorage.getItem('token');
     const userName = localStorage.getItem('userName');
     const userRole = localStorage.getItem('userRole');
+    let userName = localStorage.getItem('userName');
+    let userRole = localStorage.getItem('userRole');
 
     if (!token) {
         window.location.href = '/login.html';
         return;
+    }
+
+    // --- FIX: Tự động cập nhật quyền từ Token nếu localStorage bị sai ---
+    const payload = parseJwt(token);
+    if (payload && payload.role) {
+        // Nếu quyền trong Token khác với quyền đang lưu, cập nhật ngay
+        if (userRole !== payload.role) {
+            console.log(`🔄 Cập nhật quyền từ Token: ${userRole} -> ${payload.role}`);
+            userRole = payload.role;
+            localStorage.setItem('userRole', userRole);
+            
+            if (payload.username) {
+                userName = payload.username;
+                localStorage.setItem('userName', userName);
+            }
+        }
     }
 
     // Cập nhật tên và vai trò người dùng trên Header
