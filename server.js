@@ -18,15 +18,34 @@ const connectDB = async () => {
         console.log('📂 Danh sách Collection trong Database:');
         
         let hasMembers = false;
+        let candidate = null; // Biến lưu tên bảng tiềm năng (ví dụ: people)
+
         for (const col of collections) {
             const count = await mongoose.connection.db.collection(col.name).countDocuments();
             console.log(`   👉 Collection "${col.name}": ${count} bản ghi`);
-            if (col.name === 'members') hasMembers = true;
+            
+            if (col.name === 'members' && count > 0) hasMembers = true;
+            
+            // Nếu tìm thấy bảng 'people' hoặc 'users' có dữ liệu, lưu lại để xử lý
+            if (!hasMembers && count > 0 && ['people', 'users', 'family', 'data'].includes(col.name)) {
+                candidate = col.name;
+            }
         }
 
         if (!hasMembers) {
             console.warn(`⚠️ CẢNH BÁO: Không tìm thấy collection 'members'. Code đang tìm dữ liệu ở bảng 'members'.`);
-            console.warn(`👉 Nếu dữ liệu của bạn nằm ở bảng khác (ví dụ 'people'), hãy đổi tên collection trong DB hoặc sửa code Model.`);
+            
+            if (candidate) {
+                console.log(`💡 PHÁT HIỆN: Bạn có dữ liệu ở bảng "${candidate}". Đang tự động đổi tên thành "members"...`);
+                try {
+                    await mongoose.connection.db.renameCollection(candidate, 'members');
+                    console.log('✅ Đã đổi tên thành công! Dữ liệu sẽ hiển thị ngay bây giờ.');
+                } catch (err) {
+                    console.error('❌ Lỗi khi đổi tên collection:', err.message);
+                }
+            } else {
+                console.warn(`👉 Nếu dữ liệu của bạn nằm ở bảng khác, hãy đổi tên collection trong DB thành 'members'.`);
+            }
         }
         // ------------------------------------------------
     }

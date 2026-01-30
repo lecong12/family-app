@@ -65,13 +65,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.querySelector('.user-name')) document.querySelector('.user-name').textContent = userName || 'User';
     if (document.querySelector('.user-role')) document.querySelector('.user-role').textContent = userRole === 'owner' ? 'Chủ sở hữu' : (userRole === 'admin' ? 'Quản trị viên' : 'Người xem');
     
-    // --- FIX: Gắn sự kiện cho nút đăng xuất (đảm bảo hoạt động 100%) ---
-    const logoutBtns = document.querySelectorAll('.btn-logout, #btn-logout, [onclick="logout()"]');
-    logoutBtns.forEach(btn => {
-        btn.onclick = (e) => {
+    // --- FIX: Gắn sự kiện Đăng xuất bằng Event Delegation (Chắc chắn hoạt động 100%) ---
+    document.addEventListener('click', (e) => {
+        // Kiểm tra nếu click vào nút đăng xuất hoặc icon bên trong nó
+        const btn = e.target.closest('.btn-logout') || e.target.closest('#btn-logout') || e.target.closest('[onclick="logout()"]');
+        if (btn) {
             e.preventDefault();
+            e.stopPropagation(); // Ngăn chặn các sự kiện khác
             logout();
-        };
+        }
     });
 
     // Khởi tạo các ô tìm kiếm thông minh và cấu trúc form
