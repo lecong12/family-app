@@ -85,6 +85,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Khởi tạo form bài viết (chèn input ảnh)
     initPostForm();
+
+    // --- FIX: Ẩn nút đăng bài ngay lập tức khi tải trang nếu không phải admin ---
+    const createPostBtn = document.getElementById('btn-create-post');
+    if (createPostBtn && !isAdmin()) {
+        createPostBtn.style.setProperty('display', 'none', 'important');
+    }
 });
 
 // 2. Hàm tải dữ liệu từ Server
@@ -1101,6 +1107,12 @@ function renderPostsTab() {
     const createPostBtn = document.getElementById('btn-create-post');
     if (createPostBtn) {
         createPostBtn.style.display = isAdmin() ? 'flex' : 'none';
+        if (isAdmin()) {
+            createPostBtn.style.display = 'flex';
+        } else {
+            // Dùng setProperty với 'important' để chắc chắn ẩn, bất chấp CSS khác
+            createPostBtn.style.setProperty('display', 'none', 'important');
+        }
     }
 
     // Chỉ cần load dữ liệu, HTML tĩnh đã có sẵn trong index.html
