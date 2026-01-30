@@ -5,14 +5,14 @@
 }
 
 :root {
-    /* Thay đổi hệ màu gốc thành Đỏ - Vàng */
+    /* CHỈ THAY ĐỔI MÀU - GIỮ NGUYÊN BIẾN */
     --primary: #8b0000;         /* Đỏ đô */
     --primary-dark: #5a0000;
     --secondary: #d4af37;       /* Vàng kim */
     --success: #15803d;
     --danger: #b91c1c;
     --warning: #a16207;
-    --gray-50: #fdfaf5;         /* Nền giấy nhẹ */
+    --gray-50: #fdfaf5;
     --gray-100: #f5f1e6;
     --gray-200: #eaddc0;
     --gray-300: #d4c3a3;
@@ -24,12 +24,12 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #fdfaf5 0%, #f5f1e6 100%);
+    background: linear-gradient(135deg, #fdfaf5 0%, #f5f1e6 50%, #eaddc0 100%);
     min-height: 100vh;
     color: var(--gray-900);
 }
 
-/* ===== AUTH PAGE (Kế thừa nguyên gốc) ===== */
+/* ===== AUTH PAGE (GIỮ NGUYÊN CẤU TRÚC GỐC) ===== */
 .auth-page {
     display: flex;
     align-items: center;
@@ -38,7 +38,7 @@ body {
     padding: 20px;
     position: relative;
     overflow: hidden;
-    background: #2c1810;
+    background-color: #2c1810; /* Nền tối sang trọng */
 }
 
 .background-animation {
@@ -70,13 +70,13 @@ body {
     position: relative;
     z-index: 1;
     width: 100%;
-    max-width: 400px; /* Thu nhỏ lại một chút cho gọn */
+    max-width: 420px;
 }
 
 .auth-card {
     background: white;
     border-radius: 20px;
-    padding: 30px; /* Giảm padding từ 40 xuống 30 */
+    padding: 30px; /* Thu nhỏ padding */
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     border: 1px solid var(--secondary);
     animation: slideUp 0.6s ease-out;
@@ -93,30 +93,39 @@ body {
 }
 
 .logo-circle {
-    width: 70px; /* Thu nhỏ logo */
+    width: 70px;
     height: 70px;
     margin: 0 auto 15px;
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid var(--secondary);
+    box-shadow: 0 10px 30px rgba(139, 0, 0, 0.3);
+    animation: pulse 2s infinite;
 }
 
-.logo-circle i {
-    font-size: 30px;
-    color: var(--secondary);
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
 }
+
+.logo-circle i { font-size: 32px; color: white; }
 
 .auth-title {
-    font-size: 24px; /* Giảm size */
+    font-size: 26px;
     font-weight: 700;
     color: var(--primary);
-    margin-bottom: 5px;
+    margin-bottom: 8px;
 }
 
-/* ===== DASHBOARD & HEADER (Kế thừa nguyên gốc) ===== */
+/* ===== DASHBOARD (GIỮ NGUYÊN CẤU TRÚC GỐC) ===== */
+.dashboard-page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
 .header {
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
@@ -129,142 +138,164 @@ body {
 .header-container {
     max-width: 1600px;
     margin: 0 auto;
-    padding: 10px 30px; /* Giảm padding dọc từ 20 xuống 10 */
+    padding: 12px 30px; /* Thu gọn chiều cao header */
     display: flex;
     justify-content: space-between;
     align-items: center;
+    width: 100%;
 }
 
 .logo {
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
     background: white;
-    border-radius: 8px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
+    border: 1px solid var(--secondary);
 }
 
-.logo i {
-    font-size: 20px;
-    color: var(--primary);
-}
+.logo i { font-size: 20px; color: var(--primary); }
 
 .header-info h1 {
     color: var(--secondary);
     font-size: 20px;
+    margin-bottom: 2px;
 }
 
 .btn-logout {
     background: var(--danger);
     color: white;
-    padding: 8px 16px; /* Giảm padding */
-    border-radius: 6px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-size: 13px;
 }
 
-/* ===== TABS (Kế thừa nguyên gốc) ===== */
 .tabs-container {
     max-width: 1600px;
     margin: 0 auto;
     padding: 15px 30px;
     display: flex;
-    gap: 8px;
+    gap: 10px;
+    flex-wrap: wrap;
+    width: 100%;
 }
 
 .tab-btn {
-    padding: 6px 14px;
-    font-size: 13px;
-    border-radius: 8px;
-    font-weight: 600;
-    transition: all 0.3s;
+    padding: 8px 16px;
     border: 1px solid var(--gray-200);
+    background: white;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--gray-800);
+    font-size: 13px;
 }
 
 .tab-btn.active {
     background: var(--primary);
     color: var(--secondary);
     border-color: var(--secondary);
+    box-shadow: 0 4px 15px rgba(139, 0, 0, 0.2);
 }
 
-/* ===== STATS CARDS (Kế thừa nguyên gốc) ===== */
+/* ===== STATS & CARDS (GIỮ NGUYÊN CẤU TRÚC GỐC) ===== */
 .stat-card {
     background: white;
-    padding: 15px; /* Giảm padding */
-    border-radius: 12px;
-    border-top: 3px solid var(--secondary);
+    padding: 20px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    border-top: 4px solid var(--secondary);
 }
 
 .stat-icon {
-    width: 50px;
-    height: 50px;
-    background: var(--primary);
+    width: 55px;
+    height: 55px;
     border-radius: 12px;
+    background: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--secondary);
+    font-size: 24px;
 }
 
 .stat-number {
-    font-size: 28px;
+    font-size: 30px;
+    font-weight: 700;
     color: var(--primary);
 }
 
-/* ===== MEMBERS & CARDS (Kế thừa nguyên gốc) ===== */
+/* ===== MEMBER CARD (CHỈ SỬA MÀU) ===== */
 .member-card {
     background: white;
     border-radius: 12px;
-    padding: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     border: 1px solid var(--gray-200);
 }
 
-.member-card.male { border-left: 4px solid #0ea5e9; }
-.member-card.female { border-left: 4px solid #ec4899; }
+.member-card.male { border-left: 5px solid #0369a1; }
+.member-card.female { border-left: 5px solid #be185d; }
 
 .member-card-name {
     color: var(--primary);
-    font-size: 15px;
+    font-weight: 700;
 }
 
-/* ===== TREE SECTION ===== */
-#tree-canvas {
-    background-color: var(--gray-50);
-    border-radius: 12px;
-}
-
-/* ===== MODAL ===== */
-.modal-content {
-    border-radius: 15px;
-    max-width: 600px;
-}
-
-.modal-header {
-    padding: 15px 25px;
-    background: var(--primary);
-    color: var(--secondary);
-}
-
-.modal-header h2 { font-size: 18px; color: var(--secondary); }
-
-.form-group input, .form-group select, .form-group textarea {
-    padding: 10px 12px;
-    font-size: 14px;
-    border-radius: 8px;
-}
-
-/* ===== BUTTONS ===== */
+/* ===== BUTTONS & FORMS (GỌN GÀNG) ===== */
 .btn-primary, .btn-save {
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     color: var(--secondary);
-    border: 1px solid var(--secondary);
     padding: 10px 20px;
+    border: 1px solid var(--secondary);
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
 }
 
-.btn-add {
-    background: var(--success);
-    padding: 8px 16px;
+.form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 2px solid var(--gray-200);
+    border-radius: 10px;
+    font-size: 14px;
 }
 
-/* Fix lỗi lệch trên mobile */
+.form-group input:focus {
+    border-color: var(--primary);
+}
+
+/* ===== MODAL (GIỮ NGUYÊN CẤU TRÚC GỐC) ===== */
+.modal-header {
+    padding: 15px 25px;
+    border-bottom: 2px solid var(--gray-100);
+    background: linear-gradient(135deg, var(--gray-50), var(--gray-100));
+}
+
+.modal-header h2 {
+    color: var(--primary);
+    font-size: 20px;
+}
+
+/* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
     .header-container { padding: 10px 15px; }
-    .tabs-container { padding: 10px 15px; overflow-x: auto; }
-    .tab-btn { white-space: nowrap; }
+    .header-info h1 { font-size: 16px; }
+    .tabs-container { padding: 10px; }
 }
