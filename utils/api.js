@@ -4,7 +4,14 @@ const Member = require('../models/Member');
 const mongoose = require('mongoose'); // Thêm mongoose để tạo Model Activity
 const fs = require('fs');
 const axios = require('axios');
-const { parse } = require('csv-parse/sync');
+
+// --- Safe Require cho csv-parse ---
+let parse;
+try {
+    parse = require('csv-parse/sync').parse;
+} catch (e) {
+    console.warn('⚠️ CẢNH BÁO: Chưa cài đặt "csv-parse". Tính năng Import Google Sheets sẽ không hoạt động.');
+}
 
 console.log('✅ API Router đang khởi động...'); // Log kiểm tra phiên bản mới
 
@@ -280,6 +287,10 @@ const exportToCSV = async (req, res) => {
 };
 
 const importSheets = async (req, res) => {
+    if (!parse) {
+        return res.status(500).json({ message: "Server thiếu thư viện 'csv-parse'. Vui lòng chạy lệnh: npm install csv-parse" });
+    }
+
     const sheetDataUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRv6nPNO982vfr9JJmYHtwWh1XPY_3qDKhJjo1fEHy3jb9034Z_IZPqFveLZyqjODVm-OHN7aogE-MH/pub?gid=1705210560&single=true&output=csv";
     const sheetDDataUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRv6nPNO982vfr9JJmYHtwWh1XPY_3qDKhJjo1fEHy3jb9034Z_IZPqFveLZyqjODVm-OHN7aogE-MH/pub?gid=1565376107&single=true&output=csv";
     const clean = (v) => v ? String(v).replace(/[^\w]/g, '').trim() : "";
@@ -306,10 +317,16 @@ const importSheets = async (req, res) => {
     };
 
     try {
+        console.log('📥 Đang tải dữ liệu từ Google Sheets...');
         const [resData, resDData] = await Promise.all([axios.get(sheetDataUrl), axios.get(sheetDDataUrl)]);
+        
+        console.log(`📊 Dữ liệu tải về: Sheet1 (${resData.data.length} bytes), Sheet2 (${resDData.data.length} bytes)`);
+
         const config = { columns: h => h.map(i => i.trim().toLowerCase()), skip_empty_lines: true, trim: true, bom: true };
         const records = parse(resData.data, config);
         const spouseRecords = parse(resDData.data, config);
+
+        console.log(`✅ Đã parse: ${records.length} người, ${spouseRecords.length} vợ/chồng`);
 
         await Member.deleteMany({});
 

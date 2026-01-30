@@ -81,6 +81,10 @@ document.addEventListener('DOMContentLoaded', () => {
 // 2. Hàm tải dữ liệu từ Server
 async function loadMembers() {
     try {
+        // Hiển thị trạng thái đang tải (nếu có element status)
+        const statusEl = document.getElementById('loading-status');
+        if (statusEl) statusEl.style.display = 'block';
+
         const token = localStorage.getItem('token');
         const res = await fetch('/api/members', {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -103,6 +107,7 @@ async function loadMembers() {
         }
 
         allMembers = await res.json();
+        console.log(`✅ Đã tải ${allMembers.length} thành viên từ Server.`);
         
         // Lưu dữ liệu vào Cache để lần sau refresh không bị mất
         localStorage.setItem('familyData', JSON.stringify(allMembers));
@@ -112,6 +117,9 @@ async function loadMembers() {
     } catch (err) {
         console.error('Lỗi tải dữ liệu:', err);
         alert('⚠️ Hệ thống báo lỗi: ' + err.message); // Hiển thị lỗi cho người dùng thấy
+    } finally {
+        const statusEl = document.getElementById('loading-status');
+        if (statusEl) statusEl.style.display = 'none';
     }
 }
 
@@ -183,6 +191,12 @@ function renderTreeTab() {
     const treeContainer = document.querySelector('#tree-tab #tree-canvas');
     if (!treeContainer) return;
     
+    // --- BỔ SUNG: Hiển thị thông báo nếu chưa có dữ liệu ---
+    if (allMembers.length === 0) {
+        treeContainer.innerHTML = '<div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; color:#666;"><i class="fas fa-tree" style="font-size:48px; margin-bottom:15px; color:#d1d5db;"></i><p>Chưa có dữ liệu để vẽ cây.</p></div>';
+        return;
+    }
+
     // 1. Tạo UI chọn số đời (nếu chưa có)
     const searchInput = document.getElementById('tree-search-input');
     if (searchInput) searchInput.classList.add('search-input'); // Đảm bảo có class CSS chuẩn
