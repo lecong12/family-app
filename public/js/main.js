@@ -2373,14 +2373,15 @@ function openUserManagementModal() {
                 
                 <!-- Form thêm mới -->
                 <div style="background:#f9fafb; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #e5e7eb;">
-                    <h4 style="margin-top:0; margin-bottom:10px;">Thêm tài khoản mới</h4>
+                    <h4 id="user-form-title" style="margin-top:0; margin-bottom:10px;">Thêm tài khoản mới</h4>
+                    <input type="hidden" id="edit-u-id">
                     <div style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:10px; align-items:end;">
                         <div>
                             <label style="font-size:12px; font-weight:600;">Tên đăng nhập</label>
                             <input type="text" id="new-u-name" placeholder="Ví dụ: khach1" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
                         </div>
                         <div>
-                            <label style="font-size:12px; font-weight:600;">Mật khẩu</label>
+                            <label style="font-size:12px; font-weight:600;">Mật khẩu <span id="pass-hint" style="font-weight:normal; font-size:10px; color:#666; display:none;">(Để trống nếu không đổi)</span></label>
                             <input type="text" id="new-u-pass" placeholder="Mật khẩu" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
                         </div>
                         <div>
@@ -2390,7 +2391,10 @@ function openUserManagementModal() {
                                 <option value="admin">Quản trị viên</option>
                             </select>
                         </div>
-                        <button onclick="createNewUser()" style="padding:8px 16px; background:#10b981; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:600; height:35px;">Thêm</button>
+                        <div style="display:flex; gap:5px;">
+                            <button id="btn-save-user" onclick="saveUser()" style="padding:8px 16px; background:#10b981; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:600; height:35px;">Thêm</button>
+                            <button id="btn-cancel-edit" onclick="resetUserForm()" style="display:none; padding:8px 10px; background:#9ca3af; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:600; height:35px;">Hủy</button>
+                        </div>
                     </div>
                 </div>
 
@@ -2426,13 +2430,16 @@ async function loadUserList() {
                 const roleLabel = u.role === 'owner' ? '<span style="color:#f97316; font-weight:bold;">Chủ sở hữu</span>' : 
                                   (u.role === 'admin' ? '<span style="color:#0ea5e9; font-weight:bold;">Quản trị viên</span>' : 'Người xem');
                 
+                const editBtn = (u.role === 'owner' && localStorage.getItem('userRole') !== 'owner') ? '' :
+                    `<button onclick="editUser('${u._id}', '${u.username}', '${u.role}')" style="color:#3b82f6; background:none; border:none; cursor:pointer; font-weight:600; margin-right:10px;">Sửa</button>`;
+
                 const deleteBtn = (u.role === 'owner' || u.username === 'admin') ? '' : 
                     `<button onclick="deleteUser('${u._id}', '${u.username}')" style="color:red; background:none; border:none; cursor:pointer; font-weight:600;">Xóa</button>`;
                 
                 html += `<tr style="border-bottom:1px solid #eee;">
                             <td style="padding:10px;">${u.username}</td>
                             <td style="padding:10px;">${roleLabel}</td>
-                            <td style="padding:10px; text-align:right;">${deleteBtn}</td>
+                            <td style="padding:10px; text-align:right;">${editBtn}${deleteBtn}</td>
                          </tr>`;
             });
             html += '</tbody></table>';
@@ -2443,16 +2450,56 @@ async function loadUserList() {
     }
 }
 
-async function createNewUser() {
+function editUser(id, username, role) {
+    document.getElementById('edit-u-id').value = id;
+    document.getElementById('new-u-name').value = username;
+    document.getElementById('new-u-name').disabled = true; // Không cho sửa tên đăng nhập
+    document.getElementById('new-u-role').value = role;
+    document.getElementById('new-u-pass').value = '';
+    document.getElementById('new-u-pass').placeholder = "Nhập nếu muốn đổi mật khẩu";
+    
+    document.getElementById('user-form-title').innerText = "Sửa tài khoản: " + username;
+    document.getElementById('btn-save-user').innerText = "Lưu thay đổi";
+    document.getElementById('btn-save-user').style.background = "#3b82f6"; // Màu xanh dương
+    document.getElementById('btn-cancel-edit').style.display = "inline-block";
+    document.getElementById('pass-hint').style.display = "inline";
+}
+
+function resetUserForm() {
+    document.getElementById('edit-u-id').value = '';
+    document.getElementById('new-u-name').value = '';
+    document.getElementById('new-u-name').disabled = false;
+    document.getElementById('new-u-pass').value = '';
+    document.getElementById('new-u-pass').placeholder = "Mật khẩu";
+    document.getElementById('new-u-role').value = 'viewer';
+    
+    document.getElementById('user-form-title').innerText = "Thêm tài khoản mới";
+    document.getElementById('btn-save-user').innerText = "Thêm";
+    document.getElementById('btn-save-user').style.background = "#10b981"; // Màu xanh lá
+    document.getElementById('btn-cancel-edit').style.display = "none";
+    document.getElementById('pass-hint').style.display = "none";
+}
+
+async function saveUser() {
+    const id = document.getElementById('edit-u-id').value;
     const username = document.getElementById('new-u-name').value.trim();
     const password = document.getElementById('new-u-pass').value.trim();
     const role = document.getElementById('new-u-role').value;
     
-    if (!username || !password) return alert('Vui lòng nhập tên và mật khẩu!');
+    if (!username) return alert('Vui lòng nhập tên đăng nhập!');
+    if (!id && !password) return alert('Vui lòng nhập mật khẩu cho tài khoản mới!');
     
     const token = localStorage.getItem('token');
-    const res = await fetch('/api/auth/users', {
-        method: 'POST',
+    let url = '/api/auth/users';
+    let method = 'POST';
+    
+    if (id) {
+        url = `/api/auth/users/${id}`;
+        method = 'PUT';
+    }
+    
+    const res = await fetch(url, {
+        method: method,
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ username, password, role })
     });
@@ -2460,8 +2507,7 @@ async function createNewUser() {
     
     if (data.success) {
         alert('✅ ' + data.message);
-        document.getElementById('new-u-name').value = '';
-        document.getElementById('new-u-pass').value = '';
+        resetUserForm();
         loadUserList();
     } else {
         alert('❌ ' + data.message);

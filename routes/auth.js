@@ -113,6 +113,37 @@ router.post('/users', auth, adminOnly, async (req, res) => {
     }
 });
 
+// 4. Cập nhật tài khoản (Sửa quyền/Mật khẩu)
+router.put('/users/:id', auth, adminOnly, async (req, res) => {
+    try {
+        const { password, role } = req.body;
+        // Không cho phép sửa username để đơn giản hóa logic
+        
+        const userToUpdate = await User.findById(req.params.id);
+        if (!userToUpdate) return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản.' });
+
+        // Bảo vệ tài khoản Owner: Chỉ Owner mới được sửa Owner
+        if (userToUpdate.role === 'owner' && req.user.role !== 'owner') {
+             return res.status(403).json({ success: false, message: 'Bạn không có quyền sửa tài khoản Chủ sở hữu.' });
+        }
+
+        // Nếu có nhập mật khẩu mới thì mã hóa và cập nhật
+        if (password && password.trim() !== '') {
+            const salt = await bcrypt.genSalt(10);
+            userToUpdate.password = await bcrypt.hash(password, salt);
+        }
+
+        if (role) {
+            userToUpdate.role = role;
+        }
+
+        await userToUpdate.save();
+        res.json({ success: true, message: 'Cập nhật tài khoản thành công!' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 // 3. Xóa tài khoản
 router.delete('/users/:id', auth, adminOnly, async (req, res) => {
     try {
