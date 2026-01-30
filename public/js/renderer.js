@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿const zoom = d3.zoom()
+﻿﻿﻿﻿﻿﻿﻿﻿const zoom = d3.zoom()
     .scaleExtent([0.1, 3]) // Giới hạn zoom: nhỏ nhất 0.1x, lớn nhất 3x
     .on("zoom", (e) => g.attr("transform", e.transform));
 
@@ -124,11 +124,10 @@ function drawTree(data) {
     // Sắp xếp các node con theo thứ tự (order) để đảm bảo đúng thứ tự phái/chi
     const sortNodes = (nodes) => {
         nodes.sort((a, b) => {
-            // Sửa logic: Sắp xếp anh em theo `order` của người con ruột, thay vì của chủ hộ (head).
-            // Điều này tránh lỗi sắp xếp sai khi một người con gái (có order) kết hôn với rể (không có order).
-            const childA = a.members.find(m => m.fid || m.mid) || a.members[0];
-            const childB = b.members.find(m => m.fid || m.mid) || b.members[0];
-            return (childA.order || 0) - (childB.order || 0);
+            // Sửa logic: Sắp xếp anh em theo `order` của người con ruột
+            const childA = a.members.find(m => m.fid || m.mid) || a.members[0]; // Tìm con ruột để lấy order
+            const childB = b.members.find(m => m.fid || m.mid) || b.members[0]; // Tìm con ruột để lấy order
+            return (parseInt(childA.order) || 0) - (parseInt(childB.order) || 0);
         });
 
         nodes.forEach(node => {
@@ -193,21 +192,32 @@ function drawTree(data) {
         .attr("d", d => {
             const parentMembers = d.source.data.members;
             const childMembers = d.target.data.members;
-            const targetX = d.target.x + treeOffsetX;
+            
+            // --- TÍNH TOÁN TARGET X (Con ruột) ---
+            // Tìm thành viên trong node con là con ruột của cha/mẹ để nối dây vào đúng người đó
+            const bioChildIndex = childMembers.findIndex(c => 
+                parentMembers.some(p => String(p.id) === String(c.fid) || String(p.id) === String(c.mid))
+            );
+            const actualChildIndex = bioChildIndex !== -1 ? bioChildIndex : 0;
+            
+            const childTotalW = childMembers.length * boxWidth + (childMembers.length - 1) * gap;
+            const childStartX = -(childTotalW / 2);
+            const childOffset = childStartX + actualChildIndex * (boxWidth + gap) + (boxWidth / 2);
+            
+            const targetX = d.target.x + treeOffsetX + childOffset;
             const targetY = d.target.y + treeStartY;
 
-            // Trường hợp 1 Vợ 1 Chồng: Nối từ điểm giữa (nơi có đường hôn nhân và đường sổ dọc)
+            // Trường hợp 1 Vợ 1 Chồng: Nối từ điểm giữa (nơi có đường hôn nhân)
             if (parentMembers.length === 2) {
                 const sourceX = d.source.x + treeOffsetX;
-                const sourceY = d.source.y + treeStartY + boxHeight; // Bắt đầu từ đáy node nơi có đường sổ dọc
+                // Bắt đầu từ giữa chiều cao (trên đường hôn nhân) thay vì đáy để không bị hở
+                const sourceY = d.source.y + treeStartY + boxHeight / 2; 
                 const midY = sourceY + (targetY - sourceY) / 2;
                 return `M${sourceX},${sourceY} V${midY} H${targetX} V${targetY}`;
             }
 
             // Trường hợp Đa thê hoặc Đơn thân: Tìm đúng cha/mẹ để nối
-            const bioChild = childMembers.find(c => 
-                parentMembers.some(p => String(p.id) === String(c.fid) || String(p.id) === String(c.mid))
-            ) || childMembers[0];
+            const bioChild = childMembers[actualChildIndex];
 
             let sourceX, sourceY;
             const totalW = parentMembers.length * boxWidth + (parentMembers.length - 1) * gap;
@@ -221,7 +231,7 @@ function drawTree(data) {
                 const husbandCenterX = startXLocal + husbandIndex * (boxWidth + gap) + (boxWidth / 2);
                 const parentCenterOffset = (motherCenterX + husbandCenterX) / 2;
                 sourceX = d.source.x + treeOffsetX + parentCenterOffset;
-                sourceY = d.source.y + treeStartY + boxHeight;
+                sourceY = d.source.y + treeStartY + boxHeight / 2;
             } else {
                 let parentIndex = -1;
                 if (motherIndex !== -1) { parentIndex = motherIndex; }
@@ -277,29 +287,34 @@ function drawMemberBox(group, member, x, y, w, h) {
         .on("click", (event) => {
             event.stopPropagation();
             // LOGIC MỚI: Click để zoom/focus vào thành viên
-            // Zoom 1.2x là mức vừa đủ để xem rõ người đó và các đời xung quanh
             zoomToNode(member.id, 1.2);
-        })
-        .on("dblclick", (event) => {
-            event.stopPropagation();
-            // Chuyển tính năng Sửa sang Double Click
-            if (window.openEditModal) window.openEditModal(member.id);
         });
 
-    // Thêm nút Sửa nhỏ (hiện khi hover) để người dùng dễ nhận biết
-    const editBtn = g.append("g")
-        .attr("class", "edit-btn")
-        .attr("transform", `translate(${w - 22}, -10)`) // Góc trên phải
-        .style("opacity", 0)
-        .on("click", (e) => {
-            e.stopPropagation();
-            if (window.openEditModal) window.openEditModal(member.id);
-        });
-    editBtn.append("circle").attr("r", 10).attr("cx", 10).attr("cy", 10).attr("fill", "white").attr("stroke", "#ccc");
-    editBtn.append("text").text("✎").attr("x", 10).attr("y", 14).attr("text-anchor", "middle").attr("font-size", "12px").attr("fill", "#333");
+    // Chỉ thêm hành động sửa/xóa cho admin
+    const userRole = localStorage.getItem('userRole');
+    const isAdmin = userRole === 'admin' || userRole === 'owner';
 
-    g.on("mouseenter", function() { d3.select(this).select(".edit-btn").transition().duration(200).style("opacity", 1); })
-     .on("mouseleave", function() { d3.select(this).select(".edit-btn").transition().duration(200).style("opacity", 0); });
+    if (isAdmin) {
+        g.on("dblclick", (event) => {
+                event.stopPropagation();
+                if (window.openEditModal) window.openEditModal(member.id);
+            });
+
+        // Thêm nút Sửa nhỏ (hiện khi hover) để người dùng dễ nhận biết
+        const editBtn = g.append("g")
+            .attr("class", "edit-btn")
+            .attr("transform", `translate(${w - 22}, -10)`) // Góc trên phải
+            .style("opacity", 0)
+            .on("click", (e) => {
+                e.stopPropagation();
+                if (window.openEditModal) window.openEditModal(member.id);
+            });
+        editBtn.append("circle").attr("r", 10).attr("cx", 10).attr("cy", 10).attr("fill", "white").attr("stroke", "#ccc");
+        editBtn.append("text").text("✎").attr("x", 10).attr("y", 14).attr("text-anchor", "middle").attr("font-size", "12px").attr("fill", "#333");
+
+        g.on("mouseenter", function() { d3.select(this).select(".edit-btn").transition().duration(200).style("opacity", 1); })
+         .on("mouseleave", function() { d3.select(this).select(".edit-btn").transition().duration(200).style("opacity", 0); });
+    }
 
     const isSpouse = !!member.pid && !member.fid && !member.mid;
     const isDeceased = (member.death_date && String(member.death_date).trim() !== '' && String(member.death_date).trim() !== '0') || member.is_live === 0 || member.is_live === '0' || member.is_live === false || member.is_alive === 0 || member.is_alive === '0' || member.is_alive === false;
@@ -315,7 +330,7 @@ function drawMemberBox(group, member, x, y, w, h) {
         .attr("width", w).attr("height", h).attr("rx", 8); // Tăng bo tròn góc
 
     g.append("text").text(member.full_name || "Chưa có tên").attr("class", "member-name").attr("x", w/2).attr("y", h/2 - 5).attr("text-anchor", "middle");
-    g.append("text").text(member.birth_date ? `NS: ${member.birth_date}` : `ID: ${member.id}`).attr("class", "member-meta").attr("x", w/2).attr("y", h/2 + 15).attr("text-anchor", "middle");
+    g.append("text").text(member.birth_date ? `NS: ${member.birth_date}` : "").attr("class", "member-meta").attr("x", w/2).attr("y", h/2 + 15).attr("text-anchor", "middle");
 }
 
 // Hàm tìm kiếm và zoom tới node

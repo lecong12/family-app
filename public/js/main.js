@@ -14,13 +14,26 @@ let pagination = {
     data: []
 };
 
+// --- Bổ sung: Hàm kiểm tra quyền Admin ---
+const isAdmin = () => {
+    const role = localStorage.getItem('userRole');
+    return role === 'admin' || role === 'owner';
+};
+
 // 1. Khởi tạo khi trang tải xong
 document.addEventListener('DOMContentLoaded', () => {
     const token = localStorage.getItem('token');
+    const userName = localStorage.getItem('userName');
+    const userRole = localStorage.getItem('userRole');
+
     if (!token) {
         window.location.href = '/login.html';
         return;
     }
+
+    // Cập nhật tên và vai trò người dùng trên Header
+    if (document.querySelector('.user-name')) document.querySelector('.user-name').textContent = userName || 'User';
+    if (document.querySelector('.user-role')) document.querySelector('.user-role').textContent = userRole === 'owner' ? 'Chủ sở hữu' : (userRole === 'admin' ? 'Quản trị viên' : 'Người xem');
     
     // Khởi tạo các ô tìm kiếm thông minh và cấu trúc form
     initSmartSelects();
@@ -30,6 +43,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Tải dữ liệu và render tab mặc định (Dashboard)
     loadAndRenderAll();
+
+    // Khởi tạo form bài viết (chèn input ảnh)
+    initPostForm();
 });
 
 // 2. Hàm tải dữ liệu từ Server
@@ -139,23 +155,28 @@ function renderTreeTab() {
     
     // 1. Tạo UI chọn số đời (nếu chưa có)
     const searchInput = document.getElementById('tree-search-input');
+    if (searchInput) searchInput.classList.add('search-input'); // Đảm bảo có class CSS chuẩn
     if (searchInput && !document.getElementById('tree-gen-limit')) {
         const select = document.createElement('select');
         select.id = 'tree-gen-limit';
         select.className = 'tree-select'; // Sử dụng class CSS thay vì inline style
         
-        const options = [
-            {val: 5, text: 'Hiển thị: 5 Đời đầu'},
-            {val: 10, text: 'Hiển thị: 10 Đời đầu'},
-            {val: 0, text: 'Hiển thị: Tất cả'}
-        ];
-        
-        options.forEach(opt => {
+        // Option "Tất cả"
+        const optAll = document.createElement('option');
+        optAll.value = 0;
+        optAll.textContent = 'Tất cả';
+        select.appendChild(optAll);
+
+        // Tính toán số đời tối đa để tạo option động
+        let maxGen = (allMembers && allMembers.length > 0) ? Math.max(...allMembers.map(m => parseInt(m.generation) || 0)) : 0;
+        if (maxGen < 10) maxGen = 10; // Tối thiểu 10 đời
+
+        for (let i = 1; i <= maxGen; i++) {
             const o = document.createElement('option');
-            o.value = opt.val;
-            o.textContent = opt.text;
+            o.value = i;
+            o.textContent = `Đời thứ ${i}`;
             select.appendChild(o);
-        });
+        }
         
         select.value = 0; // Mặc định hiển thị tất cả
         select.onchange = () => renderTreeTab(); // Vẽ lại khi thay đổi
@@ -195,8 +216,41 @@ function renderTreeTab() {
     }
 
     // 2. Lọc dữ liệu và Vẽ cây
-    const limit = document.getElementById('tree-gen-limit') ? parseInt(document.getElementById('tree-gen-limit').value) : 0;
-    const dataToDraw = (limit > 0) ? allMembers.filter(m => (parseInt(m.generation) || 999) <= limit) : allMembers;
+    const selectedGen = document.getElementById('tree-gen-limit') ? parseInt(document.getElementById('tree-gen-limit').value) : 0;
+    
+    let dataToDraw;
+    if (selectedGen > 0) {
+        // Logic mới: Hiển thị đời được chọn, cùng với đời cha mẹ và đời con cái của họ.
+        const targetGenerations = new Set([selectedGen]);
+        if (selectedGen > 1) {
+            targetGenerations.add(selectedGen - 1); // Đời cha mẹ
+        }
+        targetGenerations.add(selectedGen + 1); // Đời con cái
+
+        // 1. Lọc ra tất cả thành viên thuộc các đời mục tiêu
+        const coreMembers = allMembers.filter(m => targetGenerations.has(parseInt(m.generation)));
+        
+        // 2. Lấy ID của các thành viên cốt lõi này và ID của vợ/chồng họ để đảm bảo node gia đình không bị vỡ
+        const memberIdsToShow = new Set();
+        const spouseMap = new Map(); // Xử lý quan hệ vợ chồng 2 chiều
+        allMembers.forEach(m => {
+            if(m.pid) {
+                spouseMap.set(String(m.id), String(m.pid));
+                spouseMap.set(String(m.pid), String(m.id));
+            }
+        });
+
+        coreMembers.forEach(m => {
+            const memberId = String(m.id);
+            memberIdsToShow.add(memberId); // Thêm chính họ
+            const spouseId = spouseMap.get(memberId); // Thêm vợ/chồng của họ
+            if (spouseId) memberIdsToShow.add(spouseId);
+        });
+
+        dataToDraw = allMembers.filter(m => memberIdsToShow.has(String(m.id)));
+    } else {
+        dataToDraw = allMembers; // Tùy chọn "Tất cả"
+    }
 
     if (typeof drawTree === 'function') {
         drawTree(dataToDraw);
@@ -244,24 +298,28 @@ function renderMembersTab() {
         // 1. Nút Tìm nâng cao
         const advBtn = document.createElement('button');
         advBtn.id = 'btn-adv-search';
-        advBtn.innerHTML = '<i class="fas fa-filter"></i> <span class="btn-text">Tìm nâng cao</span>';
+        advBtn.innerHTML = '<i class="fas fa-filter"></i><span class="btn-text"> Tìm nâng cao</span>';
         advBtn.title = 'Tìm kiếm nâng cao';
         advBtn.className = 'btn-control';
-        advBtn.style.padding = '0 15px'; // Padding nhỏ gọn
         advBtn.onclick = openAdvancedSearchModal;
         
         // 2. Nút Tải xuống PDF
         const pdfBtn = document.createElement('button');
-        pdfBtn.innerHTML = '<i class="fas fa-file-pdf"></i> <span class="btn-text">Xuất PDF</span>';
+        pdfBtn.innerHTML = '<i class="fas fa-file-pdf"></i><span class="btn-text"> Xuất PDF</span>';
         pdfBtn.title = 'Xuất danh sách PDF';
         pdfBtn.className = 'btn-control';
-        pdfBtn.style.padding = '0 15px';
         pdfBtn.style.color = '#ef4444';
         pdfBtn.onclick = downloadMemberPDF;
 
         // Chèn vào trước nút Thêm thành viên
         header.insertBefore(advBtn, addBtn);
         header.insertBefore(pdfBtn, addBtn);
+    }
+
+    // Ẩn nút "Thêm thành viên" nếu không phải Admin
+    const addMemberBtn = document.querySelector('#members-tab .btn-add');
+    if (addMemberBtn && !isAdmin()) {
+        addMemberBtn.style.display = 'none';
     }
 
     // --- CẬP NHẬT: Hàm xử lý lọc kết hợp (Tên + Loại) ---
@@ -386,6 +444,10 @@ function renderPagination() {
 
         // Logic Dâu/Rể (nếu có pid mà không có fid/mid)
         const isInLaw = !!m.pid && !m.fid && !m.mid;
+        let inLawLabel = 'Dâu/Rể';
+        if (isInLaw) {
+            inLawLabel = (m.gender === 'Nam') ? 'Rể' : 'Dâu';
+        }
 
         // Tìm tên vợ/chồng (Sử dụng allMembers để tìm chính xác ngay cả khi bị lọc)
         let spouseName = '';
@@ -417,19 +479,19 @@ function renderPagination() {
         card.className = `member-card ${m.gender === 'Nam' ? 'male' : 'female'} ${isDeceased ? 'deceased' : ''}`;
         
         // Branch display
-        const branchMap = { '0': 'Tổ', '1': 'Phái Nhất', '2': 'Phái Nhì', '3': 'Phái Ba', '4': 'Phái Bốn' };
+        const branchMap = { '0': 'Tổ khảo', '1': 'Phái Nhất', '2': 'Phái Nhì', '3': 'Phái Ba', '4': 'Phái Bốn' };
         let branchDisplay = branchMap[m.branch] || (m.branch ? `Phái ${m.branch}` : 'Gốc');
         if (m.branch === 'Gốc') branchDisplay = 'Gốc';
 
         // --- BỔ SUNG LẠI LOGIC BỊ THIẾU ---
-        const avatarColor = isDeceased ? '#9ca3af' : (m.gender === 'Nam' ? '#3b82f6' : '#ec4899');
+        const avatarColor = isDeceased ? '#5d4037' : (m.gender === 'Nam' ? '#3b82f6' : '#ec4899');
         const nameParts = (m.full_name || '?').trim().split(/\s+/);
         const avatarLetter = nameParts[nameParts.length - 1].charAt(0).toUpperCase();
 
         card.innerHTML = `
             <div class="member-card-header">
                 <div class="member-card-avatar" style="background-color: ${avatarColor};">
-                    
+                    ${avatarLetter}
                 </div>
                 <div class="member-card-info">
                     <h4 class="member-card-name">${m.full_name}</h4>
@@ -438,13 +500,12 @@ function renderPagination() {
                         ${ageDisplay}
                     </div>
                 </div>
-                ${isDeceased ? '<i class="fas fa-cross member-card-status-icon" title="Đã mất"></i>' : ''}
             </div>
             
             <div class="member-card-tags">
-                <span class="tag tag-gen">Đời ${m.generation}</span>
+                <span class="tag tag-gen">Đời thứ ${m.generation}</span>
                 <span class="tag tag-branch">${branchDisplay}</span>
-                ${isInLaw ? '<span class="tag tag-inlaw"><i class="fas fa-ring"></i> Dâu/Rể</span>' : ''}
+                ${isInLaw ? `<span class="tag tag-inlaw"><i class="fas fa-ring"></i> ${inLawLabel}</span>` : ''}
             </div>
 
             <div class="member-card-body">
@@ -456,9 +517,13 @@ function renderPagination() {
         `;
 
         // Thêm sự kiện click để zoom đến người đó trên cây
-        card.onclick = () => { 
-            openEditModal(m.id);
-        };
+        if (isAdmin()) {
+            card.onclick = () => { 
+                openEditModal(m.id);
+            };
+        } else {
+            card.style.cursor = 'default'; // Không có hành động khi click
+        }
         
         container.appendChild(card);
     });
@@ -532,6 +597,10 @@ function openAddModal() {
     document.getElementById('m-gender').value = 'Nam';
     document.getElementById('m-birth').value = '';
     document.getElementById('m-death').value = '';
+    // Reset các trường bổ sung
+    if(document.getElementById('m-job')) document.getElementById('m-job').value = '';
+    if(document.getElementById('m-address')) document.getElementById('m-address').value = '';
+    if(document.getElementById('m-branch')) document.getElementById('m-branch').value = '';
     
     ['m-fid', 'm-mid', 'm-pid'].forEach(id => {
         document.getElementById(id).value = ''; // Hidden input
@@ -541,11 +610,17 @@ function openAddModal() {
     // Ẩn nút Xóa khi ở chế độ Thêm mới
     document.getElementById('btn-delete-member').style.display = 'none';
     
-    document.getElementById('add-member-modal').style.display = 'block';
+    document.getElementById('add-member-modal').style.display = 'flex';
 }
 
 // Mở modal Sửa (Được gọi khi click vào node)
 window.openEditModal = function(memberId) {
+    // Chặn ngay từ đầu nếu không phải admin
+    if (!isAdmin()) {
+        alert('Bạn không có quyền chỉnh sửa thông tin.');
+        return;
+    }
+
     const member = allMembers.find(m => m.id == memberId);
     if (!member) {
         console.error("Không tìm thấy thành viên với ID:", memberId);
@@ -560,6 +635,10 @@ window.openEditModal = function(memberId) {
     document.getElementById('m-gender').value = member.gender;
     document.getElementById('m-birth').value = member.birth_date || '';
     document.getElementById('m-death').value = member.death_date || '';
+    // Điền dữ liệu các trường bổ sung
+    if(document.getElementById('m-job')) document.getElementById('m-job').value = member.job || '';
+    if(document.getElementById('m-address')) document.getElementById('m-address').value = member.address || '';
+    if(document.getElementById('m-branch')) document.getElementById('m-branch').value = member.branch || '';
     
     // Cải tiến: Tìm vợ/chồng 2 chiều để điền vào form
     let spouseId = member.pid;
@@ -587,7 +666,7 @@ window.openEditModal = function(memberId) {
     // Hiển thị nút Xóa khi ở chế độ Sửa
     document.getElementById('btn-delete-member').style.display = 'inline-block';
 
-    document.getElementById('add-member-modal').style.display = 'block';
+    document.getElementById('add-member-modal').style.display = 'flex';
 }
 
 // Đóng tất cả modal
@@ -613,6 +692,7 @@ function initSmartSelects() {
     const modalContent = document.querySelector('#add-member-modal .modal-content');
     if (!modalContent || modalContent.dataset.smartInit === 'true') return;
 
+    console.log('🛠️ Đang khởi tạo form nhập liệu (Bootstrap-like layout)...');
     const configs = [
         { id: 'm-name', type: 'text' }, // Giữ nguyên input text
         { id: 'm-gender', type: 'select' }, // Giữ nguyên select
@@ -739,6 +819,33 @@ function initSmartSelects() {
         }
     });
 
+    // --- BỔ SUNG: Hàm gom nhóm các trường ngắn vào 1 hàng ---
+    const groupFields = (id1, id2) => {
+        const el1 = document.getElementById(id1);
+        const el2 = document.getElementById(id2);
+        if (el1 && el2) {
+            const g1 = el1.closest('.form-group');
+            const g2 = el2.closest('.form-group');
+            if (g1 && g2 && g1.parentNode === g2.parentNode && !g1.parentNode.classList.contains('form-row-compact')) {
+                const row = document.createElement('div');
+                row.className = 'form-row-compact';
+                g1.parentNode.insertBefore(row, g1);
+                row.appendChild(g1);
+                row.appendChild(g2);
+            }
+        }
+    };
+
+    groupFields('m-gender', 'm-birth'); // Gom Giới tính + Ngày sinh
+    groupFields('m-death', 'm-job');    // Gom Ngày mất + Nghề nghiệp (nếu có)
+    groupFields('m-fid', 'm-mid');      // Gom Cha + Mẹ vào 1 hàng để tiết kiệm diện tích
+    groupFields('m-branch', 'm-address'); // Gom Phái + Địa chỉ vào 1 hàng
+
+    // --- BỔ SUNG: Xóa chữ "(nếu có)" khỏi tất cả label ---
+    modalContent.querySelectorAll('label').forEach(lbl => {
+        lbl.innerHTML = lbl.innerHTML.replace(/\(nếu có\)/gi, '').trim();
+    });
+
     // Đóng danh sách kết quả tìm kiếm khi click ra ngoài
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.smart-select-wrapper')) {
@@ -754,6 +861,9 @@ async function saveMember() {
     const genderInput = document.getElementById('m-gender');
     const birthInput = document.getElementById('m-birth');
     const deathInput = document.getElementById('m-death');
+    const jobInput = document.getElementById('m-job');
+    const addressInput = document.getElementById('m-address');
+    const branchInput = document.getElementById('m-branch');
     const fidInput = document.getElementById('m-fid');
     const midInput = document.getElementById('m-mid');
     const pidInput = document.getElementById('m-pid'); // Thêm input cho Vợ/Chồng
@@ -785,6 +895,9 @@ async function saveMember() {
         gender: genderInput ? genderInput.value : 'Nam',
         birth_date: birthInput ? birthInput.value.trim() : '',
         death_date: deathInput ? deathInput.value.trim() : '',
+        job: jobInput ? jobInput.value.trim() : '',
+        address: addressInput ? addressInput.value.trim() : '',
+        branch: branchInput ? branchInput.value.trim() : '',
         fid: fid,
         mid: mid,
         pid: pid, // Thêm pid vào payload
@@ -901,7 +1014,40 @@ async function syncGoogleSheets() {
 // --- Chức năng Bài Viết (Posts) ---
 let currentPostId = null;
 
+// Hàm khởi tạo form bài viết (chèn input file vào modal nếu chưa có)
+function initPostForm() {
+    const categorySelect = document.getElementById('post-category');
+    if (categorySelect && !document.getElementById('post-image')) {
+        const formGroup = document.createElement('div');
+        formGroup.className = 'form-group';
+        formGroup.style.marginTop = '15px';
+        
+        const label = document.createElement('label');
+        label.innerText = 'Ảnh minh họa (Tùy chọn)';
+        label.style.display = 'block';
+        label.style.marginBottom = '5px';
+        
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.id = 'post-image';
+        input.accept = 'image/*';
+        input.style.width = '100%';
+        
+        formGroup.appendChild(label);
+        formGroup.appendChild(input);
+        
+        // Chèn vào sau ô chọn danh mục
+        categorySelect.parentNode.parentNode.insertBefore(formGroup, categorySelect.parentNode.nextSibling);
+    }
+}
+
 function renderPostsTab() {
+    // Ẩn/hiện nút "Viết bài mới" dựa trên quyền
+    const createPostBtn = document.getElementById('btn-create-post');
+    if (createPostBtn) {
+        createPostBtn.style.display = isAdmin() ? 'flex' : 'none';
+    }
+
     // Chỉ cần load dữ liệu, HTML tĩnh đã có sẵn trong index.html
     loadPosts();
 }
@@ -927,23 +1073,33 @@ async function loadPosts() {
                 const catMap = { 'announcement': 'Thông báo', 'event': 'Sự kiện', 'news': 'Tin tức' };
                 const catClass = `cat-${post.category}`;
                 const shortContent = post.content.length > 150 ? post.content.substring(0, 150) + '...' : post.content;
+                const imageHtml = post.image ? `<div class="post-thumb"><img src="${post.image}" alt="${post.title}" onerror="this.style.display='none'; this.parentElement.style.display='none';"></div>` : '';
+                
+                const actionsHtml = isAdmin() ? `
+                    <div class="post-actions">
+                        <button class="btn-edit" onclick="openEditPostModal('${post._id}')" style="padding:4px 8px; font-size:12px;"><i class="fas fa-edit"></i></button>
+                        <button class="btn-delete" onclick="deletePost('${post._id}')" style="padding:4px 8px; font-size:12px;"><i class="fas fa-trash"></i></button>
+                    </div>
+                ` : '';
                 
                 return `
                 <div class="post-card ${post.is_pinned ? 'pinned' : ''}">
-                    <div class="post-header">
-                        <h3 class="post-title" style="margin:0; font-size:18px;">${post.title}</h3>
-                        <div class="post-actions">
-                            <button class="btn-edit" onclick="openEditPostModal('${post._id}')" style="padding:4px 8px; font-size:12px;"><i class="fas fa-edit"></i></button>
-                            <button class="btn-delete" onclick="deletePost('${post._id}')" style="padding:4px 8px; font-size:12px;"><i class="fas fa-trash"></i></button>
+                    <div class="post-card-inner">
+                        ${imageHtml}
+                        <div class="post-card-content">
+                            <div class="post-header">
+                                <h3 class="post-title" style="margin:0; font-size:18px;">${post.title}</h3>
+                                ${actionsHtml}
+                            </div>
+                            <div class="post-meta">
+                                <span class="post-category ${catClass}" style="background:#f3f4f6; padding:2px 8px; border-radius:4px;">${catMap[post.category]}</span>
+                                <span><i class="far fa-clock"></i> ${date}</span>
+                                ${pinnedIcon}
+                            </div>
+                            <div class="post-excerpt" style="flex-grow:1; color:#4b5563; margin-bottom:15px;">${shortContent}</div>
+                            <button onclick="openViewPostModal('${post._id}')" style="align-self:flex-start; background:none; border:none; color:#0ea5e9; cursor:pointer; padding:0; font-weight:600;">Đọc tiếp →</button>
                         </div>
                     </div>
-                    <div class="post-meta">
-                        <span class="post-category ${catClass}" style="background:#f3f4f6; padding:2px 8px; border-radius:4px;">${catMap[post.category]}</span>
-                        <span><i class="far fa-clock"></i> ${date}</span>
-                        ${pinnedIcon}
-                    </div>
-                    <div class="post-content" style="flex-grow:1; color:#4b5563; margin-bottom:15px;">${shortContent}</div>
-                    <button onclick="openViewPostModal('${post._id}')" style="align-self:flex-start; background:none; border:none; color:#0ea5e9; cursor:pointer; padding:0; font-weight:600;">Đọc tiếp →</button>
                 </div>`;
             }).join('');
         }
@@ -959,6 +1115,7 @@ function openCreatePostModal() {
     document.getElementById('post-content').value = '';
     document.getElementById('post-category').value = 'announcement';
     document.getElementById('post-pinned').checked = false;
+    if(document.getElementById('post-image')) document.getElementById('post-image').value = ''; // Reset file input
     
     document.getElementById('post-modal').style.display = 'block';
 }
@@ -982,6 +1139,7 @@ async function openEditPostModal(id) {
             document.getElementById('post-content').value = post.content;
             document.getElementById('post-category').value = post.category;
             document.getElementById('post-pinned').checked = post.is_pinned;
+            if(document.getElementById('post-image')) document.getElementById('post-image').value = ''; // Reset file input
             
             document.getElementById('post-modal').style.display = 'block';
         } else {
@@ -998,8 +1156,17 @@ async function savePost() {
     const content = document.getElementById('post-content').value;
     const category = document.getElementById('post-category').value;
     const is_pinned = document.getElementById('post-pinned').checked;
+    const imageInput = document.getElementById('post-image');
 
-    const payload = { title, content, category, is_pinned };
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('content', content);
+    formData.append('category', category);
+    formData.append('is_pinned', is_pinned);
+    if (imageInput && imageInput.files[0]) {
+        formData.append('image', imageInput.files[0]);
+    }
+
     const method = currentPostId ? 'PUT' : 'POST';
     const url = currentPostId ? `/api/posts/${currentPostId}` : '/api/posts';
     const token = localStorage.getItem('token');
@@ -1007,8 +1174,8 @@ async function savePost() {
     try {
         const res = await fetch(url, {
             method: method,
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify(payload)
+            headers: { 'Authorization': `Bearer ${token}` }, // Không set Content-Type để browser tự set multipart/form-data
+            body: formData
         });
         const data = await res.json();
         if (data.success) {
@@ -1054,19 +1221,21 @@ function renderSettingsTab() {
         <div class="settings-section">
             <h3 class="settings-section-title">Công cụ & Thông tin</h3>
             <div class="settings-row">
-                <div class="settings-card" onclick="syncGoogleSheets()">
-                    <i class="fas fa-cloud-download-alt" style="color: #3498db;"></i>
-                    <h3>Đồng bộ Sheets</h3>
-                    <p>Nạp lại từ Google Sheets.</p>
-                </div>
-                <div class="settings-card" onclick="openImportModal()" style="position: relative;">
-                    <i class="fas fa-file-csv" style="color: #27ae60;"></i>
-                    <h3>Nhập File CSV</h3>
-                    <p>Thêm/Cập nhật từ CSV.</p>
-                    <button onclick="event.stopPropagation(); downloadSampleCSV()" class="btn-sample-download" title="Tải file mẫu cấu trúc chuẩn">
-                        <i class="fas fa-file-download"></i> Tải file mẫu
-                    </button>
-                </div>
+                ${isAdmin() ? `
+                    <div class="settings-card" onclick="syncGoogleSheets()">
+                        <i class="fas fa-cloud-download-alt" style="color: #3498db;"></i>
+                        <h3>Đồng bộ Sheets</h3>
+                        <p>Nạp lại từ Google Sheets.</p>
+                    </div>
+                    <div class="settings-card" onclick="openImportModal()" style="position: relative;">
+                        <i class="fas fa-file-csv" style="color: #27ae60;"></i>
+                        <h3>Nhập File CSV</h3>
+                        <p>Thêm/Cập nhật từ CSV.</p>
+                        <button onclick="event.stopPropagation(); downloadSampleCSV()" class="btn-sample-download" title="Tải file mẫu cấu trúc chuẩn">
+                            <i class="fas fa-file-download"></i> Tải file mẫu
+                        </button>
+                    </div>
+                ` : ''}
                 <div class="settings-card" onclick="exportToCSV()">
                     <i class="fas fa-file-export" style="color: #f39c12;"></i>
                     <h3>Xuất File CSV</h3>
@@ -1335,7 +1504,7 @@ function handleTreeSearch(input, resultsContainer) {
         results.slice(0, 5).forEach(member => {
             const div = document.createElement('div');
             div.className = 'search-item';
-            div.innerHTML = `${member.full_name} (Đời ${member.generation})`;
+            div.innerHTML = `${member.full_name} (Đời thứ ${member.generation})`;
             div.onclick = () => {
                 if (typeof zoomToNode === 'function') zoomToNode(member.id);
                 input.value = '';
@@ -1433,9 +1602,11 @@ function renderDashboardTab() {
             <div class="dashboard-col" style="grid-column: 1 / -1;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h3 style="margin: 0;">Hoạt động gần đây</h3>
-                    <button onclick="clearActivities()" style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85em; font-weight: 600; transition: background 0.2s;">
-                        <i class="fas fa-trash-alt"></i> Xóa lịch sử
-                    </button>
+                    ${isAdmin() ? `
+                        <button onclick="clearActivities()" style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85em; font-weight: 600; transition: background 0.2s;">
+                            <i class="fas fa-trash-alt"></i> Xóa lịch sử
+                        </button>
+                    ` : ''}
                 </div>
                 <div id="recent-activities" style="max-height: 300px; overflow-y: auto;">Đang tải...</div>
             </div>
@@ -1536,7 +1707,7 @@ function renderDashboardTab() {
         } else {
             let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
             const branchMap = { 
-                '0': 'Tổ khảo, Tổ thúc',
+                '0': 'Tổ khảo',                                 
                 '1': 'Phái Nhất', 
                 '2': 'Phái Nhì', 
                 '3': 'Phái Ba', 
@@ -1657,7 +1828,7 @@ function renderDashboardTab() {
                 <li style="padding: 12px; margin-bottom: 8px; background: ${bgColor}; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid ${iconColor};">
                     <div>
                         <div style="font-weight: 600; color: #374151;">${evt.label}: ${evt.member.full_name}</div>
-                        <div style="font-size: 0.85em; color: #6b7280;">Ngày: ${evt.dateStr} (Đời ${evt.member.generation})</div>
+                        <div style="font-size: 0.85em; color: #6b7280;">Ngày: ${evt.dateStr} (Đời thứ ${evt.member.generation})</div>
                     </div>
                     <div style="text-align: right; font-size: 0.9em;">
                         ${timeText}
@@ -1797,7 +1968,7 @@ function createAdvancedSearchModal() {
                     <label style="display: block; margin-bottom: 5px; font-weight: 600;">Đời (Thế hệ)</label>
                     <select id="adv-gen" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
                         <option value="">Tất cả</option>
-                        ${Array.from({length: 15}, (_, i) => `<option value="${i+1}">Đời ${i+1}</option>`).join('')}
+                        ${Array.from({length: 15}, (_, i) => `<option value="${i+1}">Đời thứ ${i+1}</option>`).join('')}
                     </select>
                 </div>
 
@@ -1806,7 +1977,7 @@ function createAdvancedSearchModal() {
                     <label style="display: block; margin-bottom: 5px; font-weight: 600;">Phái / Chi</label>
                     <select id="adv-branch" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
                         <option value="">Tất cả</option>
-                        <option value="0">Gốc (Tổ)</option>
+                        <option value="0">Gốc (Hiển Cao Tổ Khảo)</option>
                         <option value="1">Phái Nhất</option>
                         <option value="2">Phái Nhì</option>
                         <option value="3">Phái Ba</option>
@@ -1929,6 +2100,9 @@ async function openViewPostModal(postId) {
                     <span id="view-post-cat" style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; margin-right: 10px; font-weight: 600;"></span>
                     <span id="view-post-date"><i class="far fa-clock"></i> </span>
                 </div>
+                <div id="view-post-image-container" style="margin-bottom: 20px; text-align: center; display: none;">
+                    <img id="view-post-image" src="" alt="Ảnh bài viết" style="max-width: 100%; max-height: 400px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                </div>
                 <div id="view-post-content" style="line-height: 1.8; color: #374151; font-size: 16px; white-space: pre-wrap;"></div>
             </div>
         </div>`;
@@ -1947,6 +2121,15 @@ async function openViewPostModal(postId) {
             document.getElementById('view-post-cat').innerText = catMap[post.category] || post.category;
             document.getElementById('view-post-date').innerHTML = `<i class="far fa-clock"></i> ${new Date(post.created_at).toLocaleDateString('vi-VN')}`;
             document.getElementById('view-post-content').innerText = post.content;
+            
+            const imgContainer = document.getElementById('view-post-image-container');
+            const img = document.getElementById('view-post-image');
+            if (post.image) {
+                img.src = post.image;
+                imgContainer.style.display = 'block';
+            } else {
+                imgContainer.style.display = 'none';
+            }
             
             document.getElementById('view-post-modal').style.display = 'block';
         }

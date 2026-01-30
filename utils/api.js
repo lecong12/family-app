@@ -39,6 +39,17 @@ const ActivitySchema = new mongoose.Schema({
 });
 const Activity = mongoose.models.Activity || mongoose.model('Activity', ActivitySchema);
 
+// --- Post Model (Thêm mới) ---
+const PostSchema = new mongoose.Schema({
+    title: { type: String, required: true },
+    content: { type: String, required: true },
+    category: { type: String, enum: ['announcement', 'event', 'news'], default: 'news' },
+    is_pinned: { type: Boolean, default: false },
+    image: { type: String, default: '' }, // Đường dẫn ảnh
+    created_at: { type: Date, default: Date.now }
+});
+const Post = mongoose.models.Post || mongoose.model('Post', PostSchema);
+
 async function logToDB(req, type, description) {
     try {
         // Lấy thông tin user từ request (nếu có auth), mặc định là Admin
@@ -49,6 +60,15 @@ async function logToDB(req, type, description) {
         console.error("Logging failed:", e.message);
     }
 }
+
+// --- Middleware phân quyền Admin ---
+const adminOnly = (req, res, next) => {
+    if (req.user && (req.user.role === 'admin' || req.user.role === 'owner')) {
+        next(); // Cho phép đi tiếp nếu là admin/owner
+    } else {
+        res.status(403).json({ success: false, message: 'Truy cập bị từ chối. Yêu cầu quyền Quản trị viên.' });
+    }
+};
 
 // --- Logic Xử lý Trực tiếp (Thay thế memberController) ---
 
@@ -354,22 +374,110 @@ const importSheets = async (req, res) => {
     }
 };
 
+// --- Logic Xử lý Bài viết (Posts) ---
+
+const getPosts = async (req, res) => {
+    try {
+        // Sắp xếp: Ghim lên đầu, sau đó đến ngày mới nhất
+        const posts = await Post.find().sort({ is_pinned: -1, created_at: -1 });
+        res.json({ success: true, posts });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+const getPostById = async (req, res) => {
+    try {
+        const post = await Post.findById(req.params.id);
+        if (!post) return res.status(404).json({ success: false, message: 'Không tìm thấy bài viết' });
+        res.json({ success: true, post });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+const createPost = async (req, res) => {
+    try {
+        const { title, content, category, is_pinned } = req.body;
+        let imagePath = '';
+        
+        if (req.file) {
+            console.log('📸 Nhận được file:', req.file.path);
+            // Xử lý đường dẫn ảnh: Hỗ trợ cả đường dẫn tuyệt đối (Windows) và tương đối
+            let safePath = req.file.path.replace(/\\/g, '/');
+            // Lấy phần đường dẫn sau thư mục 'public/' để tạo URL web hợp lệ
+            if (safePath.includes('public/')) {
+                safePath = safePath.split('public/').pop();
+            }
+            if (!safePath.startsWith('/')) safePath = '/' + safePath;
+            imagePath = safePath;
+        }
+
+        const newPost = new Post({
+            title,
+            content,
+            category,
+            is_pinned: is_pinned === 'true' || is_pinned === true,
+            image: imagePath
+        });
+
+        await newPost.save();
+        await logToDB(req, 'create', `Đăng bài viết mới: ${title}`);
+        res.json({ success: true, post: newPost });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+const updatePost = async (req, res) => {
+    try {
+        const { title, content, category, is_pinned } = req.body;
+        const updateData = { title, content, category, is_pinned: is_pinned === 'true' || is_pinned === true };
+
+        if (req.file) {
+            console.log('📸 Nhận được file cập nhật:', req.file.path);
+            let imagePath = req.file.path.replace(/\\/g, '/');
+            if (imagePath.includes('public/')) {
+                imagePath = imagePath.split('public/').pop();
+            }
+            if (!imagePath.startsWith('/')) imagePath = '/' + imagePath;
+            updateData.image = imagePath;
+        }
+
+        const updatedPost = await Post.findByIdAndUpdate(req.params.id, updateData, { new: true });
+        await logToDB(req, 'update', `Cập nhật bài viết: ${title}`);
+        res.json({ success: true, post: updatedPost });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+const deletePost = async (req, res) => {
+    try {
+        await Post.findByIdAndDelete(req.params.id);
+        await logToDB(req, 'delete', `Xóa bài viết ID: ${req.params.id}`);
+        res.json({ success: true, message: 'Đã xóa bài viết' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
 // --- Định nghĩa Routes ---
 
 // Lấy danh sách thành viên (Có thể để công khai hoặc bảo vệ tùy bạn)
 router.get('/members', auth, getMembers);
 
 // Thêm thành viên mới (Cần đăng nhập)
-router.post('/members', auth, createMember);
+router.post('/members', auth, adminOnly, createMember);
 
 // Cập nhật thành viên (Sửa)
-router.put('/members/:id', auth, updateMember);
+router.put('/members/:id', auth, adminOnly, updateMember);
 
 // Xóa thành viên
-router.delete('/members/:id', auth, deleteMember);
+router.delete('/members/:id', auth, adminOnly, deleteMember);
 
 // Import Google Sheets
-router.post('/import-sheets', auth, importSheets);
+router.post('/import-sheets', auth, adminOnly, importSheets);
 
 // THÊM MỚI: API lấy danh sách hoạt động
 router.get('/activities', auth, async (req, res) => {
@@ -382,13 +490,8 @@ router.get('/activities', auth, async (req, res) => {
 });
 
 // THÊM MỚI: API xóa toàn bộ hoạt động
-router.delete('/activities', auth, async (req, res) => {
+router.delete('/activities', auth, adminOnly, async (req, res) => {
     try {
-        // Kiểm tra quyền: Chỉ Admin (owner) mới được xóa
-        if (req.user && req.user.role !== 'owner' && req.user.role !== 'admin') {
-            return res.status(403).json({ success: false, message: 'Bạn không có quyền xóa lịch sử.' });
-        }
-
         await Activity.deleteMany({});
         res.json({ success: true, message: 'Đã xóa sạch lịch sử hoạt động.' });
     } catch (e) {
@@ -400,7 +503,7 @@ router.delete('/activities', auth, async (req, res) => {
 router.get('/export-csv', auth, exportToCSV);
 
 // THÊM MỚI: Route để import từ file CSV do người dùng tải lên
-router.post('/import-csv', auth, upload.single('csvfile'), async (req, res) => {
+router.post('/import-csv', auth, adminOnly, upload.single('csvfile'), async (req, res) => {
     // 'csvfile' phải khớp với tên field trong FormData ở frontend
     if (!req.file) {
         return res.status(400).json({ message: 'Vui lòng tải lên một file CSV.' });
@@ -428,5 +531,12 @@ router.post('/import-csv', auth, upload.single('csvfile'), async (req, res) => {
         });
     }
 });
+
+// --- Routes cho Bài viết ---
+router.get('/posts', auth, getPosts);
+router.get('/posts/:id', auth, getPostById);
+router.post('/posts', auth, adminOnly, upload.single('image'), createPost); // Hỗ trợ upload ảnh
+router.put('/posts/:id', auth, adminOnly, upload.single('image'), updatePost);
+router.delete('/posts/:id', auth, adminOnly, deletePost);
 
 module.exports = router;

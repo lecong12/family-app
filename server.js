@@ -51,8 +51,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware xử lý JSON (quan trọng cho Login)
-app.use(express.json());
-app.use(cors()); // Kích hoạt CORS
+app.use(express.json({ limit: '50mb' })); // Tăng giới hạn upload JSON
+app.use(express.urlencoded({ extended: true, limit: '50mb' })); // Tăng giới hạn form data
+app.use(cors());
 
 const publicPath = path.resolve(__dirname, 'public');
 console.log('📂 Đang phục vụ file tĩnh từ:', publicPath); // Log đường dẫn để debug
@@ -89,7 +90,6 @@ app.get('/status', (req, res) => {
 // 4. API Routes
 if (authRouter) app.use('/api/auth', authRouter);
 if (apiRouter) app.use('/api', apiRouter);
-if (postsRouter) app.use('/api/posts', postsRouter);
 
 // 404 Handler cho API: Trả về JSON thay vì HTML nếu gọi sai đường dẫn API
 app.use('/api/*', (req, res) => {
