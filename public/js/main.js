@@ -1644,7 +1644,23 @@ function renderDashboardTab() {
     `;
 
     if (allMembers.length === 0) {
-        wrapper.querySelector('.stats-grid').innerHTML = '<p style="text-align: center; grid-column: 1 / -1;">Chưa có dữ liệu để thống kê.</p>';
+        wrapper.querySelector('.stats-grid').innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background: #fff; border: 2px dashed #e5e7eb; border-radius: 12px;">
+                <i class="fas fa-folder-open" style="font-size: 48px; color: #d1d5db; margin-bottom: 15px;"></i>
+                <h3 style="color: #374151; margin-bottom: 8px;">Dữ liệu trống</h3>
+                <p style="color: #6b7280; margin-bottom: 20px;">Bạn đang kết nối tới Database trên Cloud (mới) nên chưa có dữ liệu.</p>
+                ${isAdmin() ? `
+                    <div style="display: flex; gap: 10px; justify-content: center;">
+                        <button onclick="document.querySelector('.tab-btn[data-target=\\'#settings-tab\\']').click();" style="background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                            <i class="fas fa-cog"></i> Vào Cài đặt để Nạp dữ liệu
+                        </button>
+                        <button onclick="syncGoogleSheets()" style="background: #f59e0b; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                            <i class="fas fa-cloud-download-alt"></i> Nạp nhanh từ Google Sheets
+                        </button>
+                    </div>
+                ` : '<p>Vui lòng liên hệ Quản trị viên để nạp dữ liệu.</p>'}
+            </div>
+        `;
         return;
     }
 
