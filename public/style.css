@@ -5,7 +5,7 @@
 }
 
 :root {
-    /* Thay đổi hệ màu gốc sang Đỏ - Vàng */
+    /* Thay đổi hệ màu gốc thành Đỏ - Vàng */
     --primary: #8b0000;         /* Đỏ đô */
     --primary-dark: #5a0000;
     --secondary: #d4af37;       /* Vàng kim */
