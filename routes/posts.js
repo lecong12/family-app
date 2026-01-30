@@ -4,6 +4,11 @@ const Post = require('../models/Post');
 const auth = require('../middleware/auth'); // Sử dụng middleware xác thực có sẵn
 const mongoose = require('mongoose');
 
+// Thêm middleware upload để xử lý ảnh (nếu có)
+let upload;
+try { upload = require('../middleware/upload'); } 
+catch (e) { upload = { single: () => (req, res, next) => next() }; }
+
 // --- Activity Model & Helper (Thêm để ghi log) ---
 const ActivitySchema = new mongoose.Schema({
     actor_name: String,
@@ -39,8 +44,13 @@ router.get('/', auth, async (req, res) => {
 });
 
 // 2. Tạo bài viết mới
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, upload.single('image'), async (req, res) => {
     try {
+        // Kiểm tra quyền: Chỉ Admin/Owner mới được đăng bài
+        if (req.user.role !== 'admin' && req.user.role !== 'owner') {
+            return res.status(403).json({ success: false, message: 'Bạn không có quyền đăng bài viết.' });
+        }
+
         const { title, content, category, is_pinned } = req.body;
 
         if (!title || !content) {
@@ -75,7 +85,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // 4. Cập nhật bài viết
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, upload.single('image'), async (req, res) => {
     try {
         const { title, content, category, is_pinned } = req.body;
         const post = await Post.findById(req.params.id);
@@ -84,8 +94,8 @@ router.put('/:id', auth, async (req, res) => {
 
         // Kiểm tra quyền: Chỉ tác giả hoặc admin (nếu có role) mới được sửa
         // Ở đây tạm thời chỉ kiểm tra tác giả
-        if (post.author && post.author.toString() !== req.user.id) {
-             // Nếu muốn cho phép admin sửa, cần check req.user.role === 'admin'
+        // Bổ sung: Admin/Owner luôn có quyền sửa
+        if ((post.author && post.author.toString() !== req.user.id) && (req.user.role !== 'admin' && req.user.role !== 'owner')) {
              return res.status(403).json({ success: false, message: 'Bạn không có quyền sửa bài viết này' });
         }
 
@@ -111,7 +121,8 @@ router.delete('/:id', auth, async (req, res) => {
         const postTitle = post.title; // Lưu lại tiêu đề để ghi log
 
         // Kiểm tra quyền
-        if (post.author && post.author.toString() !== req.user.id) {
+        // Bổ sung: Admin/Owner luôn có quyền xóa
+        if ((post.author && post.author.toString() !== req.user.id) && (req.user.role !== 'admin' && req.user.role !== 'owner')) {
             return res.status(403).json({ success: false, message: 'Bạn không có quyền xóa bài viết này' });
         }
 
