@@ -90,6 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const createPostBtn = document.getElementById('btn-create-post');
     if (createPostBtn && !isAdmin()) {
         createPostBtn.style.setProperty('display', 'none', 'important');
+        createPostBtn.remove(); // Xóa hoàn toàn khỏi HTML để đảm bảo không hiện lại
     }
 });
 
@@ -380,7 +381,8 @@ function renderMembersTab() {
     // Ẩn nút "Thêm thành viên" nếu không phải Admin
     const addMemberBtn = document.querySelector('#members-tab .btn-add');
     if (addMemberBtn && !isAdmin()) {
-        addMemberBtn.style.display = 'none';
+        addMemberBtn.style.setProperty('display', 'none', 'important');
+        addMemberBtn.remove(); // Xóa hoàn toàn khỏi HTML
     }
 
     // --- CẬP NHẬT: Hàm xử lý lọc kết hợp (Tên + Loại) ---
@@ -1106,12 +1108,14 @@ function renderPostsTab() {
     // Ẩn/hiện nút "Viết bài mới" dựa trên quyền
     const createPostBtn = document.getElementById('btn-create-post');
     if (createPostBtn) {
-        createPostBtn.style.display = isAdmin() ? 'flex' : 'none';
         if (isAdmin()) {
             createPostBtn.style.display = 'flex';
+            createPostBtn.style.visibility = 'visible';
         } else {
             // Dùng setProperty với 'important' để chắc chắn ẩn, bất chấp CSS khác
             createPostBtn.style.setProperty('display', 'none', 'important');
+            createPostBtn.style.visibility = 'hidden';
+            createPostBtn.remove(); // Xóa hoàn toàn khỏi HTML
         }
     }
 
