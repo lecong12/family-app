@@ -35,8 +35,6 @@ const isAdmin = () => {
 // 1. Khởi tạo khi trang tải xong
 document.addEventListener('DOMContentLoaded', () => {
     const token = localStorage.getItem('token');
-    const userName = localStorage.getItem('userName');
-    const userRole = localStorage.getItem('userRole');
     let userName = localStorage.getItem('userName');
     let userRole = localStorage.getItem('userRole');
 

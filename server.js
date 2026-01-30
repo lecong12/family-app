@@ -12,6 +12,7 @@ const connectDB = async () => {
     try { 
         await mongoose.connect(MONGO_URI); 
         console.log('✅ MongoDB Connected'); 
+        console.log(`💽 Đang sử dụng Database: "${mongoose.connection.name}"`);
 
         // --- DEBUG: Kiểm tra dữ liệu thực tế trong DB ---
         const collections = await mongoose.connection.db.listCollections().toArray();
