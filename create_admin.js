@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const User = require('./models/User');
+const bcrypt = require('bcryptjs'); // Thêm thư viện mã hóa
 
 // --- CẤU HÌNH ---
 // Bạn hãy thay đổi chuỗi kết nối dưới đây cho đúng với MongoDB của bạn
@@ -17,6 +18,10 @@ async function createAdmin() {
         const targetUsername = 'admin';
         const targetRole = 'admin';
         
+        // Mã hóa mật khẩu "123" trước khi lưu
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash('123', salt);
+
         // Tìm xem user có tồn tại không
         // Sử dụng .find() thay vì .findOne() để phát hiện nếu có tài khoản trùng lặp
         const users = await User.find({ username: targetUsername });
@@ -33,15 +38,16 @@ async function createAdmin() {
 
             console.log(`Tìm thấy tài khoản "${targetUsername}" (ID: ${user._id}). Đang cập nhật quyền...`);
             user.role = targetRole;
+            user.password = hashedPassword; // Cập nhật lại password đã mã hóa để đảm bảo đăng nhập được
             await user.save();
-            console.log('Cập nhật thành công! Tài khoản này giờ là Admin.');
+            console.log('Cập nhật thành công! Tài khoản này giờ là Admin. Mật khẩu là: 123');
         } else {
             console.log(`Không tìm thấy tài khoản "${targetUsername}". Đang tạo mới...`);
             // Lưu ý: Nếu dự án của bạn có dùng bcrypt để mã hóa password trong Controller,
             // bạn có thể sẽ không đăng nhập được bằng password plain-text này.
             user = new User({
                 username: targetUsername,
-                password: '123', // Mật khẩu mặc định
+                password: hashedPassword, // Sử dụng mật khẩu đã mã hóa
                 role: targetRole
             });
             await user.save();
