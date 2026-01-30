@@ -74,6 +74,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- FIX MẠNH TAY: Chèn CSS để ẩn triệt để các nút quản trị nếu là khách ---
+    // Cách này mạnh hơn việc tìm và xóa element vì nó chặn hiển thị ngay từ cấp độ CSS
+    if (!isAdmin()) {
+        const style = document.createElement('style');
+        style.id = 'guest-css-override';
+        style.innerHTML = `
+            /* Ẩn nút Viết bài mới (Target bằng ID, Class và Onclick) */
+            #btn-create-post, .btn-create-post, button[onclick="openCreatePostModal()"],
+            /* Ẩn nút Thêm thành viên */
+            #members-tab .btn-add, .btn-add-member, button[onclick="openAddModal()"],
+            /* Ẩn các nút Sửa/Xóa bài viết */
+            .btn-edit, .btn-delete,
+            /* Ẩn các thẻ cài đặt quản trị */
+            .settings-card[onclick="openImportModal()"], 
+            .settings-card[onclick="syncGoogleSheets()"], 
+            .settings-card[onclick="openUserManagementModal()"] {
+                display: none !important;
+            }
+        `;
+        document.head.appendChild(style);
+        console.log('🔒 Đã kích hoạt chế độ Khách: Ẩn toàn bộ nút quản trị bằng CSS.');
+    }
+
     // Khởi tạo các ô tìm kiếm thông minh và cấu trúc form
     initSmartSelects();
     
@@ -86,12 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Khởi tạo form bài viết (chèn input ảnh)
     initPostForm();
 
-    // --- FIX: Ẩn nút đăng bài ngay lập tức khi tải trang nếu không phải admin ---
-    const createPostBtn = document.getElementById('btn-create-post');
-    if (createPostBtn && !isAdmin()) {
-        createPostBtn.style.setProperty('display', 'none', 'important');
-        createPostBtn.remove(); // Xóa hoàn toàn khỏi HTML để đảm bảo không hiện lại
-    }
 });
 
 // 2. Hàm tải dữ liệu từ Server
@@ -250,7 +267,7 @@ function renderTreeTab() {
             const resetBtn = document.createElement('button');
             resetBtn.id = 'btn-reset-tree';
             resetBtn.className = 'btn-control';
-            resetBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Đặt lại';
+            resetBtn.innerHTML = '<i class="fas fa-sync-alt"></i> <span class="btn-text">Đặt lại</span>';
             resetBtn.onclick = () => {
                 const select = document.getElementById('tree-gen-limit');
                 if (select) select.value = 0; // Reset về Tất cả
@@ -268,7 +285,7 @@ function renderTreeTab() {
                 const downloadBtn = document.createElement('button');
                 downloadBtn.id = 'btn-download-tree';
                 downloadBtn.className = 'btn-control';
-                downloadBtn.innerHTML = '<i class="fas fa-file-download"></i> Tải cây';
+                downloadBtn.innerHTML = '<i class="fas fa-file-download"></i> <span class="btn-text">Tải cây</span>';
                 downloadBtn.onclick = downloadTreePDF;
                 controls.appendChild(downloadBtn);
             }

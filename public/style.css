@@ -769,21 +769,61 @@ body {
         -webkit-overflow-scrolling: touch;
     }
 
+    /* --- TỐI ƯU THANH CÔNG CỤ CÂY GIA PHẢ TRÊN MOBILE (2 HÀNG) --- */
     .tree-controls {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr 1fr; /* Chia làm 3 cột đều nhau */
         gap: 8px;
-        flex-wrap: wrap;
+        padding: 10px;
+        justify-content: stretch;
+    }
+
+    /* Phá vỡ container tìm kiếm để các phần tử con (input, select) tham gia vào Grid chung */
+    .search-container {
+        display: contents;
+    }
+
+    /* Hàng 1: Ô tìm kiếm chiếm 2/3 */
+    #tree-search-input {
+        grid-column: span 2;
+        width: 100% !important;
+        min-width: 0 !important;
+        height: 40px !important;
+    }
+
+    /* Hàng 1: Ô chọn đời chiếm 1/3 còn lại */
+    .tree-select {
+        grid-column: span 1;
+        width: 100% !important;
+        min-width: 0 !important;
+        height: 40px !important;
+        padding: 0 4px 0 8px !important;
+        background-position: right 2px center !important;
+        font-size: 13px !important;
+    }
+
+    /* Hàng 2: Các nút bấm chia đều 3 cột */
+    .tree-controls .btn-control {
+        grid-column: span 1;
+        width: 100% !important;
+        min-width: 0 !important;
+        height: 40px !important;
+        padding: 0 2px !important;
+        font-size: 12px !important;
+        display: flex;
+        align-items: center;
         justify-content: center;
     }
 
-    .btn-control {
-        padding: 8px 14px;
-        font-size: 12px;
-        flex: 1;
-        min-width: 80px;
-    }
-
-    .btn-control i {
-        font-size: 14px;
+    /* Trên màn hình cực nhỏ (iPhone SE), ẩn chữ chỉ hiện icon */
+    @media (max-width: 380px) {
+        .tree-controls .btn-control .btn-text {
+            display: none;
+        }
+        .tree-controls .btn-control i {
+            margin: 0;
+            font-size: 16px;
+        }
     }
 
     #familyTreeSvg {
