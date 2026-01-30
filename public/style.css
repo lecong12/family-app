@@ -769,73 +769,67 @@ body {
         -webkit-overflow-scrolling: touch;
     }
 
-    /* --- TỐI ƯU THANH CÔNG CỤ CÂY GIA PHẢ TRÊN MOBILE (
+    /* --- TỐI ƯU THANH CÔNG CỤ CÂY GIA PHẢ TRÊN MOBILE (1 HÀNG 4 CỘT) --- */
+    .tree-controls {
         display: grid !important;
-        grid-template-columa6 8px;
-        y
-
-    /* Phá vỡ container tìm kiếm để các phần tử con (input, select) tham gia vào Grid chung */
-    .search-container {
-        display: contents;
+        grid-template-columns: repeat(4, 1fr) !important; /* Ép cứng 4 cột */
+        gap: 4px !important;
+        padding: 6px !important;
+        width: 100% !important;
+        align-items: center !important;
     }
 
-    /* Tất cả các phần tử (Input, Select, Button) đều chiếm 1 cột */
+    /* Phá vỡ container tìm kiếm để input và select trở thành grid item trực tiếp */
+    .tree-controls .search-container {
+        display: contents !important;
+    }
+
+    /* Input tìm kiếm */
     #tree-search-input {
-             width: 100% !important;
-
-        height: 40px !important;
-        padding: 0 8px !important;
+        grid-column: span 1 !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        height: 36px !important;
+        padding: 0 4px !important;
+        font-size: 12px !important;
     }
+
+    /* Select chọn đời */
     .tree-select {
         grid-column: span 1;
         width: 100% !important;
         min-width: 0 !important;
-        height: 40px !important;
-        padding: 0 2px 0 6px !important;
-        background-size: 10px !important; /* Mũi tên nhỏ */
-        font-size: 12px !important;
+        height: 36px !important;
+        padding: 0 2px !important;
+        background-position: right 0 center !important;
+        background-size: 10px !important;
+        font-size: 11px !important;
     }
 
-    .tree-controls
-        !eight: 40px !important;
-        padding: 0 2px !important;
+    /* Các nút bấm (Reset, Tải cây...) */
+    .tree-controls .btn-control {
+        grid-column: span 1 !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        height: 36px !important;
+        padding: 0 !important;
         font-size: 12px !important;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-   
-    /* Luôn ẩn chữ trên mobile để tiết kiệm diện tích */
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    /* Ẩn chữ trên mobile, chỉ hiện icon */
     .tree-controls .btn-control .btn-text {
         display: none !important;
     }
     .tree-controls .btn-control i {
         margin: 0 !important;
-        font-size: 16px !important;
+        font-size: 14px !important;
     }
 
     #familyTreeSvg {
         min-height: 400px;
-      ee-controls {
-        gap: 6px;
-    }
-
-    .btn-control {
-        padding: 6px 10px;
-        font-size: 11px;
-        min-width: 70px;
-    }
-
-    .btn-control span {
-        display: none;
-    }
-
-    .btn-control i {
-        margin: 0;
-        font-size: 12px;
-    }
-
-    #familyTreeSvg {
-        min-height: 350px;
     }
 }
 

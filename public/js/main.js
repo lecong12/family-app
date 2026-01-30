@@ -276,6 +276,16 @@ function renderTreeTab() {
             
             // Chèn vào trước nút "Xem toàn bộ"
             const viewAllBtn = controls.querySelector('button[onclick*="zoomToNode"]');
+            
+            // --- FIX: Đảm bảo nút "Xem toàn bộ" cũng ẩn chữ trên mobile ---
+            if (viewAllBtn && !viewAllBtn.querySelector('.btn-text')) {
+                const icon = viewAllBtn.querySelector('i');
+                const text = viewAllBtn.innerText.trim();
+                viewAllBtn.innerHTML = '';
+                if(icon) viewAllBtn.appendChild(icon);
+                viewAllBtn.innerHTML += ` <span class="btn-text">${text}</span>`;
+            }
+
             if (viewAllBtn) controls.insertBefore(resetBtn, viewAllBtn);
             else controls.appendChild(resetBtn);
             }
