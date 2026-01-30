@@ -18,35 +18,24 @@ const connectDB = async () => {
         const collections = await mongoose.connection.db.listCollections().toArray();
         console.log('📂 Danh sách Collection trong Database:');
         
-        let hasMembers = false;
-        let candidate = null; // Biến lưu tên bảng tiềm năng (ví dụ: people)
+        let memberCount = 0;
+        const memberCol = collections.find(c => c.name === 'members');
 
         for (const col of collections) {
             const count = await mongoose.connection.db.collection(col.name).countDocuments();
             console.log(`   👉 Collection "${col.name}": ${count} bản ghi`);
-            
-            if (col.name === 'members' && count > 0) hasMembers = true;
-            
-            // Nếu tìm thấy bảng 'people' hoặc 'users' có dữ liệu, lưu lại để xử lý
-            if (!hasMembers && count > 0 && ['people', 'users', 'family', 'data'].includes(col.name)) {
-                candidate = col.name;
-            }
         }
 
-        if (!hasMembers) {
-            console.warn(`⚠️ CẢNH BÁO: Không tìm thấy collection 'members'. Code đang tìm dữ liệu ở bảng 'members'.`);
-            
-            if (candidate) {
-                console.log(`💡 PHÁT HIỆN: Bạn có dữ liệu ở bảng "${candidate}". Đang tự động đổi tên thành "members"...`);
-                try {
-                    await mongoose.connection.db.renameCollection(candidate, 'members');
-                    console.log('✅ Đã đổi tên thành công! Dữ liệu sẽ hiển thị ngay bây giờ.');
-                } catch (err) {
-                    console.error('❌ Lỗi khi đổi tên collection:', err.message);
-                }
+        if (memberCol) {
+            memberCount = await mongoose.connection.db.collection('members').countDocuments();
+            if (memberCount === 0) {
+                console.warn(`⚠️ CẢNH BÁO: Có collection 'members' nhưng TRỐNG (0 bản ghi).`);
+                console.warn(`👉 Hãy kiểm tra xem bạn có đang kết nối nhầm Database không? (Hiện tại: "${mongoose.connection.name}")`);
             } else {
-                console.warn(`👉 Nếu dữ liệu của bạn nằm ở bảng khác, hãy đổi tên collection trong DB thành 'members'.`);
+                console.log(`✅ Đã tìm thấy dữ liệu! Collection 'members' có ${memberCount} thành viên.`);
             }
+        } else {
+            console.error(`❌ LỖI: Không tìm thấy collection 'members' trong database "${mongoose.connection.name}".`);
         }
         // ------------------------------------------------
     }
