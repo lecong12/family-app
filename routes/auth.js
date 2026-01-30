@@ -37,7 +37,7 @@ router.post('/login', async (req, res) => {
     if (username === 'admin' && password === '123456') {
         // Nâng cấp quyền backdoor lên 'owner' để đồng bộ với DB
         const token = jwt.sign({ username: 'admin', role: 'owner' }, JWT_SECRET, { expiresIn: '365d' });
-        return res.json({ message: 'Đăng nhập Admin thành công', token });
+        return res.json({ message: 'Đăng nhập Admin thành công', token, role: 'owner', username: 'admin' });
     }
 
     // 2. Kiểm tra trong Database
@@ -56,8 +56,9 @@ router.post('/login', async (req, res) => {
         }
 
         // QUAN TRỌNG: Thêm 'role' vào payload của Token để middleware adminOnly hoạt động
-        const token = jwt.sign({ username: user.username, id: user._id, role: user.role || 'viewer' }, JWT_SECRET, { expiresIn: '30d' });
-        res.json({ message: 'Đăng nhập thành công', token });
+        const role = user.role || 'viewer';
+        const token = jwt.sign({ username: user.username, id: user._id, role: role }, JWT_SECRET, { expiresIn: '30d' });
+        res.json({ message: 'Đăng nhập thành công', token, role, username: user.username });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Lỗi server khi đăng nhập' });
