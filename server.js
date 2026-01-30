@@ -9,7 +9,23 @@ const connectDB = async () => {
     // Ưu tiên lấy từ .env, nếu không có thì dùng chuỗi mặc định trỏ vào 'family-app'
     const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://lecong12:Lecong78@cluster0.onrzjrx.mongodb.net/family-app?retryWrites=true&w=majority';
     console.log(`🔌 Đang kết nối tới Database...`);
-    try { await mongoose.connect(MONGO_URI); console.log('✅ MongoDB Connected'); }
+    try { 
+        await mongoose.connect(MONGO_URI); 
+        console.log('✅ MongoDB Connected'); 
+
+        // --- DEBUG: Kiểm tra dữ liệu thực tế trong DB ---
+        const collections = await mongoose.connection.db.listCollections().toArray();
+        const collectionNames = collections.map(c => c.name);
+        console.log('📂 Các Collection hiện có trong DB:', collectionNames.join(', '));
+
+        if (collectionNames.includes('members')) {
+            const count = await mongoose.connection.db.collection('members').countDocuments();
+            console.log(`📊 Collection 'members' đang có: ${count} bản ghi.`);
+        } else {
+            console.warn(`⚠️ CẢNH BÁO: Không tìm thấy collection 'members'. Có thể dữ liệu của bạn đang nằm ở collection khác (ví dụ: 'people', 'Member'...).`);
+        }
+        // ------------------------------------------------
+    }
     catch (e) { 
         console.error('❌ Lỗi kết nối DB:', e.message); 
         console.warn('⚠️ Server vẫn chạy nhưng chưa kết nối được Database (Kiểm tra lại MONGO_URI).');
