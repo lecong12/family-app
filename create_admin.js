@@ -1,11 +1,12 @@
+require('dotenv').config();
 const mongoose = require('mongoose');
 const User = require('./models/User');
 const bcrypt = require('bcryptjs'); // Thêm thư viện mã hóa
 
 // --- CẤU HÌNH ---
 // Bạn hãy thay đổi chuỗi kết nối dưới đây cho đúng với MongoDB của bạn
-// Ví dụ: 'mongodb://127.0.0.1:27017/family-app' hoặc chuỗi kết nối Atlas
-const MONGO_URI = 'mongodb://127.0.0.1:27017/family-app';
+// Ưu tiên lấy từ biến môi trường hoặc dùng chuỗi kết nối Cloud mặc định
+const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://lecong12:Lecong78@cluster0.onrzjrx.mongodb.net/family-app?retryWrites=true&w=majority';
 // ----------------
 
 async function createAdmin() {
@@ -13,10 +14,10 @@ async function createAdmin() {
         await mongoose.connect(MONGO_URI, {
             serverSelectionTimeoutMS: 5000 // Ngắt kết nối sau 5s nếu không tìm thấy DB
         });
-        console.log('Đã kết nối tới MongoDB.');
+        console.log('✅ Đã kết nối tới MongoDB Atlas (Cloud).');
 
         const targetUsername = 'admin';
-        const targetRole = 'admin';
+        const targetRole = 'owner'; // Nâng cấp quyền lên cao nhất (Chủ sở hữu)
         
         // Mã hóa mật khẩu "123" trước khi lưu
         const salt = await bcrypt.genSalt(10);
@@ -36,7 +37,7 @@ async function createAdmin() {
                 console.warn(`👉 Bạn nên xóa các tài khoản trùng lặp khác để tránh lỗi đăng nhập.`);
             }
 
-            console.log(`Tìm thấy tài khoản "${targetUsername}" (ID: ${user._id}). Đang cập nhật quyền...`);
+            console.log(`🔍 Tìm thấy tài khoản "${targetUsername}" (ID: ${user._id}). Đang nâng cấp quyền lên "${targetRole}"...`);
             user.role = targetRole;
             user.password = hashedPassword; // Cập nhật lại password đã mã hóa để đảm bảo đăng nhập được
             await user.save();
