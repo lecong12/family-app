@@ -1330,7 +1330,7 @@ function renderSettingsTab() {
                         <h3>Nhập File CSV</h3>
                         <p>Thêm/Cập nhật từ CSV.</p>
                         <button onclick="event.stopPropagation(); downloadSampleCSV()" class="btn-sample-download" title="Tải file mẫu cấu trúc chuẩn">
-                            <i class="fas fa-file-download"></i> Tải file mẫu
+                            <i class="fas fa-file-download"></i> Tải mẫu
                         </button>
                     </div>
                     <div class="settings-card" onclick="openUserManagementModal()">
