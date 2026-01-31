@@ -18,4 +18,5 @@ const memberSchema = new mongoose.Schema({
     images: [String]
 }, { timestamps: true });
 
-module.exports = mongoose.model('Member', memberSchema);
+// --- FIX: Kiểm tra xem Model đã tồn tại chưa để tránh lỗi OverwriteModelError khi deploy ---
+module.exports = mongoose.models.Member || mongoose.model('Member', memberSchema);

@@ -1,7 +1,16 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
-const mongoose = require('mongoose'); // Thêm để kiểm tra trạng thái DB
+
+// --- FIX: Bắt lỗi thiếu thư viện Mongoose ---
+let mongoose;
+try {
+    mongoose = require('mongoose');
+} catch (e) {
+    console.error('❌ LỖI NGHIÊM TRỌNG: Chưa cài đặt thư viện "mongoose". Hãy chạy lệnh: npm install mongoose');
+    process.exit(1);
+}
+
 const cors = require('cors'); // Thêm CORS để tránh lỗi kết nối từ trình duyệt
 
 // Cấu hình kết nối Database trực tiếp (Bỏ qua file config cũ để tránh nhầm lẫn)
