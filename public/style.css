@@ -2549,19 +2549,6 @@ body {
     font-weight: 500;
 }
 
-/* 3. Layout 2 cột (Compact Row) */
-#add-member-modal .form-row-compact {
-    display: flex;
-    gap: 24px;
-    margin-bottom: 24px;
-}
-
-#add-member-modal .form-row-compact .form-group {
-    flex: 1;
-    margin-bottom: 0 !important;
-    min-width: 0;
-}
-
 /* 4. Footer Actions (Buttons) */
 #add-member-modal .form-actions {
     display: flex;

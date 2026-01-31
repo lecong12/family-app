@@ -784,6 +784,12 @@ function initSmartSelects() {
     if (!modalContent || modalContent.dataset.smartInit === 'true') return;
 
     console.log('🛠️ Đang khởi tạo form nhập liệu (Bootstrap-like layout)...');
+
+    // --- BỔ SUNG: Xóa chữ "(nếu có)" khỏi tất cả label ---
+    modalContent.querySelectorAll('label').forEach(lbl => {
+        lbl.innerHTML = lbl.innerHTML.replace(/\(nếu có\)/gi, '').trim();
+    });
+
     const configs = [
         { id: 'm-name', type: 'text' }, // Giữ nguyên input text
         { id: 'm-gender', type: 'select' }, // Giữ nguyên select
@@ -884,33 +890,6 @@ function initSmartSelects() {
             // Đối với các trường input/select thường, chỉ cần di chuyển chúng vào trong nhóm
             group.appendChild(originalEl);
         }
-    });
-
-    // --- BỔ SUNG: Hàm gom nhóm các trường ngắn vào 1 hàng ---
-    const groupFields = (id1, id2) => {
-        const el1 = document.getElementById(id1);
-        const el2 = document.getElementById(id2);
-        if (el1 && el2) {
-            const g1 = el1.closest('.form-group');
-            const g2 = el2.closest('.form-group');
-            if (g1 && g2 && g1.parentNode === g2.parentNode && !g1.parentNode.classList.contains('form-row-compact')) {
-                const row = document.createElement('div');
-                row.className = 'form-row-compact';
-                g1.parentNode.insertBefore(row, g1);
-                row.appendChild(g1);
-                row.appendChild(g2);
-            }
-        }
-    };
-
-    groupFields('m-gender', 'm-birth'); // Gom Giới tính + Ngày sinh
-    groupFields('m-death', 'm-job');    // Gom Ngày mất + Nghề nghiệp (nếu có)
-    groupFields('m-fid', 'm-mid');      // Gom Cha + Mẹ vào 1 hàng để tiết kiệm diện tích
-    groupFields('m-branch', 'm-address'); // Gom Phái + Địa chỉ vào 1 hàng
-
-    // --- BỔ SUNG: Xóa chữ "(nếu có)" khỏi tất cả label ---
-    modalContent.querySelectorAll('label').forEach(lbl => {
-        lbl.innerHTML = lbl.innerHTML.replace(/\(nếu có\)/gi, '').trim();
     });
 
     // Đóng danh sách kết quả tìm kiếm khi click ra ngoài
