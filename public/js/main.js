@@ -607,16 +607,11 @@ function renderPagination() {
         `;
 
         // Thêm sự kiện click để zoom đến người đó trên cây
-        if (isAdmin()) {
-            card.onclick = () => { 
-                openEditModal(m.id);
-            };
-        } else {
-            card.style.cursor = 'pointer'; // Cho phép click
-            card.onclick = () => {
-                openViewMemberModal(m.id);
-            };
-        }
+        // --- FIX: Xóa bỏ logic sửa khi click, chuyển thành xem chi tiết cho tất cả ---
+        card.style.cursor = 'pointer';
+        card.onclick = () => {
+            openViewMemberModal(m.id);
+        };
         
         container.appendChild(card);
     });
@@ -733,21 +728,12 @@ window.openEditModal = function(memberId) {
     if(document.getElementById('m-address')) document.getElementById('m-address').value = member.address || '';
     if(document.getElementById('m-branch')) document.getElementById('m-branch').value = member.branch || '';
     
-    // Cải tiến: Tìm vợ/chồng 2 chiều để điền vào form
-    let spouseId = member.pid;
-    if (!spouseId) {
-        // Tìm xem có ai khác coi người này là vợ/chồng không
-        const spouse = allMembers.find(p => String(p.pid) === String(memberId));
-        if (spouse) {
-            spouseId = spouse.id;
-        }
-    }
-
+    // --- FIX: Xóa bỏ logic tìm vợ/chồng 2 chiều thông minh ---
     // Điền dữ liệu cho các ô tìm kiếm thông minh
     const relations = {
         'm-fid': member.fid,
         'm-mid': member.mid,
-        'm-pid': spouseId // Sử dụng spouseId đã tìm được
+        'm-pid': member.pid // Lấy trực tiếp pid, không tìm ngược
     };
     for (const id in relations) {
         const relatedId = relations[id];
@@ -850,39 +836,14 @@ function initSmartSelects() {
             searchInput.addEventListener('input', () => {
                 const query = searchInput.value.toLowerCase();
                 resultsDiv.innerHTML = '';
-                let dataSource;
+                
+                // --- FIX: Xóa bỏ logic lọc thông minh (tìm vợ cho chồng, mẹ theo cha...) ---
+                // Chỉ lọc theo tiêu chí cơ bản (Giới tính) đã định nghĩa trong config
+                let dataSource = allMembers.filter(filter);
 
-                if (id === 'm-pid') { // Logic lọc danh sách Vợ/Chồng
-                    const takenIds = new Set();
-                    allMembers.forEach(p => {
-                        if (p.pid) {
-                            takenIds.add(String(p.id));
-                            takenIds.add(String(p.pid));
-                        }
-                    });
-                    const currentSpouseId = document.getElementById('m-pid').value;
-                    dataSource = allMembers.filter(m => {
-                        if (currentEditingId && String(m.id) === String(currentEditingId)) return false;
-                        if (currentSpouseId && String(m.id) === String(currentSpouseId)) return true;
-                        return !takenIds.has(String(m.id));
-                    });
-                } else if (id === 'm-mid') { // Logic lọc danh sách Mẹ theo Cha
-                    dataSource = allMembers.filter(filter);
-                    const fatherId = document.getElementById('m-fid').value;
-                    if (fatherId) {
-                        const father = allMembers.find(m => String(m.id) === String(fatherId));
-                        if (father) {
-                            const wifeIds = new Set();
-                            allMembers.forEach(p => { if (String(p.pid) === String(fatherId) && p.gender === 'Nữ') wifeIds.add(p.id); });
-                            if (father.pid) {
-                                const spouse = allMembers.find(p => String(p.id) === String(father.pid));
-                                if (spouse && spouse.gender === 'Nữ') wifeIds.add(spouse.id);
-                            }
-                            dataSource = allMembers.filter(m => wifeIds.has(String(m.id)));
-                        }
-                    }
-                } else { // Các trường hợp khác (Cha)
-                    dataSource = allMembers.filter(filter);
+                // Nếu là chọn Vợ/Chồng, loại bỏ chính mình khỏi danh sách
+                if (id === 'm-pid' && currentEditingId) {
+                    dataSource = dataSource.filter(m => String(m.id) !== String(currentEditingId));
                 }
 
                 const matched = query ? dataSource.filter(m => m.full_name.toLowerCase().includes(query)) : dataSource;
