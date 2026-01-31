@@ -612,7 +612,10 @@ function renderPagination() {
                 openEditModal(m.id);
             };
         } else {
-            card.style.cursor = 'default'; // Không có hành động khi click
+            card.style.cursor = 'pointer'; // Cho phép click
+            card.onclick = () => {
+                openViewMemberModal(m.id);
+            };
         }
         
         container.appendChild(card);
@@ -2512,6 +2515,155 @@ async function saveUser() {
     } else {
         alert('❌ ' + data.message);
     }
+}
+
+// ==========================================
+// BỔ SUNG: CHỨC NĂNG XEM CHI TIẾT THÀNH VIÊN (CHO KHÁCH)
+// ==========================================
+
+function openViewMemberModal(memberId) {
+    const member = allMembers.find(m => m.id == memberId);
+    if (!member) return;
+
+    // Tạo modal nếu chưa có
+    if (!document.getElementById('view-member-modal')) {
+        const modalHtml = `
+        <div id="view-member-modal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5);">
+            <div class="modal-content" style="background-color: #fff; margin: 5% auto; padding: 0; border: none; width: 90%; max-width: 600px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); overflow: hidden;">
+                <div class="modal-header" style="background: linear-gradient(135deg, #f97316, #fbbf24); padding: 20px 30px; border-bottom: none; display: flex; justify-content: space-between; align-items: center;">
+                    <h2 style="margin: 0; color: white; font-size: 22px; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-user-circle"></i> Thông tin thành viên
+                    </h2>
+                    <button onclick="document.getElementById('view-member-modal').style.display='none'" style="background: rgba(255,255,255,0.2); border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; transition: background 0.2s;">&times;</button>
+                </div>
+                <div class="modal-body" style="padding: 30px;">
+                    <div style="text-align: center; margin-bottom: 25px;">
+                        <div id="view-m-avatar" style="width: 80px; height: 80px; border-radius: 50%; background: #ddd; color: white; font-size: 36px; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; border: 4px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">A</div>
+                        <h3 id="view-m-name" style="margin: 0; font-size: 24px; color: #1f2937;"></h3>
+                        <div id="view-m-meta" style="color: #6b7280; margin-top: 5px; font-size: 14px;"></div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="info-group">
+                            <label style="display: block; font-size: 12px; font-weight: 600; color: #9ca3af; text-transform: uppercase; margin-bottom: 4px;">Giới tính</label>
+                            <div id="view-m-gender" style="font-weight: 500; color: #374151;"></div>
+                        </div>
+                        <div class="info-group">
+                            <label style="display: block; font-size: 12px; font-weight: 600; color: #9ca3af; text-transform: uppercase; margin-bottom: 4px;">Trạng thái</label>
+                            <div id="view-m-status" style="font-weight: 500; color: #374151;"></div>
+                        </div>
+                        <div class="info-group">
+                            <label style="display: block; font-size: 12px; font-weight: 600; color: #9ca3af; text-transform: uppercase; margin-bottom: 4px;">Ngày sinh</label>
+                            <div id="view-m-birth" style="font-weight: 500; color: #374151;"></div>
+                        </div>
+                        <div class="info-group">
+                            <label style="display: block; font-size: 12px; font-weight: 600; color: #9ca3af; text-transform: uppercase; margin-bottom: 4px;">Ngày mất</label>
+                            <div id="view-m-death" style="font-weight: 500; color: #374151;"></div>
+                        </div>
+                        <div class="info-group">
+                            <label style="display: block; font-size: 12px; font-weight: 600; color: #9ca3af; text-transform: uppercase; margin-bottom: 4px;">Đời thứ</label>
+                            <div id="view-m-gen" style="font-weight: 500; color: #374151;"></div>
+                        </div>
+                        <div class="info-group">
+                            <label style="display: block; font-size: 12px; font-weight: 600; color: #9ca3af; text-transform: uppercase; margin-bottom: 4px;">Phái / Chi</label>
+                            <div id="view-m-branch" style="font-weight: 500; color: #374151;"></div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #f3f4f6;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 16px; color: #1f2937;">Quan hệ gia đình</h4>
+                        <div style="display: grid; gap: 12px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: #6b7280;">Cha:</span>
+                                <span id="view-m-father" style="font-weight: 500; color: #374151;"></span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: #6b7280;">Mẹ:</span>
+                                <span id="view-m-mother" style="font-weight: 500; color: #374151;"></span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: #6b7280;">Vợ/Chồng:</span>
+                                <span id="view-m-partner" style="font-weight: 500; color: #374151;"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #f3f4f6;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 16px; color: #1f2937;">Thông tin khác</h4>
+                        <div style="display: grid; gap: 12px;">
+                            <div>
+                                <span style="color: #6b7280; display: block; font-size: 12px; margin-bottom: 2px;">Nghề nghiệp:</span>
+                                <span id="view-m-job" style="font-weight: 500; color: #374151;"></span>
+                            </div>
+                            <div>
+                                <span style="color: #6b7280; display: block; font-size: 12px; margin-bottom: 2px;">Địa chỉ:</span>
+                                <span id="view-m-address" style="font-weight: 500; color: #374151;"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="background: #f9fafb; padding: 15px 30px; text-align: right;">
+                    <button onclick="document.getElementById('view-member-modal').style.display='none'" style="padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s;">Đóng</button>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    // Helper lấy tên
+    const getName = (id) => {
+        if (!id) return '---';
+        const m = allMembers.find(x => String(x.id) === String(id));
+        return m ? m.full_name : 'Không rõ';
+    };
+
+    // Xác định trạng thái sinh tử
+    const hasDeathDate = member.death_date && String(member.death_date).trim() !== '' && String(member.death_date).trim() !== '0';
+    const isDeadByFlag = member.is_live === 0 || member.is_live === '0' || member.is_live === false || member.is_alive === 0 || member.is_alive === '0' || member.is_alive === false;
+    const isDeceased = hasDeathDate || isDeadByFlag;
+
+    // Avatar
+    const nameParts = (member.full_name || '?').trim().split(/\s+/);
+    const avatarLetter = nameParts[nameParts.length - 1].charAt(0).toUpperCase();
+    const avatarColor = isDeceased ? '#5d4037' : (member.gender === 'Nam' ? '#3b82f6' : '#ec4899');
+    
+    const avatarEl = document.getElementById('view-m-avatar');
+    avatarEl.style.backgroundColor = avatarColor;
+    avatarEl.innerText = avatarLetter;
+
+    // Điền dữ liệu
+    document.getElementById('view-m-name').innerText = member.full_name;
+    document.getElementById('view-m-meta').innerText = member.gender === 'Nam' ? 'Nam' : 'Nữ';
+
+    document.getElementById('view-m-gender').innerText = member.gender;
+    document.getElementById('view-m-status').innerHTML = isDeceased 
+        ? '<span style="color: #dc2626; background: #fee2e2; padding: 2px 8px; border-radius: 12px; font-size: 12px;">Đã mất</span>' 
+        : '<span style="color: #059669; background: #d1fae5; padding: 2px 8px; border-radius: 12px; font-size: 12px;">Còn sống</span>';
+    
+    document.getElementById('view-m-birth').innerText = member.birth_date || '---';
+    document.getElementById('view-m-death').innerText = member.death_date || '---';
+    document.getElementById('view-m-gen').innerText = member.generation;
+    
+    const branchMap = { '0': 'Tổ khảo', '1': 'Phái Nhất', '2': 'Phái Nhì', '3': 'Phái Ba', '4': 'Phái Bốn' };
+    document.getElementById('view-m-branch').innerText = branchMap[member.branch] || (member.branch === 'Gốc' ? 'Gốc' : `Phái ${member.branch || '---'}`);
+
+    document.getElementById('view-m-father').innerText = getName(member.fid);
+    document.getElementById('view-m-mother').innerText = getName(member.mid);
+    
+    // Logic tìm vợ/chồng 2 chiều
+    let spouseName = '---';
+    if (member.pid) {
+        spouseName = getName(member.pid);
+    } else {
+        const spouse = allMembers.find(p => String(p.pid) === String(member.id));
+        if (spouse) spouseName = spouse.full_name;
+    }
+    document.getElementById('view-m-partner').innerText = spouseName;
+
+    document.getElementById('view-m-job').innerText = member.job || '---';
+    document.getElementById('view-m-address').innerText = member.address || '---';
+
+    document.getElementById('view-member-modal').style.display = 'block';
 }
 
 async function deleteUser(id, name) {
