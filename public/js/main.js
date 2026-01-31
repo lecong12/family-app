@@ -109,6 +109,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Khởi tạo form bài viết (chèn input ảnh)
     initPostForm();
 
+    // --- FIX: Đảm bảo các nút Lưu/Xóa luôn tồn tại trong Modal ---
+    initModalButtons();
+
 });
 
 // 2. Hàm tải dữ liệu từ Server
@@ -867,6 +870,7 @@ function initSmartSelects() {
                             document.getElementById('m-mid-search').value = '';
                             document.getElementById('m-mid').value = '';
                         }
+                        // --- FIX: Đã xóa logic tự động xóa Mẹ khi chọn Cha ---
                     });
                     resultsDiv.appendChild(item);
                 });
@@ -917,6 +921,57 @@ function initSmartSelects() {
     });
 
     modalContent.dataset.smartInit = 'true';
+}
+
+// --- BỔ SUNG: Hàm khởi tạo nút bấm cho Modal (Phòng trường hợp HTML bị thiếu) ---
+function initModalButtons() {
+    const modal = document.getElementById('add-member-modal');
+    if (!modal) return;
+    
+    let footer = modal.querySelector('.form-actions');
+    // Nếu chưa có footer (nơi chứa nút), tạo mới
+    if (!footer) {
+        const content = modal.querySelector('.modal-content');
+        if (content) {
+            footer = document.createElement('div');
+            footer.className = 'form-actions';
+            content.appendChild(footer);
+        }
+    }
+    
+    if (footer) {
+        // 1. Nút Xóa (Delete)
+        if (!document.getElementById('btn-delete-member')) {
+            const delBtn = document.createElement('button');
+            delBtn.id = 'btn-delete-member';
+            delBtn.type = 'button';
+            // Style inline để đảm bảo hiển thị đúng ngay lập tức
+            delBtn.style.cssText = "background: #fee2e2; color: #dc2626; margin-right: auto;"; 
+            delBtn.innerHTML = '<i class="fas fa-trash"></i> Xóa';
+            delBtn.onclick = deleteMember;
+            footer.appendChild(delBtn);
+        }
+        
+        // 2. Nút Hủy (Cancel)
+        if (!footer.querySelector('.btn-cancel')) {
+            const cancelBtn = document.createElement('button');
+            cancelBtn.type = 'button';
+            cancelBtn.className = 'btn-cancel';
+            cancelBtn.innerText = 'Hủy';
+            cancelBtn.onclick = closeModal;
+            footer.appendChild(cancelBtn);
+        }
+        
+        // 3. Nút Lưu (Save)
+        if (!footer.querySelector('.btn-save')) {
+            const saveBtn = document.createElement('button');
+            saveBtn.type = 'button';
+            saveBtn.className = 'btn-save';
+            saveBtn.innerText = 'Lưu thông tin';
+            saveBtn.onclick = saveMember;
+            footer.appendChild(saveBtn);
+        }
+    }
 }
 
 async function saveMember() {
