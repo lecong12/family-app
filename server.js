@@ -56,7 +56,7 @@ const connectDB = async () => {
 };
 
 // Nạp Router an toàn (Tránh crash nếu thiếu file)
-let apiRouter, authRouter, postsRouter;
+let apiRouter, authRouter;
 try {
     // 1. Ưu tiên nạp từ utils/api (Cấu trúc mới)
     apiRouter = require('./utils/api');
@@ -77,12 +77,6 @@ try {
     authRouter = require('./routes/auth');
 } catch (error) {
     console.error('❌ Lỗi nạp Auth Router:', error.message);
-}
-
-try {
-    postsRouter = require('./routes/posts');
-} catch (error) {
-    console.error('❌ Lỗi nạp Posts Router:', error.message);
 }
 
 const app = express();
@@ -118,7 +112,6 @@ app.get('/status', (req, res) => {
         routers: {
             auth: !!authRouter ? 'OK' : 'FAILED (Check logs)',
             api: !!apiRouter ? 'OK' : 'FAILED (Check logs)',
-            posts: !!postsRouter ? 'OK' : 'FAILED (Check logs)'
         },
         mongo_uri_configured: !!process.env.MONGO_URI,
         port: PORT

@@ -52,7 +52,7 @@ const adminOnly = (req, res, next) => {
     if (req.user && (req.user.role === 'admin' || req.user.role === 'owner')) {
         next(); // Cho phép đi tiếp nếu là admin/owner
     } else {
-        res.status(403).json({ success: false, message: 'Truy cập bị từ chối. Yêu cầu quyền Quản trị viên.' });
+        res.status(403).json({ success: false, message: 'Bạn không có quyền thực hiện hành động này.' });
     }
 };
 
@@ -166,68 +166,8 @@ const deleteMember = async (req, res) => {
 
 const exportToCSV = async (req, res) => {
     try {
-        let members = [];
-        const db = req.app.get('db'); // Lấy kết nối SQL (PostgreSQL)
-
-        if (db) {
-            // --- CHẾ ĐỘ SQL (Ưu tiên) ---
-            const ownerId = req.user ? req.user.id : null;
-            if (!ownerId) throw new Error("Chưa đăng nhập hoặc không xác định được người dùng");
-
-            // 1. Lấy danh sách thành viên
-            const people = await new Promise((resolve, reject) => {
-                db.all(`SELECT * FROM people WHERE owner_id = ? ORDER BY generation, id`, [ownerId], (err, rows) => {
-                    if (err) reject(err); else resolve(rows);
-                });
-            });
-
-            // 2. Lấy quan hệ cha-con để xác định fid (cha), mid (mẹ)
-            const relationships = await new Promise((resolve, reject) => {
-                db.all(`
-                    SELECT r.parent_id, r.child_id, p.gender as parent_gender
-                    FROM relationships r
-                    JOIN people p ON r.parent_id = p.id
-                    WHERE p.owner_id = ?
-                `, [ownerId], (err, rows) => {
-                    if (err) reject(err); else resolve(rows);
-                });
-            });
-
-            // 3. Lấy quan hệ vợ chồng để xác định pid
-            const marriages = await new Promise((resolve, reject) => {
-                db.all(`
-                    SELECT m.husband_id, m.wife_id
-                    FROM marriages m
-                    JOIN people p ON m.husband_id = p.id
-                    WHERE p.owner_id = ?
-                `, [ownerId], (err, rows) => {
-                    if (err) reject(err); else resolve(rows);
-                });
-            });
-
-            // 4. Ghép dữ liệu
-            const memberMap = {};
-            people.forEach(p => {
-                memberMap[p.id] = { ...p, fid: '', mid: '', pid: '' };
-            });
-
-            relationships.forEach(r => {
-                if (memberMap[r.child_id]) {
-                    if (r.parent_gender === 'Nam') memberMap[r.child_id].fid = r.parent_id;
-                    else memberMap[r.child_id].mid = r.parent_id;
-                }
-            });
-
-            marriages.forEach(m => {
-                if (memberMap[m.husband_id]) memberMap[m.husband_id].pid = m.wife_id;
-                if (memberMap[m.wife_id]) memberMap[m.wife_id].pid = m.husband_id;
-            });
-
-            members = Object.values(memberMap);
-        } else if (Member) {
-            // --- CHẾ ĐỘ MONGOOSE (Dự phòng) ---
-            members = await Member.find().lean();
-        }
+        // Chỉ sử dụng Mongoose cho MongoDB
+        const members = await Member.find().lean();
         
         // Define headers based on user request, correcting typos
         const headers = [
