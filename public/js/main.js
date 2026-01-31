@@ -2679,34 +2679,4 @@ async function deleteUser(id, name) {
     } else {
         alert('❌ ' + data.message);
     }
-}   if (!confirm(`Bạn có chắc muốn xóa tài khoản "${name}" không?`)) return;
-    
-    const token = localStorage.getItem('token');
-    const res = await fetch(`/api/auth/users/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const data = await res.json();
-    
-    if (data.success) {
-        loadUserList();
-    } else {
-        alert('❌ ' + data.message);
-    }
-}
-async function deleteUser(id, name) {
-    if (!confirm(`Bạn có chắc muốn xóa tài khoản "${name}" không?`)) return;
-    
-    const token = localStorage.getItem('token');
-    const res = await fetch(`/api/auth/users/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const data = await res.json();
-    
-    if (data.success) {
-        loadUserList();
-    } else {
-        alert('❌ ' + data.message);
-    }
 }
