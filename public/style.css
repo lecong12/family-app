@@ -769,17 +769,18 @@ body {
         -webkit-overflow-scrolling: touch;
     }
 
-    /* --- TỐI ƯU THANH CÔNG CỤ CÂY GIA PHẢ TRÊN MOBILE (1 HÀNG 4 CỘT) --- */
+    /* --- TỐI ƯU THANH CÔNG CỤ CÂY GIA PHẢ TRÊN MOBILE (4 NÚT - 2 HÀNG CÂN ĐỐI) --- */
     .tree-controls {
         display: grid !important;
-        grid-template-columns: repeat(4, 1fr) !important; /* Ép cứng 4 cột */
-        gap: 4px !important;
-        padding: 6px !important;
-        grid-template-columns: repeat(5, 1fr) !important; /* Ép cứng 5 cột để xếp đủ 1 hàng */
-        gap: 2px !important; /* Giảm khoảng cách tối đa */
-        padding: 2px !important; /* Giảm padding khung */
+        /* Chia thành 2 cột đều nhau: [Tìm kiếm | Chọn đời] và [Đặt lại | Tải cây] */
+        grid-template-columns: 1fr 1fr !important;
+        gap: 10px !important; /* Khoảng cách thoáng hơn */
+        padding: 12px !important;
         width: 100% !important;
-        align-items: center !important;
+        height: auto !important;
+        background: #fff !important;
+        border-radius: 12px !important;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05) !important;
     }
 
     /* Phá vỡ container tìm kiếm để input và select trở thành grid item trực tiếp */
@@ -787,52 +788,56 @@ body {
         display: contents !important;
     }
 
-    /* Input tìm kiếm */
+    /* 1. Ô tìm kiếm: Cột 1 hàng 1 */
     #tree-search-input {
         grid-column: span 1 !important;
         width: 100% !important;
-        min-width: 0 !important;
-        height: 36px !important;
-        padding: 0 4px !important;
-        font-size: 12px !important;
-        padding: 0 2px !important; /* Giảm padding nội dung */
-        font-size: 11px !important;
+        height: 42px !important; /* Tăng chiều cao dễ bấm */
+        font-size: 14px !important;
+        border-radius: 8px !important;
+        padding-left: 12px !important;
     }
 
-    /* Select chọn đời */
+    /* 2. Select chọn đời: Cột 2 hàng 1 */
     .tree-select {
-        grid-column: span 1;
-        width: 100% !important;
-        min-width: 0 !important;
-        height: 36px !important;
-        padding: 0 2px !important;
-        padding: 0 0 0 2px !important; /* Giảm padding trái */
-        background-position: right 0 center !important;
-        background-size: 10px !important;
-        font-size: 11px !important;
-    }
-
-    /* Các nút bấm (Reset, Tải cây...) */
-    .tree-controls .btn-control {
         grid-column: span 1 !important;
         width: 100% !important;
         min-width: 0 !important;
-        height: 36px !important;
+        height: 42px !important;
+        padding: 0 4px 0 8px !important;
+        font-size: 13px !important;
+        border-radius: 8px !important;
+        background-position: right 2px center !important;
+    }
+
+    /* 3. Các nút chức năng: Hàng 2 */
+    .tree-controls .btn-control {
+        grid-column: span 1 !important;
+        width: 100% !important;
+        height: 42px !important;
         padding: 0 !important;
-        font-size: 12px !important;
+        border-radius: 8px !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
+        background-color: #f9fafb !important;
+        border: 1px solid #e5e7eb !important;
     }
 
-    /* Ẩn chữ trên mobile, chỉ hiện icon */
+    /* Hiện lại chữ trên mobile vì layout 2 cột đủ rộng */
     .tree-controls .btn-control .btn-text {
-        display: none !important;
+        display: inline-block !important;
+        margin-left: 6px;
     }
+    
+    /* Icon to rõ và có màu sắc */
     .tree-controls .btn-control i {
+        font-size: 18px !important;
         margin: 0 !important;
-        font-size: 14px !important;
     }
+    #btn-reset-tree i { color: #ef4444 !important; } /* Đỏ nhạt */
+    #btn-download-tree i { color: #10b981 !important; } /* Xanh lá */
+    .tree-controls button[onclick*="zoomToNode"] i { color: #f59e0b !important; } /* Vàng cam */
 
     #familyTreeSvg {
         min-height: 400px;
@@ -2148,6 +2153,10 @@ body {
     border-radius: 8px;
     overflow: hidden;
     background: #f3f4f6;
+    /* Căn giữa icon cho placeholder */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .post-thumb img {
@@ -2156,6 +2165,15 @@ body {
     object-fit: cover;
     transition: transform 0.3s;
 }
+
+/* Style cho Thumbnail mặc định (Placeholder) */
+.post-thumb.placeholder {
+    font-size: 32px;
+    color: rgba(255, 255, 255, 0.9);
+}
+.post-thumb.bg-news { background: linear-gradient(135deg, #38bdf8, #0ea5e9); } /* Xanh dương */
+.post-thumb.bg-event { background: linear-gradient(135deg, #fbbf24, #f59e0b); } /* Vàng cam */
+.post-thumb.bg-announcement { background: linear-gradient(135deg, #f87171, #ef4444); } /* Đỏ */
 
 .post-card:hover .post-thumb img {
     transform: scale(1.05);
