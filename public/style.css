@@ -775,6 +775,9 @@ body {
         grid-template-columns: repeat(4, 1fr) !important; /* Ép cứng 4 cột */
         gap: 4px !important;
         padding: 6px !important;
+        grid-template-columns: repeat(5, 1fr) !important; /* Ép cứng 5 cột để xếp đủ 1 hàng */
+        gap: 2px !important; /* Giảm khoảng cách tối đa */
+        padding: 2px !important; /* Giảm padding khung */
         width: 100% !important;
         align-items: center !important;
     }
@@ -792,6 +795,8 @@ body {
         height: 36px !important;
         padding: 0 4px !important;
         font-size: 12px !important;
+        padding: 0 2px !important; /* Giảm padding nội dung */
+        font-size: 11px !important;
     }
 
     /* Select chọn đời */
@@ -801,6 +806,7 @@ body {
         min-width: 0 !important;
         height: 36px !important;
         padding: 0 2px !important;
+        padding: 0 0 0 2px !important; /* Giảm padding trái */
         background-position: right 0 center !important;
         background-size: 10px !important;
         font-size: 11px !important;
@@ -2632,3 +2638,4 @@ body {
     background: #fecaca;
     color: #dc2626;
 }
+    bakground: #f
