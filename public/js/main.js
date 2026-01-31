@@ -2624,6 +2624,29 @@ function openViewMemberModal(memberId) {
     document.getElementById('view-m-job').innerText = member.job || '---';
     document.getElementById('view-m-address').innerText = member.address || '---';
 
+    // --- FIX: Cập nhật nút bấm ở Footer (Thêm nút Sửa cho Admin) ---
+    const footer = document.querySelector('#view-member-modal .modal-footer');
+    if (footer) {
+        footer.innerHTML = ''; // Xóa nút cũ để tránh trùng lặp
+        
+        if (isAdmin()) {
+            const editBtn = document.createElement('button');
+            editBtn.innerHTML = '<i class="fas fa-edit"></i> Sửa thông tin';
+            editBtn.style.cssText = "padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; margin-right: 10px; transition: background 0.2s;";
+            editBtn.onclick = () => {
+                document.getElementById('view-member-modal').style.display = 'none';
+                openEditModal(member.id); // Chuyển sang modal Sửa
+            };
+            footer.appendChild(editBtn);
+        }
+
+        const closeBtn = document.createElement('button');
+        closeBtn.innerText = 'Đóng';
+        closeBtn.style.cssText = "padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s;";
+        closeBtn.onclick = () => document.getElementById('view-member-modal').style.display = 'none';
+        footer.appendChild(closeBtn);
+    }
+
     document.getElementById('view-member-modal').style.display = 'block';
 }
 
