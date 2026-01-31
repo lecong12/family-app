@@ -776,6 +776,8 @@ body {
         grid-template-columns: 1fr 1fr !important;
         gap: 10px !important; /* Khoảng cách thoáng hơn */
         padding: 12px !important;
+        gap: 5px !important; /* Giảm khoảng cách tối đa để tiết kiệm diện tích */
+        padding: 8px !important;
         width: 100% !important;
         height: auto !important;
         background: #fff !important;
@@ -816,6 +818,7 @@ body {
         width: 100% !important;
         height: 42px !important;
         padding: 0 !important;
+        padding: 0 2px !important;
         border-radius: 8px !important;
         display: flex !important;
         align-items: center !important;
@@ -828,6 +831,8 @@ body {
     .tree-controls .btn-control .btn-text {
         display: inline-block !important;
         margin-left: 6px;
+        margin-left: 4px;
+        font-size: 11px !important; /* Giảm cỡ chữ để chắc chắn vừa vặn */
     }
     
     /* Icon to rõ và có màu sắc */
