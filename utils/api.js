@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Member = require('../models/Member');
+const Post = require('../models/Post'); // --- FIX: Import Model chuẩn thay vì định nghĩa lại ---
 const mongoose = require('mongoose'); // Thêm mongoose để tạo Model Activity
 const fs = require('fs');
 const axios = require('axios');
@@ -45,28 +46,6 @@ const ActivitySchema = new mongoose.Schema({
     created_at: { type: Date, default: Date.now }
 });
 const Activity = mongoose.models.Activity || mongoose.model('Activity', ActivitySchema);
-
-// --- Post Model (Thêm mới) ---
-const PostSchema = new mongoose.Schema({
-    title: { type: String, required: true },
-    content: { type: String, required: true },
-    category: { type: String, enum: ['announcement', 'event', 'news'], default: 'news' },
-    is_pinned: { type: Boolean, default: false },
-    image: { type: String, default: '' }, // Đường dẫn ảnh
-    created_at: { type: Date, default: Date.now }
-});
-const Post = mongoose.models.Post || mongoose.model('Post', PostSchema);
-
-async function logToDB(req, type, description) {
-    try {
-        // Lấy thông tin user từ request (nếu có auth), mặc định là Admin
-        const name = (req.user && req.user.full_name) ? req.user.full_name : 'Admin';
-        const role = (req.user && req.user.role) ? req.user.role : 'owner';
-        await Activity.create({ actor_name: name, actor_role: role, action_type: type, description });
-    } catch (e) {
-        console.error("Logging failed:", e.message);
-    }
-}
 
 // --- Middleware phân quyền Admin ---
 const adminOnly = (req, res, next) => {

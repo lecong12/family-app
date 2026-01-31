@@ -19,9 +19,11 @@ const postSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    image: { type: String, default: '' }, // Thêm trường này để đồng bộ với API upload ảnh
     author: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Liên kết với bảng User
     created_at: { type: Date, default: Date.now },
     updated_at: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('Post', postSchema);
+// --- FIX: Kiểm tra model tồn tại để tránh lỗi OverwriteModelError ---
+module.exports = mongoose.models.Post || mongoose.model('Post', postSchema);

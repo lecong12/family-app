@@ -6,4 +6,5 @@ const userSchema = new mongoose.Schema({
     role: { type: String, default: 'user' }
 });
 
-module.exports = mongoose.model('User', userSchema);
+// --- FIX: Kiểm tra model tồn tại để tránh lỗi OverwriteModelError ---
+module.exports = mongoose.models.User || mongoose.model('User', userSchema);
