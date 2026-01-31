@@ -607,10 +607,14 @@ function renderPagination() {
         `;
 
         // Thêm sự kiện click để zoom đến người đó trên cây
-        // --- FIX: Xóa bỏ logic sửa khi click, chuyển thành xem chi tiết cho tất cả ---
         card.style.cursor = 'pointer';
         card.onclick = () => {
-            openViewMemberModal(m.id);
+            // --- PHÂN QUYỀN: Admin mở form Sửa, Khách mở form Xem ---
+            if (isAdmin()) {
+                openEditModal(m.id);
+            } else {
+                openViewMemberModal(m.id);
+            }
         };
         
         container.appendChild(card);
@@ -677,6 +681,11 @@ function changePage(page) {
 
 // Mở modal Thêm mới
 function openAddModal() {
+    // Bảo vệ: Chỉ Admin mới được mở
+    if (!isAdmin()) {
+        alert('Bạn không có quyền thêm thành viên.');
+        return;
+    }
     currentEditingId = null; // Đặt lại trạng thái: đang thêm mới
     document.getElementById('modal-title').innerText = "Thêm thành viên mới";
     
@@ -992,6 +1001,11 @@ async function saveMember() {
 
 // Hàm xóa thành viên (được gọi từ nút Xóa trong modal)
 async function deleteMember() {
+    // Bảo vệ: Chỉ Admin mới được xóa
+    if (!isAdmin()) {
+        alert('Bạn không có quyền xóa thành viên.');
+        return;
+    }
     if (!currentEditingId) return;
 
     const memberToDelete = allMembers.find(m => m.id === currentEditingId);
@@ -2650,6 +2664,36 @@ function openViewMemberModal(memberId) {
     document.getElementById('view-member-modal').style.display = 'block';
 }
 
+async function deleteUser(id, name) {
+    if (!confirm(`Bạn có chắc muốn xóa tài khoản "${name}" không?`)) return;
+    
+    const token = localStorage.getItem('token');
+    const res = await fetch(`/api/auth/users/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    
+    if (data.success) {
+        loadUserList();
+    } else {
+        alert('❌ ' + data.message);
+    }
+}   if (!confirm(`Bạn có chắc muốn xóa tài khoản "${name}" không?`)) return;
+    
+    const token = localStorage.getItem('token');
+    const res = await fetch(`/api/auth/users/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    
+    if (data.success) {
+        loadUserList();
+    } else {
+        alert('❌ ' + data.message);
+    }
+}
 async function deleteUser(id, name) {
     if (!confirm(`Bạn có chắc muốn xóa tài khoản "${name}" không?`)) return;
     
