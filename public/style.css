@@ -774,8 +774,8 @@ body {
     .tree-controls {
         gap: 8px;
         flex-wrap: wrap;
-        justify-content: center;
-        padding: 10px; /* FIX: Giảm lề khung công cụ để ô tìm kiếm sát biên hơn */
+        justify-content: flex-start; /* FIX: Căn trái để sát biên hơn */
+        padding: 5px; /* FIX: Giảm lề tối đa */
     }
 
     /* FIX: Tối ưu thanh tìm kiếm và chọn đời trên mobile để nằm cùng 1 hàng */
@@ -785,7 +785,7 @@ body {
     }
 
     .tree-select {
-        min-width: 110px !important; /* Thu nhỏ chiều rộng ô chọn đời */
+        min-width: 90px !important; /* FIX: Thu nhỏ ô chọn đời ngắn lại tí nữa */
         padding-left: 8px !important;
         padding-right: 24px !important; /* Giảm khoảng cách icon mũi tên */
     }
@@ -814,7 +814,7 @@ body {
 
     .tree-controls {
         gap: 6px;
-        padding: 6px; /* FIX: Đẩy sát biên trái tối đa trên điện thoại nhỏ */
+        padding: 4px; /* FIX: Đẩy sát biên trái tối đa trên điện thoại nhỏ */
     }
 
     .btn-control {
