@@ -775,6 +775,7 @@ body {
         gap: 8px;
         flex-wrap: wrap;
         justify-content: center;
+        padding: 10px; /* FIX: Giảm lề khung công cụ để ô tìm kiếm sát biên hơn */
     }
 
     /* FIX: Tối ưu thanh tìm kiếm và chọn đời trên mobile để nằm cùng 1 hàng */
@@ -813,6 +814,7 @@ body {
 
     .tree-controls {
         gap: 6px;
+        padding: 6px; /* FIX: Đẩy sát biên trái tối đa trên điện thoại nhỏ */
     }
 
     .btn-control {

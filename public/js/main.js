@@ -69,6 +69,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.querySelector('.user-name')) document.querySelector('.user-name').textContent = userName || 'User';
     if (document.querySelector('.user-role')) document.querySelector('.user-role').textContent = userRole === 'owner' ? 'Chủ sở hữu' : (userRole === 'admin' ? 'Quản trị viên' : 'Người xem');
     
+    // FIX: Nếu là khách (Viewer), đổi tiêu đề trang để bỏ chữ "Quản lý"
+    if (!isAdmin()) {
+        document.title = "Gia Phả Dòng Họ";
+        const headerTitle = document.querySelector('.header-info h1');
+        if (headerTitle) headerTitle.textContent = "Gia Phả Dòng Họ";
+    }
+
     // --- FIX: Gắn sự kiện Đăng xuất bằng Event Delegation (Chắc chắn hoạt động 100%) ---
     document.addEventListener('click', (e) => {
         // Kiểm tra nếu click vào nút đăng xuất hoặc icon bên trong nó
