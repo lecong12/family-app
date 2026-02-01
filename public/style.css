@@ -154,6 +154,7 @@ body {
     font-size: 15px;
     transition: all 0.3s;
     outline: none;
+    -webkit-appearance: none; /* FIX: Tắt style mặc định của iPhone */
 }
 
 .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
@@ -670,6 +671,7 @@ body {
     min-width: 180px;
     color: var(--gray-700);
     font-weight: 500;
+    -webkit-appearance: none; /* FIX: Tắt style mặc định của iPhone */
 }
 
 .tree-select:focus {
@@ -1523,6 +1525,7 @@ body {
     transition: all 0.3s;
     outline: none;
     height: 46px; /* Tăng chiều cao lên 46px */
+    -webkit-appearance: none; /* FIX: Tắt style mặc định của iPhone */
 }
 
 .search-bar input:focus {

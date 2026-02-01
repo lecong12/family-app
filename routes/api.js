@@ -3,7 +3,15 @@ const router = express.Router();
 const Member = require('../models/Member');
 const fs = require('fs');
 const axios = require('axios');
-const { parse } = require('csv-parse/sync');
+
+// --- FIX: Safe Require cho csv-parse (Tránh sập server nếu thiếu thư viện) ---
+let parse;
+try {
+    parse = require('csv-parse/sync').parse;
+} catch (e) {
+    console.warn('⚠️ CẢNH BÁO: Chưa cài đặt "csv-parse". Tính năng Import Google Sheets sẽ không hoạt động.');
+}
+
 const mongoose = require('mongoose');
 
 console.log('✅ API Router đang khởi động...'); // Log kiểm tra phiên bản mới
@@ -199,6 +207,10 @@ const exportToCSV = async (req, res) => {
 };
 
 const importSheets = async (req, res) => {
+    if (!parse) {
+        return res.status(500).json({ message: "Server thiếu thư viện 'csv-parse'. Vui lòng chạy lệnh: npm install csv-parse" });
+    }
+
     const sheetDataUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRv6nPNO982vfr9JJmYHtwWh1XPY_3qDKhJjo1fEHy3jb9034Z_IZPqFveLZyqjODVm-OHN7aogE-MH/pub?gid=1705210560&single=true&output=csv";
     const sheetDDataUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRv6nPNO982vfr9JJmYHtwWh1XPY_3qDKhJjo1fEHy3jb9034Z_IZPqFveLZyqjODVm-OHN7aogE-MH/pub?gid=1565376107&single=true&output=csv";
     const clean = (v) => v ? String(v).replace(/[^\w]/g, '').trim() : "";

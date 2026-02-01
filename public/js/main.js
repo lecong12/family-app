@@ -34,9 +34,15 @@ const isAdmin = () => {
 
 // 1. Khởi tạo khi trang tải xong
 document.addEventListener('DOMContentLoaded', () => {
-    const token = localStorage.getItem('token');
-    let userName = localStorage.getItem('userName');
-    let userRole = localStorage.getItem('userRole');
+    // FIX: Kiểm tra an toàn cho localStorage (tránh lỗi trên Safari Private Mode)
+    let token, userName, userRole;
+    try {
+        token = localStorage.getItem('token');
+        userName = localStorage.getItem('userName');
+        userRole = localStorage.getItem('userRole');
+    } catch (e) {
+        console.warn('Không thể truy cập localStorage (có thể do chế độ Ẩn danh)');
+    }
 
     if (!token) {
         window.location.href = '/login.html';
