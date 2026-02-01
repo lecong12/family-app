@@ -97,9 +97,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('🔒 Đã kích hoạt chế độ Khách: Ẩn toàn bộ nút quản trị bằng CSS.');
     }
 
-    // Khởi tạo các ô tìm kiếm thông minh và cấu trúc form
-    initSmartSelects();
-    
     // Khởi tạo giao diện tab
     initTabs();
 
@@ -108,9 +105,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Khởi tạo form bài viết (chèn input ảnh)
     initPostForm();
-
-    // --- FIX: Đảm bảo các nút Lưu/Xóa luôn tồn tại trong Modal ---
-    initModalButtons();
 
 });
 
@@ -690,6 +684,11 @@ function openAddModal() {
         return;
     }
     currentEditingId = null; // Đặt lại trạng thái: đang thêm mới
+    
+    // 1. Render lại toàn bộ form sạch sẽ
+    const modalContent = document.querySelector('#add-member-modal .modal-content');
+    modalContent.innerHTML = renderMemberFormHTML();
+    
     document.getElementById('modal-title').innerText = "Thêm thành viên mới";
     
     // Dọn dẹp form
@@ -697,19 +696,13 @@ function openAddModal() {
     document.getElementById('m-gender').value = 'Nam';
     document.getElementById('m-birth').value = '';
     document.getElementById('m-death').value = '';
-    // Reset các trường bổ sung
-    if(document.getElementById('m-job')) document.getElementById('m-job').value = '';
-    if(document.getElementById('m-address')) document.getElementById('m-address').value = '';
-    if(document.getElementById('m-branch')) document.getElementById('m-branch').value = '';
     
-    ['m-fid', 'm-mid', 'm-pid'].forEach(id => {
-        document.getElementById(id).value = ''; // Hidden input
-        document.getElementById(id + '-search').value = ''; // Search input
-    });
+    // Khởi tạo Smart Search
+    setupSmartSearch('m-fid-search', 'm-fid', 'res-fid', m => m.gender === 'Nam');
+    setupSmartSearch('m-mid-search', 'm-mid', 'res-mid', m => m.gender === 'Nữ');
+    setupSmartSearch('m-pid-search', 'm-pid', 'res-pid', () => true);
 
-    // Ẩn nút Xóa khi ở chế độ Thêm mới
-    document.getElementById('btn-delete-member').style.display = 'none';
-    
+    // Hiển thị modal
     document.getElementById('add-member-modal').style.display = 'flex';
 }
 
@@ -728,6 +721,10 @@ window.openEditModal = function(memberId) {
     }
 
     currentEditingId = memberId; // Đặt trạng thái: đang sửa
+    
+    // 1. Render lại form
+    const modalContent = document.querySelector('#add-member-modal .modal-content');
+    modalContent.innerHTML = renderMemberFormHTML();
     document.getElementById('modal-title').innerText = "Sửa thông tin thành viên";
 
     // Điền dữ liệu cơ bản
@@ -736,23 +733,32 @@ window.openEditModal = function(memberId) {
     document.getElementById('m-birth').value = member.birth_date || '';
     document.getElementById('m-death').value = member.death_date || '';
     // Điền dữ liệu các trường bổ sung
-    if(document.getElementById('m-job')) document.getElementById('m-job').value = member.job || '';
-    if(document.getElementById('m-address')) document.getElementById('m-address').value = member.address || '';
-    if(document.getElementById('m-branch')) document.getElementById('m-branch').value = member.branch || '';
+    document.getElementById('m-job').value = member.job || '';
+    document.getElementById('m-address').value = member.address || '';
+    document.getElementById('m-branch').value = member.branch || '';
+    document.getElementById('m-generation').value = member.generation || '';
+    document.getElementById('m-order').value = member.order || '';
     
-    // --- FIX: Xóa bỏ logic tìm vợ/chồng 2 chiều thông minh ---
-    // Điền dữ liệu cho các ô tìm kiếm thông minh
-    const relations = {
-        'm-fid': member.fid,
-        'm-mid': member.mid,
-        'm-pid': member.pid // Lấy trực tiếp pid, không tìm ngược
+    // Helper điền smart select
+    const fillSmart = (id, val) => {
+        document.getElementById(id).value = val || '';
+        const m = allMembers.find(x => String(x.id) === String(val));
+        document.getElementById(id + '-search').value = m ? m.full_name : '';
     };
-    for (const id in relations) {
-        const relatedId = relations[id];
-        document.getElementById(id).value = relatedId || ''; // Set hidden input
-        const relatedMember = allMembers.find(m => String(m.id) === String(relatedId));
-        document.getElementById(id + '-search').value = relatedMember ? relatedMember.full_name : ''; // Set search input
+    fillSmart('m-fid', member.fid);
+    fillSmart('m-mid', member.mid);
+    
+    // --- FIX: Tìm vợ/chồng 2 chiều (nếu mình không có pid nhưng người kia có pid trỏ về mình) ---
+    let pidToFill = member.pid;
+    if (!pidToFill) {
+        const spouse = allMembers.find(p => String(p.pid) === String(member.id));
+        if (spouse) pidToFill = spouse.id;
     }
+    fillSmart('m-pid', pidToFill);
+
+    setupSmartSearch('m-fid-search', 'm-fid', 'res-fid', m => m.gender === 'Nam');
+    setupSmartSearch('m-mid-search', 'm-mid', 'res-mid', m => m.gender === 'Nữ');
+    setupSmartSearch('m-pid-search', 'm-pid', 'res-pid', () => true);
 
     // Hiển thị nút Xóa khi ở chế độ Sửa
     document.getElementById('btn-delete-member').style.display = 'inline-block';
@@ -779,178 +785,162 @@ function updateSmartSelectOptions() {
     // Điều này đã được xử lý trong event listener của searchInput cho m-mid.
 }
 
-function initSmartSelects() {
-    const modalContent = document.querySelector('#add-member-modal .modal-content');
-    if (!modalContent || modalContent.dataset.smartInit === 'true') return;
+// --- HÀM MỚI: Xây dựng cấu trúc Form chuẩn CRUD ---
+function renderMemberFormHTML() {
+    return `
+    <div class="modal-header">
+        <h2 id="modal-title">Thêm thành viên mới</h2>
+        <button class="close-btn" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+        <form id="member-form" onsubmit="return false;">
+            <!-- Hàng 1: Họ tên + Giới tính -->
+            <div class="form-row-compact">
+                <div class="form-group" style="flex: 2;">
+                    <label for="m-name">Họ và tên <span style="color:red">*</span></label>
+                    <input type="text" id="m-name" placeholder="Nhập họ tên đầy đủ" required>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label for="m-gender">Giới tính</label>
+                    <select id="m-gender">
+                        <option value="Nam">Nam</option>
+                        <option value="Nữ">Nữ</option>
+                    </select>
+                </div>
+            </div>
 
-    console.log('🛠️ Đang khởi tạo form nhập liệu (Bootstrap-like layout)...');
+            <!-- Hàng 2: Đời + Phái + Thứ tự -->
+            <div class="form-row-compact">
+                <div class="form-group">
+                    <label for="m-generation">Đời (Thế hệ)</label>
+                    <input type="number" id="m-generation" min="1" placeholder="Tự động">
+                </div>
+                <div class="form-group">
+                    <label for="m-branch">Phái / Chi</label>
+                    <input type="text" id="m-branch" placeholder="VD: Phái Nhất">
+                </div>
+                <div class="form-group">
+                    <label for="m-order">Con thứ</label>
+                    <input type="number" id="m-order" min="1" placeholder="1">
+                </div>
+            </div>
 
-    // --- BỔ SUNG: Xóa chữ "(nếu có)" khỏi tất cả label ---
-    modalContent.querySelectorAll('label').forEach(lbl => {
-        lbl.innerHTML = lbl.innerHTML.replace(/\(nếu có\)/gi, '').trim();
-    });
+            <!-- Hàng 3: Ngày sinh + Ngày mất -->
+            <div class="form-row-compact">
+                <div class="form-group">
+                    <label for="m-birth">Năm sinh</label>
+                    <input type="text" id="m-birth" placeholder="dd/mm/yyyy hoặc yyyy">
+                </div>
+                <div class="form-group">
+                    <label for="m-death">Năm mất</label>
+                    <input type="text" id="m-death" placeholder="Để trống nếu còn sống">
+                </div>
+            </div>
 
-    const configs = [
-        { id: 'm-name', type: 'text' }, // Giữ nguyên input text
-        { id: 'm-gender', type: 'select' }, // Giữ nguyên select
-        { id: 'm-birth', type: 'text' },
-        { id: 'm-death', type: 'text' },
-        { id: 'm-fid', type: 'smart-select', filter: (m) => m.gender === 'Nam', placeholder: 'Gõ để tìm kiếm Cha...' },
-        { id: 'm-mid', type: 'smart-select', filter: (m) => m.gender === 'Nữ', placeholder: 'Gõ để tìm kiếm Mẹ...' },
-        { id: 'm-pid', type: 'smart-select', filter: () => true, placeholder: 'Gõ để tìm kiếm Vợ/Chồng...' },
-    ];
+            <!-- Hàng 4: Cha + Mẹ (Smart Select) -->
+            <div class="form-row-compact">
+                <div class="form-group">
+                    <label for="m-fid">Cha</label>
+                    <div class="smart-select-wrapper">
+                        <input type="text" id="m-fid-search" placeholder="Tìm tên cha..." autocomplete="off">
+                        <input type="hidden" id="m-fid">
+                        <div class="smart-select-results" id="res-fid"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="m-mid">Mẹ</label>
+                    <div class="smart-select-wrapper">
+                        <input type="text" id="m-mid-search" placeholder="Tìm tên mẹ..." autocomplete="off">
+                        <input type="hidden" id="m-mid">
+                        <div class="smart-select-results" id="res-mid"></div>
+                    </div>
+                </div>
+            </div>
 
-    configs.forEach(({ id, type, filter, placeholder }) => {
-        const originalEl = document.getElementById(id);
-        if (!originalEl) return;
+            <!-- Hàng 5: Vợ/Chồng (Smart Select) -->
+            <div class="form-group">
+                <label for="m-pid">Vợ / Chồng</label>
+                <div class="smart-select-wrapper">
+                    <input type="text" id="m-pid-search" placeholder="Tìm tên vợ/chồng..." autocomplete="off">
+                    <input type="hidden" id="m-pid">
+                    <div class="smart-select-results" id="res-pid"></div>
+                </div>
+            </div>
 
-        // Tìm nhãn (label) đã có sẵn trong HTML
-        const labelEl = modalContent.querySelector(`label[for="${id}"]`);
-
-        // Tạo một div mới để nhóm label và input/smart-select
-        const group = document.createElement('div');
-        group.className = 'form-group';
-
-        // Chèn group vào trước label hoặc input gốc
-        const referenceNode = labelEl || originalEl;
-        referenceNode.parentElement.insertBefore(group, referenceNode);
-
-        // Di chuyển label đã có vào trong group
-        if (labelEl) {
-            group.appendChild(labelEl);
-        }
-
-        if (type === 'smart-select') {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'smart-select-wrapper';
-
-            const searchInput = document.createElement('input');
-            searchInput.type = 'text';
-            searchInput.id = id + '-search';
-            searchInput.placeholder = placeholder || 'Gõ để tìm kiếm...';
-            searchInput.autocomplete = 'off';
-
-            const resultsDiv = document.createElement('div');
-            resultsDiv.className = 'smart-select-results';
-
-            const hiddenInput = document.createElement('input');
-            hiddenInput.type = 'hidden';
-            hiddenInput.id = id; // Giữ ID gốc cho input ẩn
-
-            wrapper.appendChild(searchInput);
-            wrapper.appendChild(resultsDiv);
-            group.appendChild(wrapper);
-            group.appendChild(hiddenInput);
-
-            // Cập nhật lại thuộc tính 'for' của label để trỏ đúng vào ô tìm kiếm mới
-            if (labelEl) {
-                labelEl.setAttribute('for', id + '-search');
-            }
-
-            // Xóa thẻ <select> gốc đi
-            originalEl.remove();
-
-            // Logic tìm kiếm
-            searchInput.addEventListener('input', () => {
-                const query = searchInput.value.toLowerCase();
-                resultsDiv.innerHTML = '';
-                
-                // --- FIX: Xóa bỏ logic lọc thông minh (tìm vợ cho chồng, mẹ theo cha...) ---
-                // Chỉ lọc theo tiêu chí cơ bản (Giới tính) đã định nghĩa trong config
-                let dataSource = allMembers.filter(filter);
-
-                // Nếu là chọn Vợ/Chồng, loại bỏ chính mình khỏi danh sách
-                if (id === 'm-pid' && currentEditingId) {
-                    dataSource = dataSource.filter(m => String(m.id) !== String(currentEditingId));
-                }
-
-                const matched = query ? dataSource.filter(m => m.full_name.toLowerCase().includes(query)) : dataSource;
-                matched.slice(0, 10).forEach(member => {
-                    const item = document.createElement('div');
-                    item.textContent = member.full_name;
-                    item.addEventListener('click', () => {
-                        searchInput.value = member.full_name;
-                        hiddenInput.value = member.id;
-                        resultsDiv.style.display = 'none';
-                        if (id === 'm-fid') { // Nếu vừa chọn Cha, tự động xóa lựa chọn Mẹ cũ
-                            document.getElementById('m-mid-search').value = '';
-                            document.getElementById('m-mid').value = '';
-                        }
-                        // --- FIX: Đã xóa logic tự động xóa Mẹ khi chọn Cha ---
-                    });
-                    resultsDiv.appendChild(item);
-                });
-                resultsDiv.style.display = matched.length > 0 ? 'block' : 'none';
-            });
-
-            searchInput.addEventListener('focus', () => { if (!searchInput.value) searchInput.dispatchEvent(new Event('input')); });
-            searchInput.addEventListener('change', () => { if (searchInput.value === '') hiddenInput.value = ''; });
-
-        } else {
-            // Đối với các trường input/select thường, chỉ cần di chuyển chúng vào trong nhóm
-            group.appendChild(originalEl);
-        }
-    });
-
-    // Đóng danh sách kết quả tìm kiếm khi click ra ngoài
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.smart-select-wrapper')) {
-            document.querySelectorAll('.smart-select-results').forEach(div => div.style.display = 'none');
-        }
-    });
-
-    modalContent.dataset.smartInit = 'true';
+            <!-- Hàng 6: Thông tin khác -->
+            <div class="form-row-compact">
+                <div class="form-group">
+                    <label for="m-job">Nghề nghiệp</label>
+                    <input type="text" id="m-job" placeholder="Công việc hiện tại">
+                </div>
+                <div class="form-group">
+                    <label for="m-address">Địa chỉ</label>
+                    <input type="text" id="m-address" placeholder="Nơi ở hiện tại">
+                </div>
+            </div>
+        </form>
+    </div>
+    <div class="modal-footer form-actions">
+        <button type="button" id="btn-delete-member" onclick="deleteMember()" style="display:none;">
+            <i class="fas fa-trash"></i> Xóa
+        </button>
+        <button type="button" class="btn-cancel" onclick="closeModal()">Hủy</button>
+        <button type="button" class="btn-save" onclick="saveMember()">Lưu thông tin</button>
+    </div>
+    `;
 }
 
-// --- BỔ SUNG: Hàm khởi tạo nút bấm cho Modal (Phòng trường hợp HTML bị thiếu) ---
-function initModalButtons() {
-    const modal = document.getElementById('add-member-modal');
-    if (!modal) return;
-    
-    let footer = modal.querySelector('.form-actions');
-    // Nếu chưa có footer (nơi chứa nút), tạo mới
-    if (!footer) {
-        const content = modal.querySelector('.modal-content');
-        if (content) {
-            footer = document.createElement('div');
-            footer.className = 'form-actions';
-            content.appendChild(footer);
-        }
-    }
-    
-    if (footer) {
-        // 1. Nút Xóa (Delete)
-        if (!document.getElementById('btn-delete-member')) {
-            const delBtn = document.createElement('button');
-            delBtn.id = 'btn-delete-member';
-            delBtn.type = 'button';
-            // Style inline để đảm bảo hiển thị đúng ngay lập tức
-            delBtn.style.cssText = "background: #fee2e2; color: #dc2626; margin-right: auto;"; 
-            delBtn.innerHTML = '<i class="fas fa-trash"></i> Xóa';
-            delBtn.onclick = deleteMember;
-            footer.appendChild(delBtn);
-        }
+// Hàm thiết lập Smart Search cho các ô input
+function setupSmartSearch(inputId, hiddenId, resultId, filterFn) {
+    const searchInput = document.getElementById(inputId);
+    const hiddenInput = document.getElementById(hiddenId);
+    const resultsDiv = document.getElementById(resultId);
+
+    if (!searchInput || !resultsDiv) return;
+
+    searchInput.addEventListener('input', () => {
+        const query = searchInput.value.toLowerCase();
+        resultsDiv.innerHTML = '';
         
-        // 2. Nút Hủy (Cancel)
-        if (!footer.querySelector('.btn-cancel')) {
-            const cancelBtn = document.createElement('button');
-            cancelBtn.type = 'button';
-            cancelBtn.className = 'btn-cancel';
-            cancelBtn.innerText = 'Hủy';
-            cancelBtn.onclick = closeModal;
-            footer.appendChild(cancelBtn);
+        let dataSource = allMembers.filter(filterFn);
+        // Loại bỏ chính mình khỏi danh sách (nếu đang sửa)
+        if (currentEditingId) {
+            dataSource = dataSource.filter(m => String(m.id) !== String(currentEditingId));
         }
+
+        const matched = query ? dataSource.filter(m => m.full_name.toLowerCase().includes(query)) : [];
         
-        // 3. Nút Lưu (Save)
-        if (!footer.querySelector('.btn-save')) {
-            const saveBtn = document.createElement('button');
-            saveBtn.type = 'button';
-            saveBtn.className = 'btn-save';
-            saveBtn.innerText = 'Lưu thông tin';
-            saveBtn.onclick = saveMember;
-            footer.appendChild(saveBtn);
-        }
-    }
+        matched.slice(0, 10).forEach(member => {
+            const item = document.createElement('div');
+            item.textContent = `${member.full_name} (Đời ${member.generation})`;
+            item.onclick = () => {
+                searchInput.value = member.full_name;
+                hiddenInput.value = member.id;
+                resultsDiv.style.display = 'none';
+                
+                // Tự động tính đời
+                const genInput = document.getElementById('m-generation');
+                if (genInput && !genInput.value) {
+                    if (hiddenId === 'm-pid') genInput.value = member.generation;
+                    else genInput.value = (parseInt(member.generation) || 0) + 1;
+                }
+
+                // --- FIX: Tự động điền Phái (Branch) khi chọn Cha ---
+                const branchInput = document.getElementById('m-branch');
+                if (branchInput && !branchInput.value && hiddenId === 'm-fid') {
+                    branchInput.value = member.branch || '';
+                }
+            };
+            resultsDiv.appendChild(item);
+        });
+        
+        resultsDiv.style.display = matched.length > 0 ? 'block' : 'none';
+    });
+
+    // Ẩn kết quả khi click ra ngoài
+    document.addEventListener('click', (e) => {
+        if (e.target !== searchInput) resultsDiv.style.display = 'none';
+    });
 }
 
 async function saveMember() {
@@ -964,26 +954,33 @@ async function saveMember() {
     const fidInput = document.getElementById('m-fid');
     const midInput = document.getElementById('m-mid');
     const pidInput = document.getElementById('m-pid'); // Thêm input cho Vợ/Chồng
+    const genInput = document.getElementById('m-generation');
+    const orderInput = document.getElementById('m-order');
 
     // Validate cơ bản
     if (!nameInput || !nameInput.value.trim()) { alert("Vui lòng nhập họ tên!"); return; }
 
     // Tự động tính đời (Generation) dựa trên cha/mẹ hoặc vợ/chồng
-    let generation = 1;
+    // Ưu tiên giá trị nhập tay
+    let generation = genInput && genInput.value ? parseInt(genInput.value) : null;
     const fid = fidInput ? fidInput.value : null;
     const mid = midInput ? midInput.value : null;
     const pid = pidInput ? pidInput.value : null;
 
-    if (fid || mid) {
-        const parent = allMembers.find(m => m.id == (fid || mid));
-        if (parent) {
-            generation = (parent.generation || 0) + 1;
-        }
-    } else if (pid) {
-        // Nếu không có cha mẹ nhưng có vợ/chồng, lấy cùng đời với vợ/chồng
-        const spouse = allMembers.find(m => m.id == pid);
-        if (spouse) {
-            generation = spouse.generation || 1;
+    if (!generation) {
+        if (fid || mid) {
+            const parent = allMembers.find(m => m.id == (fid || mid));
+            if (parent) {
+                generation = (parent.generation || 0) + 1;
+            }
+        } else if (pid) {
+            // Nếu không có cha mẹ nhưng có vợ/chồng, lấy cùng đời với vợ/chồng
+            const spouse = allMembers.find(m => m.id == pid);
+            if (spouse) {
+                generation = spouse.generation || 1;
+            }
+        } else {
+            generation = 1;
         }
     }
 
@@ -999,6 +996,7 @@ async function saveMember() {
         mid: mid,
         pid: pid, // Thêm pid vào payload
         generation: generation,
+        order: orderInput ? parseInt(orderInput.value) : 1,
         // Các trường mặc định khác sẽ do Server hoặc Model xử lý
     };
 
