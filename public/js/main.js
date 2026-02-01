@@ -818,7 +818,7 @@ function renderMemberFormHTML() {
             <!-- Hàng 2: Đời + Phái + Thứ tự -->
             <div class="form-row-compact">
                 <div class="form-group">
-                    <label for="m-generation">Đời (Thế hệ)</label>
+                    <label for="m-generation">)</label>
                     <input type="number" id="m-generation" min="1" placeholder="Tự động">
                 </div>
                 <div class="form-group">
@@ -2097,7 +2097,7 @@ function createAdvancedSearchModal() {
 
                 <!-- Đời (Select) -->
                 <div class="form-group">
-                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Đời (Thế hệ)</label>
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Đời thứ</label>
                     <select id="adv-gen" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
                         <option value="">Tất cả</option>
                         ${Array.from({length: 15}, (_, i) => `<option value="${i+1}">Đời thứ ${i+1}</option>`).join('')}
@@ -2106,7 +2106,7 @@ function createAdvancedSearchModal() {
 
                 <!-- Phái (Select) -->
                 <div class="form-group">
-                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Phái / Chi</label>
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Phái</label>
                     <select id="adv-branch" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
                         <option value="">Tất cả</option>
                         <option value="0">Gốc (Hiển Cao Tổ Khảo)</option>
