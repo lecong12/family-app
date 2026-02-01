@@ -775,6 +775,18 @@ body {
         justify-content: center;
     }
 
+    /* FIX: Tối ưu thanh tìm kiếm và chọn đời trên mobile để nằm cùng 1 hàng */
+    .search-container {
+        min-width: 100%; /* Bắt buộc xuống dòng riêng và chiếm hết chiều rộng */
+        gap: 6px;
+    }
+
+    .tree-select {
+        min-width: 110px !important; /* Thu nhỏ chiều rộng ô chọn đời */
+        padding-left: 8px !important;
+        padding-right: 24px !important; /* Giảm khoảng cách icon mũi tên */
+    }
+
     .btn-control {
         padding: 8px 14px;
         font-size: 12px;
@@ -2585,13 +2597,4 @@ body {
     color: #334155;
 }
 
-#add-member-modal #btn-delete-member {
-    margin-right: auto !important; /* Đẩy sang trái */
-    background: #fee2e2;
-    color: #ef4444;
-    border: 1px solid #fecaca;
-}
-#add-member-modal #btn-delete-member:hover {
-    background: #fecaca;
-    color: #dc2626;
-}
+#add-mem
