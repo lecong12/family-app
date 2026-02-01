@@ -822,7 +822,12 @@ body {
     }
 
     .btn-control span {
-        display: none;
+        display: none; /* Mặc định ẩn chữ trên mobile */
+    }
+
+    /* FIX: Hiển thị rõ chữ cho các nút trong tab Cây gia phả (đã có đủ chỗ) */
+    .tree-controls .btn-control span {
+        display: inline-block !important;
     }
 
     .btn-control i {
@@ -1645,6 +1650,11 @@ body {
     .btn-control .btn-text, 
     .btn-add .btn-text {
         display: none;
+    }
+
+    /* FIX: Hiển thị rõ chữ cho các nút trong tab Cây gia phả (đã có đủ chỗ) */
+    .tree-controls .btn-control .btn-text {
+        display: inline-block !important;
     }
 
     .btn-add {

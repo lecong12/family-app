@@ -818,11 +818,11 @@ function renderMemberFormHTML() {
             <!-- Hàng 2: Đời + Phái + Thứ tự -->
             <div class="form-row-compact">
                 <div class="form-group">
-                    <label for="m-generation">)</label>
+                    <label for="m-generation">Đời thứ</label>
                     <input type="number" id="m-generation" min="1" placeholder="Tự động">
                 </div>
                 <div class="form-group">
-                    <label for="m-branch">Phái / Chi</label>
+                    <label for="m-branch">Phái</label>
                     <input type="text" id="m-branch" placeholder="VD: Phái Nhất">
                 </div>
                 <div class="form-group">
@@ -1370,26 +1370,25 @@ function renderSettingsTab() {
 
         <!-- PHẦN DƯỚI: HƯỚNG DẪN CHI TIẾT (DỌC) -->
         <div class="settings-section" style="margin-top: 40px; border-top: 1px solid var(--gray-200); padding-top: 30px;">
-            <h3 class="settings-section-title">Hướng dẫn sử dụng chi tiết</h3>
+            <h3 class="settings-section-title">Hướng dẫn sử dụng chi tiết (Cập nhật v2.5)</h3>
             <div class="settings-col">
                 
                 <div class="settings-card guide-card">
                     <div class="guide-header">
                         <i class="fas fa-sitemap"></i>
-                        <h3>1. Cây Gia Phả</h3>
+                        <h3>1. Cây Gia Phả & Hiển thị</h3>
                     </div>
                     <div class="guide-body">
                         <ul>
-                            <li><strong>Hiển thị:</strong> Cây gia phả được vẽ tự động dựa trên mối quan hệ Cha-Con và Vợ-Chồng.
+                            <li><strong>Thao tác:</strong> Kéo thả để di chuyển, lăn chuột để phóng to/thu nhỏ. Click vào thẻ để xem chi tiết.</li>
+                            <li><strong>Màu sắc:</strong> <span style="color:#3b82f6">🟦 Nam</span>, <span style="color:#ec4899">🟥 Nữ</span>, <span style="color:#9ca3af">⬜ Đã mất</span>. Nét đứt biểu thị quan hệ Dâu/Rể.</li>
+                            <li><strong>Công cụ mới:</strong>
                                 <ul>
-                                    <li><span style="color:#3b82f6">🟦 Nam</span> / <span style="color:#ec4899">🟥 Nữ</span>: Phân biệt bằng màu sắc viền và nền.</li>
-                                    <li><span style="color:#9ca3af">⬜ Xám</span>: Thành viên đã mất.</li>
-                                    <li><strong>Nét đứt:</strong> Biểu thị quan hệ Dâu/Rể (không cùng huyết thống).</li>
+                                    <li><strong>Lọc đời:</strong> Chọn số đời cụ thể để xem (VD: Chỉ xem đời 1-3).</li>
+                                    <li><strong>Tải cây PDF:</strong> Nhấn nút "Tải cây" để lưu sơ đồ về máy.</li>
+                                    <li><strong>Tìm kiếm:</strong> Nhập tên vào ô tìm kiếm để zoom nhanh đến vị trí thành viên.</li>
                                 </ul>
                             </li>
-                            <li><strong>Di chuyển & Zoom:</strong> Nhấn giữ chuột trái vào vùng trống để kéo. Lăn chuột để phóng to/thu nhỏ.</li>
-                            <li><strong>Xem & Sửa:</strong> Click chuột trái vào thẻ để xem. <strong>Double click</strong> (nhấn đúp) để mở cửa sổ chỉnh sửa thông tin.</li>
-                            <li><strong>Công cụ:</strong> Thanh công cụ phía trên cho phép tìm kiếm nhanh, lọc số đời hiển thị và tải cây về dạng ảnh PDF.</li>
                         </ul>
                     </div>
                 </div>
@@ -1401,9 +1400,27 @@ function renderSettingsTab() {
                     </div>
                     <div class="guide-body">
                         <ul>
-                            <li><strong>Thêm thành viên:</strong> Nhấn nút "Thêm Thành viên" ở góc phải. Nhập đầy đủ Họ tên, Giới tính, và liên kết Cha/Mẹ/Vợ/Chồng (nếu có).</li>
-                            <li><strong>Tìm kiếm nâng cao:</strong> Sử dụng bộ lọc để tìm theo Đời, Phái, Năm sinh, Nghề nghiệp... Kết quả có thể xuất ra file PDF.</li>
-                            <li><strong>Sửa/Xóa:</strong> Có thể sửa hoặc xóa thành viên bằng cách click vào tên họ trong danh sách. <em>Lưu ý: Xóa thành viên sẽ xóa cả các mối quan hệ liên quan.</em></li>
+                            <li><strong>Tìm kiếm nâng cao:</strong> Sử dụng nút "Tìm nâng cao" để lọc theo nhiều tiêu chí: Họ tên, Đời, Phái, Nghề nghiệp, Địa chỉ, Trạng thái sinh tử.</li>
+                            <li><strong>Xuất danh sách:</strong> Nhấn "Xuất PDF" để tải danh sách thành viên đang hiển thị (kết quả lọc) về dạng văn bản.</li>
+                            <li><strong>Thêm/Sửa/Xóa (Admin):</strong> 
+                                <ul>
+                                    <li>Thêm mới: Nhấn nút "Thêm thành viên". Hỗ trợ gợi ý tên Cha/Mẹ/Vợ/Chồng thông minh.</li>
+                                    <li>Sửa/Xóa: Double click (nhấn đúp) vào thẻ trên cây hoặc click vào tên trong danh sách.</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="settings-card guide-card">
+                    <div class="guide-header">
+                        <i class="fas fa-newspaper"></i>
+                        <h3>3. Tin tức & Sự kiện</h3>
+                    </div>
+                    <div class="guide-body">
+                        <ul>
+                            <li><strong>Xem tin:</strong> Theo dõi các Thông báo, Sự kiện, Tin tức mới nhất của dòng họ tại tab "Bài viết".</li>
+                            <li><strong>Quản trị (Admin):</strong> Đăng bài viết mới, ghim bài quan trọng lên đầu, sửa hoặc xóa bài viết. Hỗ trợ đính kèm ảnh minh họa.</li>
                         </ul>
                     </div>
                 </div>
@@ -1411,13 +1428,14 @@ function renderSettingsTab() {
                 <div class="settings-card guide-card">
                     <div class="guide-header">
                         <i class="fas fa-database"></i>
-                        <h3>3. Dữ liệu & Hệ thống</h3>
+                        <h3>4. Thống kê & Hệ thống</h3>
                     </div>
                     <div class="guide-body">
                         <ul>
-                            <li><strong>Nhập từ CSV:</strong> Dùng để thêm hàng loạt thành viên. Hãy tải <strong>File mẫu</strong> ở mục trên để biết cấu trúc cột (id, full_name, fid, mid, pid...).</li>
-                            <li><strong>Xuất ra CSV:</strong> Sao lưu toàn bộ dữ liệu hiện tại về máy tính để lưu trữ hoặc chỉnh sửa trên Excel.</li>
-                            <li><strong>Đồng bộ Google Sheets:</strong> Tính năng nâng cao dành cho Quản trị viên để nạp dữ liệu từ nguồn online.</li>
+                            <li><strong>Dashboard:</strong> Xem thống kê tổng quan, biểu đồ nam/nữ, sinh tử.</li>
+                            <li><strong>Nhắc nhở:</strong> Tự động liệt kê Sinh nhật và Ngày giỗ trong 30 ngày tới.</li>
+                            <li><strong>Nhật ký hoạt động:</strong> Xem lại lịch sử Thêm/Sửa/Xóa dữ liệu của các quản trị viên.</li>
+                            <li><strong>Dữ liệu:</strong> Hỗ trợ Nhập/Xuất file CSV và Đồng bộ Google Sheets (dành cho Admin).</li>
                         </ul>
                     </div>
                 </div>
