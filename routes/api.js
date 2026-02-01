@@ -4,6 +4,7 @@ const Member = require('../models/Member');
 const fs = require('fs');
 const axios = require('axios');
 const { parse } = require('csv-parse/sync');
+const mongoose = require('mongoose');
 
 console.log('✅ API Router đang khởi động...'); // Log kiểm tra phiên bản mới
 
@@ -27,6 +28,26 @@ catch (e) { upload = { single: () => (req, res, next) => next() }; console.error
 
 try { auth = require('../middleware/auth'); } 
 catch (e) { auth = (req, res, next) => next(); console.error('Lỗi auth:', e.message); }
+
+// --- Activity Model & Helper ---
+const ActivitySchema = new mongoose.Schema({
+    actor_name: String,
+    actor_role: String,
+    action_type: { type: String, enum: ['create', 'update', 'delete'] },
+    description: String,
+    created_at: { type: Date, default: Date.now }
+});
+const Activity = mongoose.models.Activity || mongoose.model('Activity', ActivitySchema);
+
+const logToDB = async (req, action, description) => {
+    try {
+        const actor_name = (req.user && req.user.username) ? req.user.username : 'Unknown';
+        const actor_role = (req.user && req.user.role) ? req.user.role : 'viewer';
+        await Activity.create({ actor_name, actor_role, action_type: action, description });
+    } catch (e) {
+        console.error('Log Error:', e);
+    }
+};
 
 // --- Logic Xử lý Trực tiếp (Thay thế memberController) ---
 

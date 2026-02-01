@@ -47,6 +47,16 @@ const ActivitySchema = new mongoose.Schema({
 });
 const Activity = mongoose.models.Activity || mongoose.model('Activity', ActivitySchema);
 
+const logToDB = async (req, action, description) => {
+    try {
+        const actor_name = (req.user && req.user.username) ? req.user.username : 'Unknown';
+        const actor_role = (req.user && req.user.role) ? req.user.role : 'viewer';
+        await Activity.create({ actor_name, actor_role, action_type: action, description });
+    } catch (e) {
+        console.error('Log Error:', e);
+    }
+};
+
 // --- Middleware phân quyền Admin ---
 const adminOnly = (req, res, next) => {
     if (req.user && (req.user.role === 'admin' || req.user.role === 'owner')) {
