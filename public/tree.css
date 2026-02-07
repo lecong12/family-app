@@ -1,0 +1,81 @@
+/* === CSS for Family Tree (tree.css) === */
+
+/* Đường nối giữa các thế hệ */
+.link {
+    fill: none;
+    stroke: #ccc;
+    stroke-width: 1.5px; /* Mãnh hơn (cũ là 2px) */
+}
+
+/* Đường nối hôn nhân */
+.marriage-link {
+    stroke: #aaa;
+    stroke-width: 1px; /* Mãnh hơn (cũ là 1.5px) */
+    stroke-dasharray: 3, 3; /* Nét đứt */
+}
+
+/* Hộp thông tin thành viên */
+.member-rect {
+    stroke-width: 2px;
+    transition: fill 0.3s, stroke 0.3s, stroke-width 0.3s;
+}
+
+/* --- Màu sắc theo Giới tính & Trạng thái --- */
+
+/* Mặc định (Nam, còn sống) */
+.member-rect.male {
+    fill: #e0f2fe; /* light-blue-100 */
+    stroke: #38bdf8; /* light-blue-400 */
+}
+.member-box.male .member-name {
+    fill: #0c4a6e; /* light-blue-900 */
+}
+
+/* Nữ, còn sống */
+.member-rect.female {
+    fill: #fce7f3; /* pink-100 */
+    stroke: #f472b6; /* pink-400 */
+}
+.member-box.female .member-name {
+    fill: #831843; /* pink-900 */
+}
+
+/* Dâu/Rể (spouse) - Viền nét đứt */
+.member-rect.spouse {
+    stroke-dasharray: 5, 3;
+}
+
+/* Đã mất (deceased) - Màu xám */
+.member-rect.deceased {
+    fill: #f1f5f9; /* slate-100 */
+    stroke: #94a3b8; /* slate-400 */
+}
+.member-box.deceased .member-name,
+.member-box.deceased .member-meta {
+    fill: #64748b; /* slate-500 */
+}
+
+/* Khi được tìm kiếm (highlighted) */
+.member-rect.highlighted {
+    fill: #fef08a; /* yellow-200 */
+    stroke: #facc15; /* yellow-400 */
+    stroke-width: 3px;
+}
+
+/* --- Font chữ bên trong hộp --- */
+.member-name {
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.member-meta {
+    font-size: 11px;
+    fill: #64748b; /* slate-500 */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Hiệu ứng khi hover */
+.member-box:hover .member-rect {
+    stroke-width: 3px;
+}

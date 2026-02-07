@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập - Quản lý Gia phả</title>
+    <link rel="stylesheet" href="/style.css">
+    <style>
+        body { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            /* Màu nền vàng nhạt cổ điển */
+            background-color: #fdf6e3; 
+            margin: 0;
+            font-family: Arial, sans-serif;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Lớp chữ nền "Gia phả Họ Lê Công" */
+        body::before {
+            content: "Gia phả Họ Lê Công";
+            position: absolute;
+            font-family: "Times New Roman", serif;
+            font-size: 6rem;
+            font-weight: bold;
+            color: rgba(0, 0, 0, 0.04); /* Chữ cực mờ để không gây rối mắt */
+            white-space: nowrap;
+            z-index: 1;
+            /* Hiệu ứng chữ chạy ngang chậm rãi */
+            animation: scrollText 20s linear infinite;
+        }
+
+        @keyframes scrollText {
+            from { left: 100%; }
+            to { left: -100%; }
+        }
+
+        .login-box { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 8px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
+            width: 350px; 
+            position: relative;
+            z-index: 10; /* Đảm bảo form luôn nằm trên chữ nền */
+        }
+
+        .login-box h2 { 
+            text-align: center; 
+            margin-bottom: 20px; 
+            color: #2c3e50; 
+        }
+        .form-group { 
+            margin-bottom: 15px; 
+        }
+        .form-group input { 
+            width: 100%; 
+            padding: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+            box-sizing: border-box; 
+        }
+        .btn-login { 
+            width: 100%; 
+            padding: 10px; 
+            background: #27ae60; 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            transition: background 0.3s;
+        }
+        .btn-login:hover { 
+            background: #219150; 
+        }
+        .error { 
+            color: #e74c3c; 
+            text-align: center; 
+            margin-top: 15px; 
+            display: none; 
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-box">
+        <h1 style="
+            text-align: center; 
+            color: #ff0000; /* Màu đỏ tươi */
+            font-weight: bold; /* In đậm */
+            text-transform: uppercase; /* Viết hoa */
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 22px;
+        ">GIA PHẢ HỌ LÊ CÔNG</h1>
+        <h2>Đăng nhập</h2>
+        
+        <div class="form-group">
+            <input type="text" id="username" placeholder="Tên đăng nhập">
+        </div>
+        
+        <div class="form-group">
+            <input type="password" id="password" placeholder="Mật khẩu">
+        </div>
+        
+        <button class="btn-login" onclick="handleLogin()">Đăng nhập</button>
+        
+        <p id="error-msg" class="error"></p>
+    </div>
+
+    <script>
+        async function handleLogin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorMsg = document.getElementById('error-msg');
+
+            errorMsg.style.display = 'none';
+
+            if (!username || !password) {
+                errorMsg.innerText = 'Vui lòng nhập đầy đủ thông tin';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await res.json();
+
+                if (res.ok) {
+                    localStorage.setItem('token', data.token);
+                    if (data.user) {
+                        localStorage.setItem('userRole', data.user.role);
+                        localStorage.setItem('userName', data.user.full_name);
+                    }
+                    window.location.href = '/';
+                } else {
+                    errorMsg.innerText = data.message || data.error || 'Đăng nhập thất bại';
+                    errorMsg.style.display = 'block';
+                }
+            } catch (err) {
+                errorMsg.innerText = 'Lỗi kết nối server';
+                errorMsg.style.display = 'block';
+            }
+        }
+
+        document.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                handleLogin();
+            }
+        });
+    </script>
+    
+</body>
+</html>
