@@ -3471,7 +3471,7 @@ async function loadRecentActivities() {
 
                 html += `
                 <li style="padding: 12px; border-bottom: 1px solid #f0f0f0;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                         <span style="font-weight: 600; color: ${colorClass}; font-size: 0.95em;">${icon} ${log.description}</span>
                         <span style="font-size: 0.8em; color: #9ca3af; white-space: nowrap; margin-left: 8px;">${date}</span>
                     </div>
