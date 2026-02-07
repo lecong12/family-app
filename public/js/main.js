@@ -2606,10 +2606,10 @@ async function renderBookTab() {
 
     // 3. Tạo khung HTML cho sách
     container.innerHTML = `
-        <div class="book-controls" style="text-align:center; margin-bottom:15px; display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
-            <button class="btn-control" id="btn-book-prev"><i class="fas fa-chevron-left"></i> Trang trước</button>
-            <span id="page-info" style="display:inline-flex; align-items:center; font-weight:bold; color:#555; min-width:100px; justify-content:center;">Đang tải...</span>
-            <button class="btn-control" id="btn-book-next">Trang sau <i class="fas fa-chevron-right"></i></button>
+        <div class="book-controls" style="text-align:center; margin-bottom:15px; display:flex; justify-content:center; align-items:center; gap:5px; flex-wrap:wrap;">
+            <button class="btn-control" id="btn-book-prev"><i class="fas fa-chevron-left"></i><span class="btn-text"> Trang trước</span></button>
+            <span id="page-info" style="display:inline-flex; align-items:center; font-weight:bold; color:#555; min-width:80px; justify-content:center; font-size: 14px;">...</span>
+            <button class="btn-control" id="btn-book-next"><span class="btn-text">Trang sau </span><i class="fas fa-chevron-right"></i></button>
             ${adminControls}
         </div>
         <div class="book-stage" style="display:flex; justify-content:center; align-items:center; overflow:hidden;">
