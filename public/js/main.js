@@ -2622,11 +2622,19 @@ async function renderBookTab() {
     container.innerHTML = `
         <div class="book-controls" style="text-align:center; margin-bottom:15px; display:flex; justify-content:center; align-items:center; gap:5px; flex-wrap:wrap;">
             <button class="btn-control" id="btn-book-prev"><i class="fas fa-chevron-left"></i><span class="btn-text"> Trang trước</span></button>
-            <span id="page-info" style="display:inline-flex; align-items:center; font-weight:bold; color:#555; min-width:80px; justify-content:center; font-size: 14px;">...</span>
+            
+            <!-- Pagination Input (Phân trang) -->
+            <div class="book-pagination" style="display:flex; align-items:center; gap:5px; background:white; padding:4px 8px; border-radius:8px; border:1px solid #ddd;">
+                <span style="font-size:13px; color:#666;">Trang</span>
+                <input type="number" id="book-page-input" min="1" style="width:50px; text-align:center; padding:4px; border:1px solid #ccc; border-radius:4px; font-weight:bold;">
+                <span id="book-total-pages" style="font-size:13px; font-weight:bold; color:#555;">/ ...</span>
+                <button id="btn-book-goto" class="btn-control" style="padding:4px 8px; min-width:auto; height:28px;" title="Đi đến trang"><i class="fas fa-arrow-right"></i></button>
+            </div>
+
             <button class="btn-control" id="btn-book-next"><span class="btn-text">Trang sau </span><i class="fas fa-chevron-right"></i></button>
             ${adminControls}
         </div>
-        <div class="book-stage" style="display:flex; justify-content:center; align-items:center; overflow:hidden;">
+        <div class="book-stage" id="so-gia-pha-content" style="display:flex; justify-content:center; align-items:center; overflow:hidden;">
             <div id="my-book">
                 <!-- Pages will be injected here -->
             </div>
@@ -2719,8 +2727,46 @@ async function renderBookTab() {
     bookInstance.loadFromHTML(document.querySelectorAll('.page'));
 
     // 5. Gắn sự kiện điều khiển
-    document.getElementById('btn-book-prev').onclick = () => bookInstance.flipPrev();
-    document.getElementById('btn-book-next').onclick = () => bookInstance.flipNext();
+    // Hàm cuộn lên đầu sách khi chuyển trang (Tham khảo từ yêu cầu)
+    const handleBookPageChange = () => {
+        const element = document.getElementById("so-gia-pha-content");
+        if (element) {
+            const headerOffset = 100; // Trừ đi chiều cao header sticky
+            const elementPosition = element.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+            window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+        }
+    };
+
+    document.getElementById('btn-book-prev').onclick = () => {
+        bookInstance.flipPrev();
+        handleBookPageChange();
+    };
+    document.getElementById('btn-book-next').onclick = () => {
+        bookInstance.flipNext();
+        handleBookPageChange();
+    };
+
+    // Xử lý nhảy trang (Pagination)
+    const goToPage = () => {
+        const input = document.getElementById('book-page-input');
+        if (!input) return;
+        let page = parseInt(input.value);
+        const total = bookInstance.getPageCount();
+        
+        if (isNaN(page) || page < 1) page = 1;
+        if (page > total) page = total;
+        
+        // PageFlip index bắt đầu từ 0
+        bookInstance.flip(page - 1);
+        handleBookPageChange();
+    };
+
+    document.getElementById('btn-book-goto').onclick = goToPage;
+    document.getElementById('book-page-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') goToPage();
+    });
+
     if (isAdmin()) {
         document.getElementById('btn-book-print').onclick = printGenealogyBook;
     }
@@ -2728,7 +2774,13 @@ async function renderBookTab() {
     const updateInfo = () => {
         const current = bookInstance.getCurrentPageIndex() + 1;
         const total = bookInstance.getPageCount();
-        document.getElementById('page-info').innerText = `${current} / ${total}`;
+        
+        // Cập nhật input thay vì span text
+        const input = document.getElementById('book-page-input');
+        if(input && document.activeElement !== input) input.value = current; // Chỉ update nếu không đang gõ
+        
+        const totalSpan = document.getElementById('book-total-pages');
+        if(totalSpan) totalSpan.innerText = `/ ${total}`;
     };
 
     bookInstance.on('flip', updateInfo);
