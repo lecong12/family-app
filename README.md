@@ -11,4 +11,4 @@
 *   **Phân quyền người dùng:** Các cấp độ truy cập khác nhau (Chủ sở hữu, Quản trị, Trưởng phái, Khách).
 *   **Thống kê:** Bảng điều khiển tổng quan với các biểu đồ và số liệu.Hiển thị bảng Dashboard trước.
 
-HOÀN THÀNH PHIÊN BẢN V1,home.10. Gemini không chạy
+HOÀN THÀNH PHIÊN BẢN V1. Gặp mặt hưu
