@@ -10,6 +10,6 @@
 *   **Tin tức & Sự kiện:** Đăng tải và quản lý các thông báo, tin tức của dòng họ.
 *   **Đồng bộ dữ liệu:** Hỗ trợ nhập/xuất file CSV và đồng bộ với Google Sheets.
 *   **Phân quyền người dùng:** Các cấp độ truy cập khác nhau (Chủ sở hữu, Quản trị, Trưởng phái, Khách).
-*   **Thống kê:** Bảng điều khiển tổng quan với các biểu đồ và số liệu.Hiển thị bảng Dashboard trước
+*   **Thống kê:** Bảng điều khiển tổng quan với các biểu đồ và số liệu.Hiển thị bảng Dashboard trước.
 
 HOÀN THÀNH PHIÊN BẢN V1
