@@ -61,16 +61,9 @@ try {
     // 1. Ưu tiên nạp từ utils/api (Cấu trúc mới)
     apiRouter = require('./utils/api');
     console.log('✅ Đã nạp API Router từ utils/api');
-} catch (error1) {
-    try {
-        // 2. Nếu lỗi, thử nạp từ routes/api (Cấu trúc cũ)
-        apiRouter = require('./routes/api');
-        console.log('✅ Đã nạp API Router từ routes/api');
-    } catch (error2) {
-        console.error('❌ KHÔNG THỂ NẠP API ROUTER (Kiểm tra lại thư viện hoặc đường dẫn):');
-        console.error('   - Lỗi tại utils/api:', error1.message);
-        console.error('   - Lỗi tại routes/api:', error2.message);
-    }
+} catch (error) {
+    console.error('❌ KHÔNG THỂ NẠP API ROUTER (Kiểm tra lại thư viện hoặc đường dẫn):');
+    console.error('   - Lỗi tại utils/api:', error.message);
 }
 
 try {
