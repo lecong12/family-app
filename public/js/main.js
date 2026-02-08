@@ -2792,17 +2792,19 @@ function getSortedBookPages() {
 async function printGenealogyBook() {
     if (!isAdmin()) return;
 
-    const btn = document.getElementById('btn-book-print');
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-    btn.disabled = true;
-
     try {
         const pagesData = getSortedBookPages();
         if (pagesData.length === 0) {
             alert("Không có dữ liệu để in.");
             return;
         }
+
+        // 1. Tạo Overlay che màn hình (Để người dùng không thấy quá trình render lộn xộn bên dưới)
+        const overlay = document.createElement('div');
+        overlay.id = 'print-overlay';
+        overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.98); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center;';
+        overlay.innerHTML = '<div style="font-size:20px; font-weight:bold; color:#333; margin-bottom:10px;"><i class="fas fa-spinner fa-spin"></i> Đang tạo PDF...</div><div style="color:#666;">Vui lòng đợi trong giây lát</div>';
+        document.body.appendChild(overlay);
 
         // Tạo container tạm
         const tempDiv = document.createElement('div');
@@ -2865,35 +2867,40 @@ async function printGenealogyBook() {
 
         tempDiv.appendChild(containerDiv);
 
-        // FIX: Gắn tạm vào body để html2pdf có thể render (tránh lỗi trang trắng)
-        // Đặt vị trí fixed đè lên nhưng ẩn bằng z-index để html2canvas chụp được
-        tempDiv.style.position = 'fixed';
+        // 2. Gắn vào body nhưng nằm dưới Overlay (z-index thấp hơn overlay nhưng cao hơn body)
+        // Sử dụng absolute top:0 left:0 để html2canvas chụp được toàn bộ chiều dài
+        tempDiv.style.position = 'absolute';
         tempDiv.style.left = '0';
         tempDiv.style.top = '0';
-        tempDiv.style.zIndex = '-9999';
+        tempDiv.style.zIndex = '99998'; // Dưới overlay (99999)
         tempDiv.style.width = '210mm'; // Định kích thước chuẩn A4
         tempDiv.style.background = '#ffffff';
         document.body.appendChild(tempDiv);
 
+        // 3. Chờ 1 giây để trình duyệt render xong font chữ và bố cục
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
         const opt = {
-            margin: 10,
+            margin: 0, // Margin 0 vì ta đã set padding trong CSS
             filename: `So_Gia_Pha_Le_Cong_${new Date().toISOString().slice(0,10)}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, logging: false },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            html2canvas: { scale: 2, useCORS: true, scrollY: 0, windowWidth: 800 }, // scrollY:0 để chụp từ đầu trang
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['css', 'legacy'] }
         };
         
         await html2pdf().set(opt).from(tempDiv).save();
         
         // Dọn dẹp sau khi in xong
         document.body.removeChild(tempDiv);
+        document.body.removeChild(overlay);
 
     } catch (err) {
         console.error(err);
         alert("Lỗi khi tạo PDF: " + err.message);
-    } finally {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
+        // Xóa overlay nếu lỗi
+        const ov = document.getElementById('print-overlay');
+        if(ov) document.body.removeChild(ov);
     }
 }
 
