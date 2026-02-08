@@ -1441,6 +1441,11 @@ body {
         text-align: center;
         padding: 15px 20px;
     }
+    
+    .header-info h1 {
+        font-size: 14px; /* Thu nhỏ chữ để hiển thị trên 1 hàng */
+        line-height: 1.4;
+    }
 
     .auth-card {
         padding: 30px 20px;
@@ -2861,7 +2866,8 @@ input[type="radio"][value="0"]:checked + .option-deceased {
 }
 
 @media (max-width: 768px) {
-    .pagination-controls {
+    .pagination-controls,
+    .book-controls {
         gap: 8px !important;
         flex-wrap: nowrap !important; /* Ép buộc nằm trên 1 hàng */
         justify-content: center !important;

@@ -2601,7 +2601,7 @@ async function renderBookTab() {
     // Nút in ấn cho Admin
     let adminControls = '';
     if (isAdmin()) {
-        adminControls = `<button class="btn-control" id="btn-book-print" style="color: #c0392b;"><i class="fas fa-print"></i> In Sổ (PDF)</button>`;
+        adminControls = `<button class="btn-control" id="btn-book-print" style="color: #c0392b;" title="In Sổ (PDF)"><i class="fas fa-print"></i></button>`;
     }
 
     // 3. Tạo khung HTML cho sách
