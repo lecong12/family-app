@@ -843,7 +843,7 @@ function renderPaginationControls(container) {
     // Thông tin trang
     const info = document.createElement('span');
     info.className = 'pagination-info';
-    info.innerHTML = `<span class="pagination-text">Trang </span>${pagination.currentPage} / ${totalPages}`;
+    info.innerHTML = `${pagination.currentPage} / ${totalPages}`;
 
     // Nút Sau
     const nextBtn = document.createElement('button');
@@ -2714,7 +2714,7 @@ async function renderBookTab() {
     const updateInfo = () => {
         const current = bookInstance.getCurrentPageIndex() + 1;
         const total = bookInstance.getPageCount();
-        document.getElementById('page-info').innerText = `Trang ${current} / ${total}`;
+        document.getElementById('page-info').innerText = `${current} / ${total}`;
     };
 
     bookInstance.on('flip', updateInfo);
@@ -2853,6 +2853,13 @@ async function printGenealogyBook() {
 
         tempDiv.appendChild(containerDiv);
 
+        // FIX: Gắn tạm vào body để html2pdf có thể render (tránh lỗi trang trắng)
+        // Đặt vị trí tuyệt đối ra khỏi màn hình để người dùng không thấy
+        tempDiv.style.position = 'absolute';
+        tempDiv.style.left = '-9999px';
+        tempDiv.style.top = '0';
+        document.body.appendChild(tempDiv);
+
         const opt = {
             margin: 10,
             filename: `So_Gia_Pha_Le_Cong_${new Date().toISOString().slice(0,10)}.pdf`,
@@ -2860,7 +2867,12 @@ async function printGenealogyBook() {
             html2canvas: { scale: 2, useCORS: true, logging: false },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
+        
         await html2pdf().set(opt).from(tempDiv).save();
+        
+        // Dọn dẹp sau khi in xong
+        document.body.removeChild(tempDiv);
+
     } catch (err) {
         console.error(err);
         alert("Lỗi khi tạo PDF: " + err.message);

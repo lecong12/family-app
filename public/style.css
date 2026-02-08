@@ -2871,6 +2871,7 @@ input[type="radio"][value="0"]:checked + .option-deceased {
         gap: 8px !important;
         flex-wrap: nowrap !important; /* Ép buộc nằm trên 1 hàng */
         justify-content: center !important;
+        width: 100%; /* Đảm bảo chiếm hết chiều rộng để căn giữa chuẩn */
     }
 
     /* Ẩn chữ "Trước/Sau" trên mobile, chỉ hiện icon */
