@@ -1,6 +1,5 @@
 # Ứng dụng Quản lý Gia phả Họ Lê Công
 
-Đây là dự án ứng dụng web để quản lý thông tin gia phả của dòng họ Lê Công tại thôn Linh An, tỉnh Quảng Trị.
 
 ## Các chức năng chính
 
@@ -12,4 +11,4 @@
 *   **Phân quyền người dùng:** Các cấp độ truy cập khác nhau (Chủ sở hữu, Quản trị, Trưởng phái, Khách).
 *   **Thống kê:** Bảng điều khiển tổng quan với các biểu đồ và số liệu.Hiển thị bảng Dashboard trước.
 
-HOÀN THÀNH PHIÊN BẢN V1,home.10
+HOÀN THÀNH PHIÊN BẢN V1,home.10. Gemini không chạy
