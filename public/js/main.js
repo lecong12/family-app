@@ -2789,156 +2789,207 @@ function getSortedBookPages() {
 }
 
 // --- HÀM MỚI: In Sổ Gia Phả ra PDF (Chỉ Admin) ---
+// --- HÀM MỚI: In Sổ Gia Phả (Sử dụng trình in mặc định của trình duyệt) ---
 async function printGenealogyBook() {
     if (!isAdmin()) return;
 
-    // 1. Đảm bảo thư viện html2pdf đã được tải
-    if (typeof html2pdf === 'undefined') {
-        const btn = document.getElementById('btn-book-print');
-        if(btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        try {
-            await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js');
-        } catch (e) {
-            alert("Lỗi: Không thể tải thư viện in ấn. Vui lòng kiểm tra kết nối mạng.");
-            if(btn) btn.innerHTML = '<i class="fas fa-print"></i>';
-            return;
-        }
-        if(btn) btn.innerHTML = '<i class="fas fa-print"></i>';
+    const pagesData = getSortedBookPages();
+    if (pagesData.length === 0) {
+        alert("Không có dữ liệu để in.");
+        return;
     }
 
-    try {
-        const pagesData = getSortedBookPages();
-        if (pagesData.length === 0) {
-            alert("Không có dữ liệu để in.");
-            return;
-        }
+    // Tạo cửa sổ in mới
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        alert('Trình duyệt đã chặn cửa sổ bật lên. Vui lòng cho phép trang web này mở cửa sổ mới để in.');
+        return;
+    }
 
-        // 2. Hiển thị thông báo đang xử lý
-        const loadingToast = document.createElement('div');
-        loadingToast.id = 'print-loading';
-        loadingToast.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.8); color:white; padding:20px; border-radius:10px; z-index:100000; font-weight:bold;';
-        loadingToast.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tạo bản in PDF...<br><span style="font-size:12px; font-weight:normal">Vui lòng không tắt trình duyệt</span>';
-        document.body.appendChild(loadingToast);
-
-        // Tạo container tạm
-        const tempDiv = document.createElement('div');
-        tempDiv.id = 'print-temp-div';
-        // CSS cho PDF
-        const style = document.createElement('style');
-        style.innerHTML = `
-            /* Thiết lập trang in chuẩn A4 */
-            .print-page { 
-                width: 210mm; 
-                height: 297mm; 
-                page-break-after: always; 
-                position: relative; 
+    // Chuẩn bị nội dung HTML
+    let htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>In Sổ Gia Phả</title>
+        <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Times+New+Roman&display=swap" rel="stylesheet">
+        <style>
+            @page {
+                size: A4;
+                margin: 0;
+            }
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: #f4ecd8;
+                font-family: 'Dancing Script', cursive;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .print-page {
+                width: 210mm;
+                height: 296mm; /* A4 height minus tiny bit to prevent overflow */
+                position: relative;
+                page-break-after: always;
                 overflow: hidden;
-                background-color: #f4ecd8; /* Màu nền giấy cũ */
+                background-color: #f4ecd8;
+                /* Tái tạo nền giấy cũ */
+                background-image:
+                    linear-gradient(90deg, rgba(139, 69, 19, 0.15) 1px, transparent 1px),
+                    linear-gradient(rgba(139, 69, 19, 0.15) 1px, transparent 1px);
+                background-size: 25px 25px;
+                box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.05);
+                border: 1px solid #d2b48c;
+                padding: 40px;
+                box-sizing: border-box;
             }
-            /* Ghi đè để trang sách hiển thị full trang in, không cuộn */
-            .notebook-page {
-                height: 100% !important;
-                overflow: hidden !important;
-                border: none !important; /* Bỏ viền đôi khi in để đẹp hơn */
-                padding: 40px !important; /* Tăng lề cho bản in */
-                font-family: 'Dancing Script', cursive, serif !important;
-                color: #4b3621 !important;
-            }
+            /* Trang bìa */
             .cover-page {
-                height: 100% !important;
+                background-color: #3e2723 !important;
+                background-image: none !important;
+                color: #d7ccc8 !important;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+                border: 10px double #5d4037;
             }
-            /* Ẩn các icon điều hướng khi in */
-            .icon-next { display: none !important; }
-        `;
-        tempDiv.appendChild(style);
+            .cover-border {
+                border: 3px double #d7ccc8;
+                padding: 40px;
+                width: 80%;
+                height: 80%;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+            }
+            /* Typography cho nội dung */
+            .page-number {
+                position: absolute;
+                top: 20px;
+                right: 30px;
+                font-family: serif;
+                font-size: 12pt;
+                color: #8d6e63;
+                font-style: italic;
+            }
+            .generation-title {
+                color: #b71c1c;
+                font-size: 24pt;
+                font-weight: bold;
+                text-align: center;
+                margin-bottom: 20px;
+                margin-top: 0;
+            }
+            .branch-name {
+                display: block;
+                font-size: 14pt;
+                color: #e65100;
+                font-weight: bold;
+                margin-top: 5px;
+            }
+            .main-couple {
+                text-align: center;
+                margin-bottom: 30px;
+            }
+            .father-name {
+                font-size: 20pt;
+                font-weight: bold;
+                border-bottom: 2px solid #b71c1c;
+                display: inline-block;
+                margin-bottom: 10px;
+                color: #4b3621;
+            }
+            .mother-info {
+                font-size: 16pt;
+                color: #5d4037;
+                margin-top: 5px;
+            }
+            .sinh-ha-title {
+                font-size: 18pt;
+                text-align: center;
+                margin-top: 25px;
+                margin-bottom: 15px;
+                text-decoration: underline;
+                font-weight: bold;
+                color: #4b3621;
+            }
+            .children-grid {
+                padding-left: 20px;
+            }
+            .child-line {
+                font-size: 15pt;
+                line-height: 1.6;
+                margin-bottom: 5px;
+                border-bottom: 1px dotted #ccc;
+                display: flex;
+                align-items: baseline;
+                color: #4b3621;
+            }
+            .order-no {
+                font-weight: bold;
+                margin-right: 10px;
+                min-width: 25px;
+            }
+            .name {
+                font-weight: 600;
+            }
+            .note {
+                font-size: 13pt;
+                font-style: italic;
+                color: #6d4c41;
+                margin-left: 5px;
+            }
+            /* Ẩn các icon không cần thiết khi in */
+            .icon-next { display: none; }
+        </style>
+    </head>
+    <body>
+    `;
 
-        const containerDiv = document.createElement('div');
-        containerDiv.className = 'print-container';
+    // 1. Thêm Trang Bìa
+    htmlContent += `
+        <div class="print-page cover-page">
+            <div class="cover-border">
+                <h1 style="font-family: 'Times New Roman', serif; font-size: 40pt; margin-bottom: 30px; text-shadow: 1px 1px 2px #000;">GIA PHẢ<br>HỌ LÊ CÔNG</h1>
+                <div style="width: 150px; height: 3px; background: #d7ccc8; margin: 30px auto;"></div>
+                <p style="font-size: 20pt; margin-top: 20px; font-family: 'Times New Roman', serif;">Thôn Linh An, Tỉnh Quảng Trị</p>
+                <p style="margin-top: auto; font-size: 16pt; font-family: 'Times New Roman', serif;">Năm ${new Date().getFullYear()}</p>
+            </div>
+        </div>
+    `;
 
-        // 1. Trang Bìa
-        containerDiv.innerHTML += `
+    // 2. Thêm Các Trang Nội Dung
+    pagesData.forEach((member, index) => {
+        const content = generatePageContent(member);
+        htmlContent += `
             <div class="print-page">
-                <div class="page-content cover-page">
-                    <div style="border: 3px double #d7ccc8; padding: 20px; height: 100%; display:flex; flex-direction:column; justify-content:flex-start; align-items:center; padding-top: 100px;">
-                        <h1 style="font-family: 'Times New Roman', serif; font-size: 3.5em; text-align: center; color: #d7ccc8; margin-bottom: 30px; text-shadow: 1px 1px 2px #000;">GIA PHẢ<br>HỌ LÊ CÔNG</h1>
-                        <div style="width: 100px; height: 3px; background: #5d4037; margin: 30px auto;"></div>
-                        <p style="font-size: 1.8em; color: #d7ccc8;">Thôn Linh An, Tỉnh Quảng Trị</p>
-                        <p style="margin-top: auto; font-size: 1.2em; color: #a1887f;">Năm ${new Date().getFullYear()}</p>
-                    </div>
-                </div>
+                <div class="page-number">Trang ${index + 1}</div>
+                ${content}
             </div>
         `;
+    });
 
-        // 2. Các trang nội dung
-        pagesData.forEach((member, index) => {
-            const content = generatePageContent(member);
-            // Sử dụng lại class notebook-page để giữ nguyên style giấy cũ và font chữ
-            containerDiv.innerHTML += `
-                <div class="print-page">
-                    <div class="page-content notebook-page">
-                        <div style="position:absolute; top:20px; right:30px; font-size:14px; color:#8d6e63; font-family:serif; font-style:italic;">Trang ${index + 1}</div>
-                        ${content}
-                    </div>
-                </div>`;
-        });
+    htmlContent += `
+        <script>
+            // Tự động in khi tải xong
+            window.onload = function() {
+                setTimeout(function() {
+                    window.print();
+                }, 1000); // Đợi 1 giây để font chữ tải xong
+            };
+        </script>
+    </body>
+    </html>
+    `;
 
-        tempDiv.appendChild(containerDiv);
-
-        // FIX: Gắn tạm vào body để html2pdf có thể render (tránh lỗi trang trắng)
-        // Đặt vị trí fixed đè lên nhưng ẩn bằng z-index để html2canvas chụp được
-        tempDiv.style.position = 'fixed';
-        // Đặt vị trí absolute đè lên (z-index cao) nhưng dưới loading toast
-        tempDiv.style.position = 'absolute';
-        tempDiv.style.left = '0';
-        tempDiv.style.top = '0';
-        tempDiv.style.zIndex = '-9999';
-        tempDiv.style.zIndex = '9999'; // Cao hơn nội dung web
-        tempDiv.style.width = '210mm'; // Định kích thước chuẩn A4
-        tempDiv.style.background = '#ffffff';
-        
-        document.body.appendChild(tempDiv);
-        
-        // Scroll lên đầu để html2canvas chụp đúng
-        window.scrollTo(0, 0);
-        
-        // Chờ 1 chút để render font chữ và hình ảnh
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        const opt = {
-            margin: 10,
-            margin: 0,
-            filename: `So_Gia_Pha_Le_Cong_${new Date().toISOString().slice(0,10)}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, logging: false },
-            html2canvas: { 
-                scale: 2, 
-                useCORS: true, 
-                logging: false,
-                scrollY: 0
-            },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-        
-        await html2pdf().set(opt).from(tempDiv).save();
-        
-        // Dọn dẹp sau khi in xong
-        document.body.removeChild(tempDiv);
-
-    } catch (err) {
-        console.error(err);
-        alert("Lỗi khi tạo PDF: " + err.message);
-    } finally {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-        // Dọn dẹp
-        const tempDiv = document.getElementById('print-temp-div');
-        if (tempDiv) document.body.removeChild(tempDiv);
-        
-        const loadingToast = document.getElementById('print-loading');
-        if (loadingToast) document.body.removeChild(loadingToast);
-        
-        if (btn) btn.disabled = false;
-    }
+    // Ghi nội dung vào cửa sổ mới
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
 }
 
 // --- HÀM MỚI: Tạo nội dung HTML cho 1 trang sách (Tách từ displayFamilyPage cũ) ---
