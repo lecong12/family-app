@@ -3037,6 +3037,8 @@ async function printGenealogyBook() {
                 ${content}
             </div>
         `;
+        // Thêm trang trắng để khi in 2 mặt thì mặt sau sẽ trống (chỉ in mặt trước)
+        htmlContent += `<div class="print-page" style="border:none; background:none;"></div>`;
     });
 
     htmlContent += `
