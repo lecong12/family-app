@@ -2887,18 +2887,35 @@ async function printGenealogyBook() {
         // FIX: Gắn tạm vào body để html2pdf có thể render (tránh lỗi trang trắng)
         // Đặt vị trí fixed đè lên nhưng ẩn bằng z-index để html2canvas chụp được
         tempDiv.style.position = 'fixed';
+        // Đặt vị trí absolute đè lên (z-index cao) nhưng dưới loading toast
+        tempDiv.style.position = 'absolute';
         tempDiv.style.left = '0';
         tempDiv.style.top = '0';
         tempDiv.style.zIndex = '-9999';
+        tempDiv.style.zIndex = '9999'; // Cao hơn nội dung web
         tempDiv.style.width = '210mm'; // Định kích thước chuẩn A4
         tempDiv.style.background = '#ffffff';
+        
         document.body.appendChild(tempDiv);
+        
+        // Scroll lên đầu để html2canvas chụp đúng
+        window.scrollTo(0, 0);
+        
+        // Chờ 1 chút để render font chữ và hình ảnh
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
         const opt = {
             margin: 10,
+            margin: 0,
             filename: `So_Gia_Pha_Le_Cong_${new Date().toISOString().slice(0,10)}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2, useCORS: true, logging: false },
+            html2canvas: { 
+                scale: 2, 
+                useCORS: true, 
+                logging: false,
+                scrollY: 0
+            },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
         
@@ -2913,6 +2930,14 @@ async function printGenealogyBook() {
     } finally {
         btn.innerHTML = originalText;
         btn.disabled = false;
+        // Dọn dẹp
+        const tempDiv = document.getElementById('print-temp-div');
+        if (tempDiv) document.body.removeChild(tempDiv);
+        
+        const loadingToast = document.getElementById('print-loading');
+        if (loadingToast) document.body.removeChild(loadingToast);
+        
+        if (btn) btn.disabled = false;
     }
 }
 
