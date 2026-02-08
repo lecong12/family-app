@@ -2813,16 +2813,21 @@ async function printGenealogyBook() {
             return;
         }
 
-        // 2. Tạo Overlay loading
+        // 2. Tạo Overlay loading che toàn màn hình
         const overlay = document.createElement('div');
         overlay.id = 'print-overlay';
         overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.98); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center;';
         overlay.innerHTML = '<div style="font-size:20px; font-weight:bold; color:#333; margin-bottom:10px;"><i class="fas fa-spinner fa-spin"></i> Đang tạo PDF...</div><div style="color:#666;">Vui lòng đợi trong giây lát</div>';
         document.body.appendChild(overlay);
 
-        // 3. Ẩn giao diện chính để tránh xung đột cuộn và lỗi trang trắng
-        const appContainer = document.querySelector('.dashboard-page') || document.body.firstElementChild;
-        if(appContainer) appContainer.style.display = 'none';
+        // 3. Ẩn tất cả các phần tử khác trong body để tránh xung đột
+        const bodyChildren = Array.from(document.body.children);
+        bodyChildren.forEach(child => {
+            if (child.id !== 'print-overlay' && child.tagName !== 'SCRIPT') {
+                child.classList.add('print-hidden-temp');
+                child.style.display = 'none';
+            }
+        });
 
         // Tạo container tạm
         const tempDiv = document.createElement('div');
@@ -2839,6 +2844,7 @@ async function printGenealogyBook() {
                 overflow: hidden;
                 background-color: #f4ecd8; /* Màu nền giấy cũ */
                 border: 1px solid #e0e0e0;
+                margin: 0 auto; /* Căn giữa */
             }
             /* Ghi đè để trang sách hiển thị full trang in, không cuộn */
             .notebook-page {
@@ -2888,7 +2894,6 @@ async function printGenealogyBook() {
         tempDiv.appendChild(containerDiv);
 
         // 4. Hiển thị container in (duy nhất trên màn hình lúc này)
-        // FIX: Đặt style rõ ràng, bỏ absolute cũ để tránh lỗi trắng trang
         tempDiv.style.cssText = 'position: relative; width: 210mm; margin: 0 auto; background: #ffffff; z-index: 99998;';
         
         document.body.appendChild(tempDiv);
@@ -2896,14 +2901,22 @@ async function printGenealogyBook() {
         // Scroll lên đầu để html2canvas chụp đúng vị trí
         window.scrollTo(0, 0);
 
-        // 5. Chờ 1.5 giây để trình duyệt render xong font chữ và bố cục
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // 5. Chờ 2 giây để trình duyệt render xong font chữ và bố cục
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Detect mobile
+        const isMobile = window.innerWidth < 768;
 
         const opt = {
             margin: 0, // Margin 0 vì ta đã set padding trong CSS
             filename: `So_Gia_Pha_Le_Cong_${new Date().toISOString().slice(0,10)}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, scrollY: 0 }, // scrollY:0 để chụp từ đầu trang
+            html2canvas: { 
+                scale: isMobile ? 1.5 : 2, // Giảm scale trên mobile để tránh crash bộ nhớ
+                useCORS: true, 
+                scrollY: 0,
+                windowWidth: 1200 // Giả lập màn hình rộng để layout không bị vỡ trên điện thoại
+            },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
             pagebreak: { mode: ['css', 'legacy'] }
         };
@@ -2921,9 +2934,12 @@ async function printGenealogyBook() {
         const overlay = document.getElementById('print-overlay');
         if (overlay) document.body.removeChild(overlay);
 
-        // Hiện lại app
-        const appContainer = document.querySelector('.dashboard-page') || document.body.firstElementChild;
-        if(appContainer) appContainer.style.display = '';
+        // Hiện lại các phần tử đã ẩn
+        const hiddenElements = document.querySelectorAll('.print-hidden-temp');
+        hiddenElements.forEach(el => {
+            el.style.display = '';
+            el.classList.remove('print-hidden-temp');
+        });
     }
 }
 
