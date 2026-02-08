@@ -1,4 +1,4 @@
-# Ứng dụng Quản lý Gia phả Họ Lê Công
+#Quản lý Gia phả Họ Lê Công
 
 
 ## Các chức năng chính
