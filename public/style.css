@@ -2861,6 +2861,13 @@ input[type="radio"][value="0"]:checked + .option-deceased {
     font-size: 13px !important;
 }
 
+/* Style cho trang đang chọn */
+.btn-pagination.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
 .btn-pagination i {
     font-size: 14px; /* Giảm cỡ icon */
 }

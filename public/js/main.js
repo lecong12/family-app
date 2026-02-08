@@ -821,32 +821,66 @@ function renderPaginationControls(container) {
 
     const controls = document.createElement('div');
     controls.className = 'pagination-controls';
-    // Style đã được chuyển sang CSS (.pagination-controls) để xử lý responsive tốt hơn
 
-    // Nút Trước
-    const prevBtn = document.createElement('button');
-    prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i><span class="btn-text"> Trước</span>';
-    prevBtn.className = 'btn-control btn-pagination';
-    prevBtn.disabled = pagination.currentPage === 1;
-    if (pagination.currentPage === 1) prevBtn.style.opacity = '0.5';
-    prevBtn.onclick = () => changePage(pagination.currentPage - 1);
-    
-    // Thông tin trang
-    const info = document.createElement('span');
-    info.className = 'pagination-info';
-    info.innerHTML = `${pagination.currentPage} / ${totalPages}`;
+    // Helper tạo nút
+    const createBtn = (html, page, isActive = false, isDisabled = false) => {
+        const btn = document.createElement('button');
+        btn.className = `btn-control btn-pagination ${isActive ? 'active' : ''}`;
+        btn.innerHTML = html;
+        if (isDisabled) {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'default';
+        } else {
+            btn.onclick = () => changePage(page);
+        }
+        return btn;
+    };
 
-    // Nút Sau
-    const nextBtn = document.createElement('button');
-    nextBtn.innerHTML = '<span class="btn-text">Sau </span><i class="fas fa-chevron-right"></i>';
-    nextBtn.className = 'btn-control btn-pagination';
-    nextBtn.disabled = pagination.currentPage === totalPages;
-    if (pagination.currentPage === totalPages) nextBtn.style.opacity = '0.5';
-    nextBtn.onclick = () => changePage(pagination.currentPage + 1);
+    // 1. Nút Trước
+    controls.appendChild(createBtn('<i class="fas fa-chevron-left"></i>', pagination.currentPage - 1, false, pagination.currentPage === 1));
 
-    controls.appendChild(prevBtn);
-    controls.appendChild(info);
-    controls.appendChild(nextBtn);
+    // 2. Logic hiển thị số trang (1 ... 4 5 6 ... 10)
+    const maxVisible = 5; // Số nút trang tối đa hiển thị liền kề
+    let startPage, endPage;
+
+    if (totalPages <= maxVisible) {
+        startPage = 1;
+        endPage = totalPages;
+    } else {
+        const maxPagesBefore = Math.floor(maxVisible / 2);
+        const maxPagesAfter = Math.ceil(maxVisible / 2) - 1;
+        if (pagination.currentPage <= maxPagesBefore + 1) {
+            startPage = 1;
+            endPage = maxVisible;
+        } else if (pagination.currentPage + maxPagesAfter >= totalPages) {
+            startPage = totalPages - maxVisible + 1;
+            endPage = totalPages;
+        } else {
+            startPage = pagination.currentPage - maxPagesBefore;
+            endPage = pagination.currentPage + maxPagesAfter;
+        }
+    }
+
+    // Trang đầu + Dấu ...
+    if (startPage > 1) {
+        controls.appendChild(createBtn('1', 1));
+        if (startPage > 2) controls.appendChild(document.createTextNode('...'));
+    }
+
+    // Các trang ở giữa
+    for (let i = startPage; i <= endPage; i++) {
+        controls.appendChild(createBtn(i, i, i === pagination.currentPage));
+    }
+
+    // Dấu ... + Trang cuối
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) controls.appendChild(document.createTextNode('...'));
+        controls.appendChild(createBtn(totalPages, totalPages));
+    }
+
+    // 3. Nút Sau
+    controls.appendChild(createBtn('<i class="fas fa-chevron-right"></i>', pagination.currentPage + 1, false, pagination.currentPage === totalPages));
 
     container.appendChild(controls);
 }
