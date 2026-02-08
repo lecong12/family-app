@@ -2813,28 +2813,56 @@ async function printGenealogyBook() {
             return;
         }
 
-        // 2. Tạo Overlay loading che toàn màn hình
-        const overlay = document.createElement('div');
-        overlay.id = 'print-overlay';
-        overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.98); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center;';
-        overlay.innerHTML = '<div style="font-size:20px; font-weight:bold; color:#333; margin-bottom:10px;"><i class="fas fa-spinner fa-spin"></i> Đang tạo PDF...</div><div style="color:#666;">Vui lòng đợi trong giây lát</div>';
-        document.body.appendChild(overlay);
+        // 2. Tạo Container hiển thị nội dung in (Preview Mode)
+        // Thay vì ẩn body, ta tạo một lớp phủ full màn hình đè lên trên
+        const printContainer = document.createElement('div');
+        printContainer.id = 'print-container-fixed';
+        printContainer.style.cssText = `
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: #525659; /* Màu nền xám của trình xem PDF */
+            z-index: 2147483647; /* Max Z-Index */
+            overflow-y: auto;
+            padding: 20px 0;
+        `;
+        
+        // Thông báo đang xử lý
+        const loadingMsg = document.createElement('div');
+        loadingMsg.id = 'print-loading-msg';
+        loadingMsg.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); color:white; font-size:24px; font-weight:bold; text-shadow:0 2px 4px rgba(0,0,0,0.5); z-index:2147483648; pointer-events:none;';
+        loadingMsg.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tạo PDF...';
+        document.body.appendChild(loadingMsg);
 
-        // 3. Ẩn tất cả các phần tử khác trong body để tránh xung đột
-        const bodyChildren = Array.from(document.body.children);
-        bodyChildren.forEach(child => {
-            if (child.id !== 'print-overlay' && child.tagName !== 'SCRIPT') {
-                child.classList.add('print-hidden-temp');
-                child.style.display = 'none';
-            }
-        });
+        // Nút đóng khẩn cấp (nếu treo)
+        const closeBtn = document.createElement('button');
+        closeBtn.innerHTML = '&times;';
+        closeBtn.style.cssText = 'position:fixed; top:10px; right:10px; font-size:40px; color:white; background:none; border:none; cursor:pointer; z-index:2147483649;';
+        closeBtn.onclick = () => {
+            if(document.getElementById('print-container-fixed')) document.body.removeChild(document.getElementById('print-container-fixed'));
+            if(document.getElementById('print-loading-msg')) document.body.removeChild(document.getElementById('print-loading-msg'));
+            if(closeBtn.parentNode) closeBtn.parentNode.removeChild(closeBtn);
+        };
+        document.body.appendChild(closeBtn);
 
         // Tạo container tạm
         const tempDiv = document.createElement('div');
-        tempDiv.id = 'print-temp-div';
+        tempDiv.id = 'print-content-wrapper';
+        tempDiv.style.cssText = `
+            width: 210mm;
+            margin: 0 auto;
+            background: #fff;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        `;
+
         // CSS cho PDF
         const style = document.createElement('style');
         style.innerHTML = `
+            @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&display=swap');
+            @import url('https://fonts.googleapis.com/css2?family=Times+New+Roman&display=swap');
+            
             /* Thiết lập trang in chuẩn A4 */
             .print-page { 
                 width: 210mm; 
@@ -2844,7 +2872,7 @@ async function printGenealogyBook() {
                 overflow: hidden;
                 background-color: #f4ecd8; /* Màu nền giấy cũ */
                 border: 1px solid #e0e0e0;
-                margin: 0 auto; /* Căn giữa */
+                margin-bottom: 20px; /* Khoảng cách giữa các trang khi xem trước */
             }
             /* Ghi đè để trang sách hiển thị full trang in, không cuộn */
             .notebook-page {
@@ -2852,12 +2880,20 @@ async function printGenealogyBook() {
                 overflow: hidden !important;
                 border: none !important; /* Bỏ viền đôi khi in để đẹp hơn */
                 padding: 40px !important; /* Tăng lề cho bản in */
+                font-family: 'Dancing Script', cursive, serif !important;
+                color: #4b3621 !important;
             }
             .cover-page {
                 height: 100% !important;
             }
             /* Ẩn các icon điều hướng khi in */
             .icon-next { display: none !important; }
+            
+            /* Đảm bảo màu sắc được in ra */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
         `;
         tempDiv.appendChild(style);
 
@@ -2893,15 +2929,11 @@ async function printGenealogyBook() {
 
         tempDiv.appendChild(containerDiv);
 
-        // 4. Hiển thị container in (duy nhất trên màn hình lúc này)
-        tempDiv.style.cssText = 'position: relative; width: 210mm; margin: 0 auto; background: #ffffff; z-index: 99998;';
-        
-        document.body.appendChild(tempDiv);
-        
-        // Scroll lên đầu để html2canvas chụp đúng vị trí
-        window.scrollTo(0, 0);
+        // Gắn nội dung vào container cố định
+        printContainer.appendChild(tempDiv);
+        document.body.appendChild(printContainer);
 
-        // 5. Chờ 2 giây để trình duyệt render xong font chữ và bố cục
+        // 5. Chờ 2 giây để trình duyệt render xong font chữ và bố cục (Bạn sẽ thấy trang in hiện ra)
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         // Detect mobile
@@ -2928,18 +2960,14 @@ async function printGenealogyBook() {
         alert("Lỗi khi tạo PDF: " + err.message);
     } finally {
         // 6. Dọn dẹp và khôi phục giao diện
-        const tempDiv = document.getElementById('print-temp-div');
-        if (tempDiv) document.body.removeChild(tempDiv);
+        const printContainer = document.getElementById('print-container-fixed');
+        if (printContainer) document.body.removeChild(printContainer);
         
-        const overlay = document.getElementById('print-overlay');
-        if (overlay) document.body.removeChild(overlay);
-
-        // Hiện lại các phần tử đã ẩn
-        const hiddenElements = document.querySelectorAll('.print-hidden-temp');
-        hiddenElements.forEach(el => {
-            el.style.display = '';
-            el.classList.remove('print-hidden-temp');
-        });
+        const loadingMsg = document.getElementById('print-loading-msg');
+        if (loadingMsg) document.body.removeChild(loadingMsg);
+        
+        const closeBtn = document.querySelector('button[style*="z-index:2147483649"]');
+        if (closeBtn) document.body.removeChild(closeBtn);
     }
 }
 
@@ -4305,6 +4333,125 @@ function openViewMemberModal(memberId) {
         let childHtml = '';
         children.forEach(child => {
             childHtml += `<div style="margin-bottom: 4px;">
+                <a href="#" onclick="event.preventDefault(); document.getElementById('view-member-modal').style.display='none'; openViewMemberModal('${child.id}');" style="color: #3b82f6; text-decoration: none;">${child.full_name}</a>
+            </div>`;
+        });
+        childrenEl.innerHTML = childHtml;
+    }
+
+    document.getElementById('view-m-job').innerText = member.job || '---';
+    document.getElementById('view-m-phone').innerText = member.phone || '---';
+    document.getElementById('view-m-address').innerText = member.address || '---';
+    document.getElementById('view-m-note').innerText = member.note || '---';
+
+    // --- FIX: Cập nhật nút bấm ở Footer (Thêm nút Sửa cho Admin) ---
+    const footer = document.querySelector('#view-member-modal .modal-footer');
+    if (footer) {
+        footer.innerHTML = ''; // Xóa nút cũ để tránh trùng lặp
+        
+        // Kiểm tra quyền sửa (Admin hoặc Trưởng phái đúng phái)
+        const userRole = localStorage.getItem('userRole');
+        const isBranch = userRole && userRole.startsWith('branch_');
+        let canEdit = isAdmin();
+        
+        if (isBranch) {
+            const branchCode = userRole.split('_')[1];
+            if (String(member.branch) === String(branchCode)) canEdit = true;
+        }
+
+        if (canEdit) {
+            const editBtn = document.createElement('button');
+            editBtn.innerHTML = '<i class="fas fa-edit"></i> Sửa thông tin';
+            editBtn.style.cssText = "padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; margin-right: 10px; transition: background 0.2s;";
+            editBtn.onclick = () => {
+                document.getElementById('view-member-modal').style.display = 'none';
+                openEditModal(member.id); // Chuyển sang modal Sửa
+            };
+            footer.appendChild(editBtn);
+        }
+
+        const closeBtn = document.createElement('button');
+        closeBtn.innerText = 'Đóng';
+        closeBtn.style.cssText = "padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s;";
+        closeBtn.onclick = () => document.getElementById('view-member-modal').style.display = 'none';
+        footer.appendChild(closeBtn);
+    }
+
+    document.getElementById('view-member-modal').style.display = 'block';
+}
+
+async function deleteUser(id, name) {
+    if (!confirm(`Bạn có chắc muốn xóa tài khoản "${name}" không?`)) return;
+    
+    const token = localStorage.getItem('token');
+    const res = await fetch(`/api/auth/users/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    
+    if (data.success) {
+        loadUserList();
+    } else {
+        alert('❌ ' + data.message);
+    }
+}           footer.appendChild(editBtn);
+        }
+
+        const closeBtn = document.createElement('button');
+        closeBtn.innerText = 'Đóng';
+        closeBtn.style.cssText = "padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s;";
+        closeBtn.onclick = () => document.getElementById('view-member-modal').style.display = 'none';
+        footer.appendChild(closeBtn);
+    }
+
+    document.getElementById('view-member-modal').style.display = 'block';
+}
+
+async function deleteUser(id, name) {
+    if (!confirm(`Bạn có chắc muốn xóa tài khoản "${name}" không?`)) return;
+    
+    const token = localStorage.getItem('token');
+    const res = await fetch(`/api/auth/users/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    
+    if (data.success) {
+        loadUserList();
+    } else {
+        alert('❌ ' + data.message);
+    }
+}           footer.appendChild(editBtn);
+        }
+
+        const closeBtn = document.createElement('button');
+        closeBtn.innerText = 'Đóng';
+        closeBtn.style.cssText = "padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s;";
+        closeBtn.onclick = () => document.getElementById('view-member-modal').style.display = 'none';
+        footer.appendChild(closeBtn);
+    }
+
+    document.getElementById('view-member-modal').style.display = 'block';
+}
+
+async function deleteUser(id, name) {
+    if (!confirm(`Bạn có chắc muốn xóa tài khoản "${name}" không?`)) return;
+    
+    const token = localStorage.getItem('token');
+    const res = await fetch(`/api/auth/users/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    
+    if (data.success) {
+        loadUserList();
+    } else {
+        alert('❌ ' + data.message);
+    }
+}           childHtml += `<div style="margin-bottom: 4px;">
                 <a href="#" onclick="event.preventDefault(); document.getElementById('view-member-modal').style.display='none'; openViewMemberModal('${child.id}');" style="color: #3b82f6; text-decoration: none;">${child.full_name}</a>
             </div>`;
         });
