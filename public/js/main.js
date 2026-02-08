@@ -2895,10 +2895,11 @@ async function printGenealogyBook() {
             }
             .print-page {
                 width: 210mm;
-                height: 296mm; /* A4 height minus tiny bit to prevent overflow */
+                min-height: 296mm; /* A4 height */
+                height: auto; /* Cho phép giãn chiều cao nếu nội dung dài */
                 position: relative;
                 page-break-after: always;
-                overflow: hidden;
+                overflow: visible; /* Hiển thị hết nội dung */
                 background-color: #f4ecd8;
                 /* Tái tạo nền giấy cũ */
                 background-image:
@@ -4019,11 +4020,23 @@ function downloadTreePDF() {
     // Clone SVG để xử lý
     const clonedSvg = svgElement.cloneNode(true);
     
-    // Đảm bảo SVG có kích thước
-    const bbox = svgElement.getBBox();
-    clonedSvg.setAttribute("width", bbox.width + 100);
-    clonedSvg.setAttribute("height", bbox.height + 100);
-    clonedSvg.setAttribute("viewBox", `${bbox.x - 50} ${bbox.y - 50} ${bbox.width + 100} ${bbox.height + 100}`);
+    // 1. Reset transform trên group <g> của clone để lấy nội dung gốc không bị méo/lệch do zoom
+    const clonedG = clonedSvg.querySelector('g');
+    if (clonedG) {
+        clonedG.setAttribute('transform', '');
+    }
+
+    // 2. Lấy BBox của nội dung thật (group <g>) để tính toán viewBox chuẩn
+    const contentG = svgElement.querySelector('g');
+    if (!contentG) return;
+    
+    const bbox = contentG.getBBox();
+    const padding = 50;
+
+    // 3. Cập nhật kích thước và viewBox cho SVG clone bao trọn nội dung
+    clonedSvg.setAttribute("width", bbox.width + padding * 2);
+    clonedSvg.setAttribute("height", bbox.height + padding * 2);
+    clonedSvg.setAttribute("viewBox", `${bbox.x - padding} ${bbox.y - padding} ${bbox.width + padding * 2} ${bbox.height + padding * 2}`);
     clonedSvg.style.backgroundColor = "#ffffff"; // Thêm nền trắng
 
     const serializer = new XMLSerializer();
