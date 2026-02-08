@@ -2792,6 +2792,20 @@ function getSortedBookPages() {
 async function printGenealogyBook() {
     if (!isAdmin()) return;
 
+    // 1. Đảm bảo thư viện html2pdf đã được tải
+    if (typeof html2pdf === 'undefined') {
+        const btn = document.getElementById('btn-book-print');
+        if(btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        try {
+            await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js');
+        } catch (e) {
+            alert("Lỗi: Không thể tải thư viện in ấn. Vui lòng kiểm tra kết nối mạng.");
+            if(btn) btn.innerHTML = '<i class="fas fa-print"></i>';
+            return;
+        }
+        if(btn) btn.innerHTML = '<i class="fas fa-print"></i>';
+    }
+
     try {
         const pagesData = getSortedBookPages();
         if (pagesData.length === 0) {
@@ -2799,26 +2813,32 @@ async function printGenealogyBook() {
             return;
         }
 
-        // 1. Tạo Overlay che màn hình (Để người dùng không thấy quá trình render lộn xộn bên dưới)
+        // 2. Tạo Overlay loading
         const overlay = document.createElement('div');
         overlay.id = 'print-overlay';
         overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.98); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center;';
         overlay.innerHTML = '<div style="font-size:20px; font-weight:bold; color:#333; margin-bottom:10px;"><i class="fas fa-spinner fa-spin"></i> Đang tạo PDF...</div><div style="color:#666;">Vui lòng đợi trong giây lát</div>';
         document.body.appendChild(overlay);
 
+        // 3. Ẩn giao diện chính để tránh xung đột cuộn và lỗi trang trắng
+        const appContainer = document.querySelector('.dashboard-page') || document.body.firstElementChild;
+        if(appContainer) appContainer.style.display = 'none';
+
         // Tạo container tạm
         const tempDiv = document.createElement('div');
+        tempDiv.id = 'print-temp-div';
         // CSS cho PDF
         const style = document.createElement('style');
         style.innerHTML = `
             /* Thiết lập trang in chuẩn A4 */
             .print-page { 
                 width: 210mm; 
-                height: 297mm; 
+                height: 296mm; /* Giảm 1mm để tránh tràn trang */
                 page-break-after: always; 
                 position: relative; 
                 overflow: hidden;
                 background-color: #f4ecd8; /* Màu nền giấy cũ */
+                border: 1px solid #e0e0e0;
             }
             /* Ghi đè để trang sách hiển thị full trang in, không cuộn */
             .notebook-page {
@@ -2867,40 +2887,43 @@ async function printGenealogyBook() {
 
         tempDiv.appendChild(containerDiv);
 
-        // 2. Gắn vào body nhưng nằm dưới Overlay (z-index thấp hơn overlay nhưng cao hơn body)
-        // Sử dụng absolute top:0 left:0 để html2canvas chụp được toàn bộ chiều dài
-        tempDiv.style.position = 'absolute';
-        tempDiv.style.left = '0';
-        tempDiv.style.top = '0';
-        tempDiv.style.zIndex = '99998'; // Dưới overlay (99999)
-        tempDiv.style.width = '210mm'; // Định kích thước chuẩn A4
-        tempDiv.style.background = '#ffffff';
+        // 4. Hiển thị container in (duy nhất trên màn hình lúc này)
+        // FIX: Đặt style rõ ràng, bỏ absolute cũ để tránh lỗi trắng trang
+        tempDiv.style.cssText = 'position: relative; width: 210mm; margin: 0 auto; background: #ffffff; z-index: 99998;';
+        
         document.body.appendChild(tempDiv);
+        
+        // Scroll lên đầu để html2canvas chụp đúng vị trí
+        window.scrollTo(0, 0);
 
-        // 3. Chờ 1 giây để trình duyệt render xong font chữ và bố cục
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // 5. Chờ 1.5 giây để trình duyệt render xong font chữ và bố cục
+        await new Promise(resolve => setTimeout(resolve, 1500));
 
         const opt = {
             margin: 0, // Margin 0 vì ta đã set padding trong CSS
             filename: `So_Gia_Pha_Le_Cong_${new Date().toISOString().slice(0,10)}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, scrollY: 0, windowWidth: 800 }, // scrollY:0 để chụp từ đầu trang
+            html2canvas: { scale: 2, useCORS: true, scrollY: 0 }, // scrollY:0 để chụp từ đầu trang
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
             pagebreak: { mode: ['css', 'legacy'] }
         };
         
         await html2pdf().set(opt).from(tempDiv).save();
-        
-        // Dọn dẹp sau khi in xong
-        document.body.removeChild(tempDiv);
-        document.body.removeChild(overlay);
 
     } catch (err) {
         console.error(err);
         alert("Lỗi khi tạo PDF: " + err.message);
-        // Xóa overlay nếu lỗi
-        const ov = document.getElementById('print-overlay');
-        if(ov) document.body.removeChild(ov);
+    } finally {
+        // 6. Dọn dẹp và khôi phục giao diện
+        const tempDiv = document.getElementById('print-temp-div');
+        if (tempDiv) document.body.removeChild(tempDiv);
+        
+        const overlay = document.getElementById('print-overlay');
+        if (overlay) document.body.removeChild(overlay);
+
+        // Hiện lại app
+        const appContainer = document.querySelector('.dashboard-page') || document.body.firstElementChild;
+        if(appContainer) appContainer.style.display = '';
     }
 }
 
