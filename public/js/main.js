@@ -3849,3 +3849,104 @@ async function openViewPostModal(postId) {
         alert('Lỗi tải bài viết');
     }
 }
+
+// --- BỔ SUNG: Các hàm hỗ trợ tải xuống (bị thiếu gây lỗi ReferenceError) ---
+
+function downloadMemberPDF() {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        alert('Trình duyệt đã chặn cửa sổ bật lên. Vui lòng cho phép trang web này mở cửa sổ mới để in.');
+        return;
+    }
+
+    let htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Danh sách Thành viên</title>
+        <style>
+            body { font-family: 'Segoe UI', sans-serif; padding: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
+            th { background-color: #f2f2f2; }
+            h1 { text-align: center; color: #333; }
+            .gender-nam { color: #2980b9; }
+            .gender-nu { color: #c0392b; }
+        </style>
+    </head>
+    <body>
+        <h1>Danh sách Thành viên Gia phả</h1>
+        <p>Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}</p>
+        <p>Tổng số: ${currentDisplayedMembers.length} thành viên</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>STT</th>
+                    <th>Họ và tên</th>
+                    <th>Giới tính</th>
+                    <th>Đời</th>
+                    <th>Phái</th>
+                    <th>Năm sinh</th>
+                    <th>Năm mất</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    currentDisplayedMembers.forEach((m, index) => {
+        htmlContent += `
+            <tr>
+                <td>${index + 1}</td>
+                <td style="font-weight:bold;">${m.full_name}</td>
+                <td class="gender-${m.gender === 'Nam' ? 'nam' : 'nu'}">${m.gender}</td>
+                <td>${m.generation}</td>
+                <td>${m.branch}</td>
+                <td>${m.birth_date || ''}</td>
+                <td>${m.death_date || ''}</td>
+            </tr>
+        `;
+    });
+
+    htmlContent += `
+            </tbody>
+        </table>
+        <script>
+            window.onload = function() { window.print(); }
+        </script>
+    </body>
+    </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+}
+
+function downloadTreePDF() {
+    const svgElement = document.querySelector('#tree-canvas svg');
+    if (!svgElement) {
+        alert("Không tìm thấy cây gia phả để tải.");
+        return;
+    }
+
+    // Clone SVG để xử lý
+    const clonedSvg = svgElement.cloneNode(true);
+    
+    // Đảm bảo SVG có kích thước
+    const bbox = svgElement.getBBox();
+    clonedSvg.setAttribute("width", bbox.width + 100);
+    clonedSvg.setAttribute("height", bbox.height + 100);
+    clonedSvg.setAttribute("viewBox", `${bbox.x - 50} ${bbox.y - 50} ${bbox.width + 100} ${bbox.height + 100}`);
+    clonedSvg.style.backgroundColor = "#ffffff"; // Thêm nền trắng
+
+    const serializer = new XMLSerializer();
+    const svgString = serializer.serializeToString(clonedSvg);
+    const blob = new Blob([svgString], {type: 'image/svg+xml;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `CayGiaPha_${new Date().toISOString().slice(0, 10)}.svg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
