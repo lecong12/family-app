@@ -3950,3 +3950,38 @@ function downloadTreePDF() {
     link.click();
     document.body.removeChild(link);
 }
+
+// --- BỔ SUNG: Hàm hiển thị thông báo Toast (Fix lỗi showToast is not defined) ---
+function showToast(message, type = 'success') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    let icon = '<i class="fas fa-info-circle"></i>';
+    if (type === 'success') icon = '<i class="fas fa-check-circle"></i>';
+    if (type === 'error') icon = '<i class="fas fa-exclamation-triangle"></i>';
+
+    toast.innerHTML = `${icon} <span>${message}</span>`;
+    
+    container.appendChild(toast);
+
+    // Trigger reflow để kích hoạt transition
+    void toast.offsetWidth; 
+    
+    toast.classList.add('show');
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            if (container.contains(toast)) {
+                container.removeChild(toast);
+            }
+        }, 300);
+    }, 3000);
+}
