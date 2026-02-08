@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const fs = require('fs');
+﻿﻿const fs = require('fs');
 const csv = require('csv-parser');
 const xlsx = require('xlsx');
 const Member = require('../models/Member');

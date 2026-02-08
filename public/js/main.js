@@ -3804,5 +3804,48 @@ async function openViewPostModal(postId) {
                     <span id="view-post-date"><i class="far fa-clock"></i> </span>
                 </div>
                 <div id="view-post-image-container" style="margin-bottom: 20px; text-align: center; display: none;">
-                    <img id="view-post-image" src="" alt="Ảnh bài
-                    
+                    <img id="view-post-image" src="" alt="Ảnh bài viết" style="max-width: 100%; max-height: 400px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                </div>
+                <div id="view-post-content" style="line-height: 1.8; color: #374151; font-size: 16px; white-space: pre-wrap;"></div>
+            </div>
+        </div>`;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch(`/api/posts/${postId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        
+        if (data.success) {
+            const post = data.post;
+            document.getElementById('view-post-title').innerText = post.title;
+            
+            const catMap = { 'announcement': 'Thông báo', 'event': 'Sự kiện', 'news': 'Tin tức', 'guide': 'Hướng dẫn' };
+            document.getElementById('view-post-cat').innerText = catMap[post.category] || post.category;
+            
+            const date = new Date(post.created_at).toLocaleDateString('vi-VN');
+            document.getElementById('view-post-date').innerHTML = `<i class="far fa-clock"></i> ${date}`;
+            
+            const imgContainer = document.getElementById('view-post-image-container');
+            const img = document.getElementById('view-post-image');
+            
+            if (post.image) {
+                img.src = post.image;
+                imgContainer.style.display = 'block';
+            } else {
+                imgContainer.style.display = 'none';
+            }
+            
+            document.getElementById('view-post-content').innerText = post.content;
+            
+            document.getElementById('view-post-modal').style.display = 'block';
+        } else {
+            alert(data.message);
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Lỗi tải bài viết');
+    }
+}
