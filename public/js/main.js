@@ -2809,23 +2809,26 @@ async function printGenealogyBook() {
         // CSS cho PDF
         const style = document.createElement('style');
         style.innerHTML = `
-            .print-container { font-family: 'Times New Roman', serif; color: #000; background: #fff; }
-            .print-page { width: 100%; padding: 40px 50px; page-break-after: always; box-sizing: border-box; min-height: 1000px; position: relative; border: 1px solid transparent; }
-            .print-cover { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; height: 900px; border: 5px double #5d4037; padding: 50px; margin-top: 20px; }
-            .print-footer { position: absolute; bottom: 20px; right: 40px; font-size: 10pt; color: #666; font-style: italic; }
-            /* Override styles from generatePageContent */
-            .generation-title { color: #b71c1c !important; font-size: 22pt !important; text-align: center; margin-bottom: 20px; font-weight: bold; }
-            .generation-number { font-size: 22pt !important; }
-            .branch-name { display: block; font-size: 12pt; color: #e65100; font-weight: bold; margin-top: 5px; text-transform: uppercase; }
-            .main-couple { text-align: center; margin-bottom: 30px; }
-            .father-name { font-size: 18pt !important; font-weight: bold; border-bottom: 2px solid #b71c1c; display: inline-block; margin-bottom: 10px; padding-bottom: 5px; }
-            .mother-info { font-size: 13pt !important; color: #333 !important; margin-top: 5px; }
-            .sinh-ha-title { font-size: 15pt !important; text-align: center; margin-top: 25px; margin-bottom: 15px; text-decoration: underline; font-weight: bold; }
-            .children-grid { padding-left: 20px; }
-            .child-line { font-size: 13pt !important; margin-bottom: 8px; border-bottom: 1px dotted #ccc; padding-bottom: 4px; display: flex; align-items: baseline; }
-            .order-no { font-weight: bold; margin-right: 10px; min-width: 20px; }
-            .name { font-weight: 600; }
-            .note { font-size: 11pt !important; font-style: italic; color: #555; margin-left: 5px; }
+            /* Thiết lập trang in chuẩn A4 */
+            .print-page { 
+                width: 210mm; 
+                height: 297mm; 
+                page-break-after: always; 
+                position: relative; 
+                overflow: hidden;
+                background-color: #f4ecd8; /* Màu nền giấy cũ */
+            }
+            /* Ghi đè để trang sách hiển thị full trang in, không cuộn */
+            .notebook-page {
+                height: 100% !important;
+                overflow: hidden !important;
+                border: none !important; /* Bỏ viền đôi khi in để đẹp hơn */
+                padding: 40px !important; /* Tăng lề cho bản in */
+            }
+            .cover-page {
+                height: 100% !important;
+            }
+            /* Ẩn các icon điều hướng khi in */
             .icon-next { display: none !important; }
         `;
         tempDiv.appendChild(style);
@@ -2836,11 +2839,13 @@ async function printGenealogyBook() {
         // 1. Trang Bìa
         containerDiv.innerHTML += `
             <div class="print-page">
-                <div class="print-cover">
-                    <h1 style="font-size: 36pt; margin-bottom: 30px; color: #3e2723; font-weight: bold;">GIA PHẢ<br>HỌ LÊ CÔNG</h1>
-                    <div style="width: 150px; height: 3px; background: #5d4037; margin: 30px auto;"></div>
-                    <p style="font-size: 18pt; margin-top: 20px;">Thôn Linh An, Tỉnh Quảng Trị</p>
-                    <p style="margin-top: auto; font-size: 14pt;">Năm ${new Date().getFullYear()}</p>
+                <div class="page-content cover-page">
+                    <div style="border: 3px double #d7ccc8; padding: 20px; height: 100%; display:flex; flex-direction:column; justify-content:flex-start; align-items:center; padding-top: 100px;">
+                        <h1 style="font-family: 'Times New Roman', serif; font-size: 3.5em; text-align: center; color: #d7ccc8; margin-bottom: 30px; text-shadow: 1px 1px 2px #000;">GIA PHẢ<br>HỌ LÊ CÔNG</h1>
+                        <div style="width: 100px; height: 3px; background: #5d4037; margin: 30px auto;"></div>
+                        <p style="font-size: 1.8em; color: #d7ccc8;">Thôn Linh An, Tỉnh Quảng Trị</p>
+                        <p style="margin-top: auto; font-size: 1.2em; color: #a1887f;">Năm ${new Date().getFullYear()}</p>
+                    </div>
                 </div>
             </div>
         `;
@@ -2848,7 +2853,14 @@ async function printGenealogyBook() {
         // 2. Các trang nội dung
         pagesData.forEach((member, index) => {
             const content = generatePageContent(member);
-            containerDiv.innerHTML += `<div class="print-page"><div class="print-footer">Trang ${index + 1}</div><div style="margin-top: 30px;">${content}</div></div>`;
+            // Sử dụng lại class notebook-page để giữ nguyên style giấy cũ và font chữ
+            containerDiv.innerHTML += `
+                <div class="print-page">
+                    <div class="page-content notebook-page">
+                        <div style="position:absolute; top:20px; right:30px; font-size:14px; color:#8d6e63; font-family:serif; font-style:italic;">Trang ${index + 1}</div>
+                        ${content}
+                    </div>
+                </div>`;
         });
 
         tempDiv.appendChild(containerDiv);
