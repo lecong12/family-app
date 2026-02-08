@@ -2794,7 +2794,7 @@ async function printGenealogyBook() {
 
     const btn = document.getElementById('btn-book-print');
     const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tạo PDF...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     btn.disabled = true;
 
     try {
@@ -2854,10 +2854,13 @@ async function printGenealogyBook() {
         tempDiv.appendChild(containerDiv);
 
         // FIX: Gắn tạm vào body để html2pdf có thể render (tránh lỗi trang trắng)
-        // Đặt vị trí tuyệt đối ra khỏi màn hình để người dùng không thấy
-        tempDiv.style.position = 'absolute';
-        tempDiv.style.left = '-9999px';
+        // Đặt vị trí fixed đè lên nhưng ẩn bằng z-index để html2canvas chụp được
+        tempDiv.style.position = 'fixed';
+        tempDiv.style.left = '0';
         tempDiv.style.top = '0';
+        tempDiv.style.zIndex = '-9999';
+        tempDiv.style.width = '210mm'; // Định kích thước chuẩn A4
+        tempDiv.style.background = '#ffffff';
         document.body.appendChild(tempDiv);
 
         const opt = {
