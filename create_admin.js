@@ -3,11 +3,7 @@ const mongoose = require('mongoose');
 const User = require('./models/User');
 const bcrypt = require('bcryptjs'); // Thêm thư viện mã hóa
 
-// --- CẤU HÌNH ---
-// Bạn hãy thay đổi chuỗi kết nối dưới đây cho đúng với MongoDB của bạn
-// Ưu tiên lấy từ biến môi trường hoặc dùng chuỗi kết nối Cloud mặc định
 const MONGO_URI = process.env.MONGO_URI;
-// ----------------
 
 async function createAccounts() {
     try {
@@ -20,12 +16,10 @@ async function createAccounts() {
         const accounts = [
             { username: 'admin', password: '123', role: 'owner', label: 'QUẢN TRỊ VIÊN' },
             { username: 'khach', password: '123', role: 'viewer', label: 'NGƯỜI XEM (KHÁCH)' },
-            // Thêm 4 tài khoản trưởng phái
             { username: 'p1', password: '123', role: 'branch_1', label: 'TRƯỞNG PHÁI 1' },
             { username: 'p2', password: '123', role: 'branch_2', label: 'TRƯỞNG PHÁI 2' },
             { username: 'p3', password: '123', role: 'branch_3', label: 'TRƯỞNG PHÁI 3' },
             { username: 'p4', password: '123', role: 'branch_4', label: 'TRƯỞNG PHÁI 4' },
-            // Bạn có thể thêm nhiều dòng dưới đây cho từng người trong họ
             { username: 'conchau', password: '123', role: 'viewer', label: 'THÀNH VIÊN (CON CHÁU)' }
         ];
 

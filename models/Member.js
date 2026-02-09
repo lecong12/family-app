@@ -21,8 +21,4 @@ const memberSchema = new mongoose.Schema({
     image: { type: String, default: '' }    // Thêm ảnh đại diện
 });
 
-// --- QUAN TRỌNG: Xóa model cũ để nạp lại Schema mới (có trường image) ---
-// Dòng này bắt buộc phải có khi sửa Schema trong quá trình dev
-if (mongoose.models && mongoose.models.Member) delete mongoose.models.Member;
-
 module.exports = mongoose.model('Member', memberSchema);
