@@ -2628,7 +2628,7 @@ async function renderBookTab() {
                 <span style="font-size:13px; color:#666;">Trang</span>
                 <input type="number" id="book-page-input" min="1" style="width:50px; text-align:center; padding:4px; border:1px solid #ccc; border-radius:4px; font-weight:bold;">
                 <span id="book-total-pages" style="font-size:13px; font-weight:bold; color:#555;">/ ...</span>
-                <button id="btn-book-goto" class="btn-control" style="padding:4px 8px; min-width:auto; height:28px;" title="Đi đến trang"><i class="fas fa-arrow-right"></i></button>
+                <button id="btn-book-goto" class="btn-control" style="padding:4px 8px; min-width:auto; height:28px;" title="Đi đến trang"><i class="fas fa-level-down-alt" style="transform: rotate(90deg);"></i></button>
             </div>
 
             <button class="btn-control" id="btn-book-next"><span class="btn-text">Trang sau </span><i class="fas fa-chevron-right"></i></button>
@@ -2731,20 +2731,26 @@ async function renderBookTab() {
     const handleBookPageChange = () => {
         const element = document.getElementById("so-gia-pha-content");
         if (element) {
+            const rect = element.getBoundingClientRect();
             const headerOffset = 100; // Trừ đi chiều cao header sticky
-            const elementPosition = element.getBoundingClientRect().top;
-            const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-            window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+            
+            // FIX: Chỉ cuộn nếu đỉnh sách bị khuất phía trên (người dùng đã cuộn xuống quá sâu)
+            // Giúp tránh giật màn hình khi đang xem trọn vẹn sách
+            if (rect.top < headerOffset) {
+                const offsetPosition = rect.top + window.pageYOffset - headerOffset;
+                window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+            }
         }
     };
 
     document.getElementById('btn-book-prev').onclick = () => {
         bookInstance.flipPrev();
-        handleBookPageChange();
+        // FIX: Delay cuộn để hiệu ứng lật trang chạy mượt trước (600ms là thời gian lật mặc định)
+        setTimeout(handleBookPageChange, 600);
     };
     document.getElementById('btn-book-next').onclick = () => {
         bookInstance.flipNext();
-        handleBookPageChange();
+        setTimeout(handleBookPageChange, 600);
     };
 
     // Xử lý nhảy trang (Pagination)
