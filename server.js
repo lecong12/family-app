@@ -90,7 +90,13 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Health Check: Để Render biết server vẫn đang chạy tốt
 app.get('/health', (req, res) => {
-    res.status(200).send('OK');
+    const dbState = mongoose.connection.readyState;
+    // 0: disconnected; 1: connected; 2: connecting; 3: disconnecting
+    if (dbState === 1) {
+        res.status(200).json({ status: 'UP', db: 'Connected' });
+    } else {
+        res.status(503).json({ status: 'DOWN', db: 'Disconnected' });
+    }
 });
 
 // DEBUG: Trang kiểm tra trạng thái hệ thống
