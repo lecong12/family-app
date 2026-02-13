@@ -1776,8 +1776,8 @@ async function deleteMember() {
 
 // 6. Hàm đồng bộ Google Sheets
 async function syncGoogleSheets() {
-    if (!isOwner()) {
-        alert("Chức năng này chỉ dành cho Chủ sở hữu hệ thống.");
+    if (!isAdmin()) {
+        alert("Bạn không có quyền thực hiện chức năng này.");
         return;
     }
 
@@ -1824,8 +1824,8 @@ async function syncGoogleSheets() {
 
 // 7. Hàm đồng bộ ngược lên Google Sheets (Sync Up)
 async function syncToGoogleSheets() {
-    if (!isOwner()) {
-        alert("Chức năng này chỉ dành cho Chủ sở hữu hệ thống.");
+    if (!isAdmin()) {
+        alert("Bạn không có quyền thực hiện chức năng này.");
         return;
     }
 
@@ -2109,7 +2109,7 @@ function renderSettingsTab() {
         <div class="settings-section">
             <h3 class="settings-section-title">Công cụ & Thông tin</h3>
             <div class="settings-row">
-                ${isOwner() ? `
+                ${isAdmin() ? `
                     <div class="settings-card" onclick="syncGoogleSheets()">
                         <i class="fas fa-cloud-download-alt" style="color: #3498db;"></i>
                         <h3>Nạp từ Google Sheet</h3>
