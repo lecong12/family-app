@@ -3116,3 +3116,104 @@ input[type="radio"][value="0"]:checked + .option-deceased {
         display: none;
     }
 }
+
+/* ===== LINEAGE & BRANCH STYLES (Added for dashboard.js) ===== */
+.gen-btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+.gen-btn:hover {
+    background: var(--gray-50);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.gen-btn.active {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 4px 10px rgba(249, 115, 22, 0.3);
+}
+
+.gen-badge {
+    background: rgba(0,0,0,0.1);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+.gen-btn.active .gen-badge {
+    background: rgba(255,255,255,0.2);
+    color: white;
+}
+
+/* Red Card Style (Lineage) */
+.member-card-red {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom: 16px;
+    overflow: hidden;
+    border-left: 4px solid #ef4444;
+}
+
+.card-header-red {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.member-name-red {
+    color: #b91c1c;
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+}
+
+/* Blue Card Style (Branch) */
+.member-card-blue {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom: 16px;
+    overflow: hidden;
+    border-left: 4px solid #3b82f6;
+}
+
+.card-header-blue {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.member-name-blue {
+    color: #1d4ed8;
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+}
+
+/* Common Card Elements */
+.parent-info { font-size: 12px; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+.main-info { display: flex; align-items: center; gap: 12px; }
+.avatar-circle-small { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid var(--gray-100); }
+.meta-info { font-size: 13px; color: var(--gray-600); margin: 2px 0 0 0; }
+.expand-toggle { background: none; border: none; cursor: pointer; color: var(--gray-400); padding: 8px; transition: color 0.2s; }
+.expand-toggle:hover { color: var(--gray-600); }
+.card-details { display: none; background: var(--gray-50); border-top: 1px solid var(--gray-100); padding: 12px 16px; }
+.sub-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 14px; }
+.label-gold { background: #fef9c3; color: #854d0e; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; min-width: 70px; text-align: center; }
+.sub-name { color: var(--gray-800); font-weight: 500; }
