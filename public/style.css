@@ -1465,15 +1465,40 @@ body {
 
     .tabs-container {
         padding: 10px;
-        gap: 8px;
-        justify-content: center;
+        gap: 6px;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr); /* Chia đều 4 cột -> 8 tab sẽ thành 2 hàng */
+        padding: 5px; /* Giảm lề để có thêm chỗ */
+        gap: 4px;     /* Giảm khoảng cách giữa các nút */
+        display: grid !important; /* Bắt buộc dùng Grid */
+        grid-template-columns: repeat(4, 1fr) !important; /* Bắt buộc chia 4 cột đều nhau */
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .tab-btn {
-        padding: 6px 10px;
-        font-size: 12px;
-        flex: 1 1 auto;
+        padding: 6px 2px;
+        font-size: 10px;
+        padding: 4px 2px;
+        font-size: 9px; /* Giảm cỡ chữ một chút để không bị tràn */
+        flex-direction: column; /* Icon nằm trên, chữ nằm dưới */
         justify-content: center;
+        text-align: center;
+        white-space: normal; /* Cho phép xuống dòng nếu chữ dài */
+        min-height: 55px;
+        min-height: 50px;
+        width: 100%;
+        gap: 4px;
+        gap: 2px;
+        min-width: 0; /* QUAN TRỌNG: Cho phép nút co nhỏ dưới kích thước nội dung */
+        word-break: break-word; /* Ngắt từ nếu quá dài */
+        line-height: 1.1;
+    }
+
+    .tab-btn i {
+        font-size: 18px; /* Tăng kích thước icon cho dễ nhìn */
+        font-size: 16px;
+        margin-bottom: 2px;
     }
 
     .stats-grid {
