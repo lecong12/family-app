@@ -4417,22 +4417,15 @@ function renderBranchesTab() {
 
     if (!container.querySelector('.branch-container')) {
         container.innerHTML = `
-            <div class="branch-container" style="display:flex; gap:20px; height: calc(100vh - 180px); flex-direction: row;">
-                <div class="branch-sidebar" style="width:200px; flex-shrink:0; overflow-y:auto; padding-right:10px; border-right:1px solid #eee;">
-                    <h3 style="margin-top:0; font-size:16px; color:#555; position:sticky; top:0; background:#fff; padding:10px 0; z-index:1;">Danh sách Phái</h3>
-                    <div id="branchListSidebar"></div>
+            <div class="branch-container" style="display:flex; gap:20px; height: calc(100vh - 180px); flex-direction: column;">
+                <div class="branch-sidebar" style="width:100%; flex-shrink:0; border-bottom:1px solid #eee; padding-bottom: 10px;">
+                    <div id="branchListSidebar" style="display:flex; gap:10px; overflow-x:auto; padding: 5px 0; align-items: center;"></div>
                 </div>
                 <div class="branch-content" style="flex:1; overflow-y:auto; padding: 0 10px;">
                     <h2 id="branchTitle" style="margin-top:0; color:#1d4ed8; border-bottom:2px solid #eee; padding-bottom:10px; position:sticky; top:0; background:#fff; z-index:1;"></h2>
                     <div id="branchMemberList"></div>
                 </div>
             </div>
-            <style>
-                @media (max-width: 768px) {
-                    .branch-container { flex-direction: column !important; }
-                    .branch-sidebar { width: 100% !important; height: 120px; border-right: none !important; border-bottom: 1px solid #eee; margin-bottom: 10px; }
-                }
-            </style>
         `;
         initBranches();
     }
@@ -4464,6 +4457,8 @@ function renderBranchSidebar() {
     sortedBranches.forEach((br, index) => {
         const btn = document.createElement('div');
         btn.className = 'gen-btn';
+        btn.style.minWidth = 'fit-content';
+        btn.style.marginBottom = '0';
         if (index === 0) {
             btn.classList.add('active');
             renderBranchMembers(br.name);
