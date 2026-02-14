@@ -156,6 +156,47 @@ document.addEventListener('DOMContentLoaded', () => {
         mainContent.appendChild(bookTabContent);
     }
 
+    // --- BỔ SUNG: Tab Phả hệ & Phân phái (Bên phải Sổ Gia phả) ---
+    if (tabsContainer && mainContent) {
+        // 1. Tab Phả hệ
+        if (!document.querySelector('.tab-btn[data-target="#genealogy-tab"]')) {
+            const btn = document.createElement('button');
+            btn.className = 'tab-btn';
+            btn.dataset.target = '#genealogy-tab';
+            btn.innerHTML = '<i class="fas fa-project-diagram"></i> Phả hệ';
+            
+            // Chèn sau tab Sổ Gia phả
+            const bookBtn = tabsContainer.querySelector('[data-target="#book-tab"]');
+            if (bookBtn) bookBtn.after(btn);
+            else tabsContainer.appendChild(btn);
+
+            const content = document.createElement('div');
+            content.id = 'genealogy-tab';
+            content.className = 'tab-content';
+            content.innerHTML = '<div style="text-align:center; padding:50px; color:#666;"><i class="fas fa-tools" style="font-size:48px; margin-bottom:20px; color:#ddd;"></i><h3>Chức năng Phả hệ</h3><p>Tính năng đang được phát triển.</p></div>';
+            mainContent.appendChild(content);
+        }
+
+        // 2. Tab Phân phái
+        if (!document.querySelector('.tab-btn[data-target="#branches-tab"]')) {
+            const btn = document.createElement('button');
+            btn.className = 'tab-btn';
+            btn.dataset.target = '#branches-tab';
+            btn.innerHTML = '<i class="fas fa-code-branch"></i> Phân phái';
+            
+            // Chèn sau tab Phả hệ
+            const genBtn = tabsContainer.querySelector('[data-target="#genealogy-tab"]');
+            if (genBtn) genBtn.after(btn);
+            else tabsContainer.appendChild(btn);
+
+            const content = document.createElement('div');
+            content.id = 'branches-tab';
+            content.className = 'tab-content';
+            content.innerHTML = '<div style="text-align:center; padding:50px; color:#666;"><i class="fas fa-tools" style="font-size:48px; margin-bottom:20px; color:#ddd;"></i><h3>Chức năng Phân phái</h3><p>Tính năng đang được phát triển.</p></div>';
+            mainContent.appendChild(content);
+        }
+    }
+
     // Khởi tạo giao diện tab
     initTabs();
 
@@ -274,6 +315,9 @@ function initTabs() {
                 case '#book-tab':
                     renderBookTab();
                     break;
+                case '#genealogy-tab':
+                case '#branches-tab':
+                    break;
             }
         });
     });
@@ -295,6 +339,8 @@ function renderData(members) {
         case 'posts-tab': renderPostsTab(); break;
         case 'settings-tab': renderSettingsTab(); break;
         case 'book-tab': renderBookTab(); break;
+        case 'genealogy-tab': break;
+        case 'branches-tab': break;
     }
 }
 
