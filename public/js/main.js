@@ -4294,6 +4294,7 @@ function renderLineageSidebar() {
         if (i === 1) btn.classList.add('active');
         btn.onclick = () => renderLineageMembers(i);
         btn.dataset.gen = i;
+        btn.id = `gen-btn-${i}`; // Thêm ID để dễ tìm
         
         btn.innerHTML = `<span>Đời thứ ${i}</span><span class="gen-badge">${s.total}</span>`;
         container.appendChild(btn);
@@ -4337,7 +4338,10 @@ function renderLineageMembers(generation) {
         let parentText = "Chưa cập nhật";
         if (m.fid || m.mid) {
             const parent = allMembers.find(p => String(p.id) === String(m.fid) || String(p.id) === String(m.mid));
-            if (parent) parentText = parent.full_name;
+            if (parent) {
+                // Tạo link nhảy đến cha mẹ
+                parentText = `<a href="javascript:void(0)" onclick="jumpToLineageMember('${parent.id}')" class="jump-link">${parent.full_name}</a>`;
+            }
         } else if (generation === 1) {
             parentText = "Thủy Tổ";
         }
@@ -4346,6 +4350,7 @@ function renderLineageMembers(generation) {
 
         const card = document.createElement('div');
         card.className = 'member-card-red';
+        card.id = `lineage-card-${m.id}`; // Gắn ID để scroll tới
         card.innerHTML = `
             <div class="card-header-red">
                 <div class="parent-info">Phụ mẫu: ${parentText}</div>
@@ -4361,8 +4366,8 @@ function renderLineageMembers(generation) {
                 </div>
             </div>
             <div class="card-details">
-                ${spouse ? `<div class="sub-row"><span class="label-gold">Vợ/Chồng</span> <span class="sub-name">${spouse.full_name}</span></div>` : ''}
-                ${children.map((c, idx) => `<div class="sub-row"><span class="label-gold">Con ${idx+1}</span> <span class="sub-name">${c.full_name}</span></div>`).join('')}
+                ${spouse ? `<div class="sub-row"><span class="label-gold">Vợ/Chồng</span> <span class="sub-name"><a href="javascript:void(0)" onclick="jumpToLineageMember('${spouse.id}')" class="jump-link">${spouse.full_name}</a></span></div>` : ''}
+                ${children.map((c, idx) => `<div class="sub-row"><span class="label-gold">Con ${idx+1}</span> <span class="sub-name"><a href="javascript:void(0)" onclick="jumpToLineageMember('${c.id}')" class="jump-link">${c.full_name}</a></span></div>`).join('')}
                 ${!spouse && children.length === 0 ? '<div style="color:#999; font-size:13px; font-style:italic;">Chưa có thông tin vợ/chồng hoặc con cái.</div>' : ''}
             </div>
         `;
@@ -4454,6 +4459,7 @@ function renderBranchSidebar() {
             renderBranchMembers(br.name);
         };
         
+        btn.dataset.branchName = br.name; // Gắn data để tìm kiếm
         // Map tên phái hiển thị đẹp hơn
         const branchMap = { '0': 'Tổ khảo', '1': 'Phái Nhất', '2': 'Phái Nhì', '3': 'Phái Ba', '4': 'Phái Bốn' };
         const displayName = branchMap[br.name] || (br.name === 'Gốc' ? 'Gốc' : br.name);
@@ -4506,11 +4512,11 @@ function renderBranchMembers(branchName) {
             let motherName = "";
             if (m.fid) {
                 const f = allMembers.find(p => String(p.id) === String(m.fid));
-                if (f) fatherName = f.full_name;
+                if (f) fatherName = `<a href="javascript:void(0)" onclick="jumpToBranchMember('${f.id}')" class="jump-link">${f.full_name}</a>`;
             }
             if (m.mid) {
                 const mo = allMembers.find(p => String(p.id) === String(m.mid));
-                if (mo) motherName = mo.full_name;
+                if (mo) motherName = `<a href="javascript:void(0)" onclick="jumpToBranchMember('${mo.id}')" class="jump-link">${mo.full_name}</a>`;
             }
 
             let parentText = "";
@@ -4529,13 +4535,13 @@ function renderBranchMembers(branchName) {
             if (spouse) {
                 detailsHtml += `<div class="sub-row" style="background-color: #f9fafb; font-weight:bold;">
                     <span class="label-gold">Vợ/Chồng</span> 
-                    <span class="sub-name">${spouse.full_name}</span>
+                    <span class="sub-name"><a href="javascript:void(0)" onclick="jumpToBranchMember('${spouse.id}')" class="jump-link">${spouse.full_name}</a></span>
                 </div>`;
             }
             children.forEach((child, cIdx) => {
                 detailsHtml += `<div class="sub-row" style="padding-left: 20px; border-bottom: 1px dashed #eee;">
                     <span class="label-gold" style="font-weight:normal; font-size:12px; width:auto; margin-right:8px;">Con ${cIdx + 1}</span> 
-                    <span class="sub-name">${child.full_name}</span>
+                    <span class="sub-name"><a href="javascript:void(0)" onclick="jumpToBranchMember('${child.id}')" class="jump-link">${child.full_name}</a></span>
                 </div>`;
             });
             if (detailsHtml === '') {
@@ -4544,6 +4550,7 @@ function renderBranchMembers(branchName) {
 
             const card = document.createElement('div');
             card.className = 'member-card-blue';
+            card.id = `branch-card-${m.id}`; // Gắn ID để scroll tới
             card.innerHTML = `
                 <div class="card-header-blue">
                     <div class="parent-info">${parentText ? parentText + ' | ' : ''}Đời ${m.generation}</div>
@@ -4566,3 +4573,63 @@ function renderBranchMembers(branchName) {
         }
     });
 }
+
+// --- CÁC HÀM HỖ TRỢ ĐIỀU HƯỚNG VÀ HIGHLIGHT ---
+
+function scrollToAndHighlight(elementId) {
+    const el = document.getElementById(elementId);
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('highlight-card');
+        setTimeout(() => el.classList.remove('highlight-card'), 2000);
+    } else {
+        console.warn('Không tìm thấy thẻ thành viên:', elementId);
+    }
+}
+
+window.jumpToLineageMember = function(memberId) {
+    const member = allMembers.find(m => String(m.id) === String(memberId));
+    if (!member) return;
+    
+    const gen = parseInt(member.generation) || 1;
+    
+    // Chuyển sang đời của thành viên đó
+    renderLineageMembers(gen);
+    
+    // Cuộn sidebar đến nút đời tương ứng (trên mobile)
+    const btn = document.getElementById(`gen-btn-${gen}`);
+    if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    
+    // Đợi render xong rồi cuộn tới thẻ
+    setTimeout(() => {
+        scrollToAndHighlight(`lineage-card-${memberId}`);
+    }, 150);
+};
+
+window.jumpToBranchMember = function(memberId) {
+    const member = allMembers.find(m => String(m.id) === String(memberId));
+    if (!member) return;
+    
+    const branchName = member.branch ? member.branch.trim() : "Chưa phân phái";
+    
+    // Cập nhật trạng thái active trên sidebar
+    const sidebar = document.getElementById('branchListSidebar');
+    if (sidebar) {
+        const btns = sidebar.querySelectorAll('.gen-btn');
+        btns.forEach(btn => {
+            if (btn.dataset.branchName === branchName) {
+                btn.classList.add('active');
+                // Cuộn sidebar đến nút phái tương ứng (trên mobile)
+                btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+    
+    renderBranchMembers(branchName);
+    
+    setTimeout(() => {
+        scrollToAndHighlight(`branch-card-${memberId}`);
+    }, 150);
+};
