@@ -316,7 +316,10 @@ function initTabs() {
                     renderBookTab();
                     break;
                 case '#genealogy-tab':
+                    renderGenealogyTab();
+                    break;
                 case '#branches-tab':
+                    renderBranchesTab();
                     break;
             }
         });
@@ -339,8 +342,8 @@ function renderData(members) {
         case 'posts-tab': renderPostsTab(); break;
         case 'settings-tab': renderSettingsTab(); break;
         case 'book-tab': renderBookTab(); break;
-        case 'genealogy-tab': break;
-        case 'branches-tab': break;
+        case 'genealogy-tab': renderGenealogyTab(); break;
+        case 'branches-tab': renderBranchesTab(); break;
     }
 }
 
@@ -1158,6 +1161,96 @@ window.openEditModal = function(memberId) {
     }
 
     document.getElementById('add-member-modal').style.display = 'flex';
+}
+
+// --- HÀM MỚI: Xem chi tiết thành viên (Read-only) ---
+function openViewMemberModal(memberId) {
+    const member = allMembers.find(m => m.id == memberId);
+    if (!member) return;
+
+    // Tạo modal nếu chưa có
+    if (!document.getElementById('view-member-modal')) {
+        const modalHtml = `
+        <div id="view-member-modal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center;">
+            <div class="modal-content" style="background-color: #fff; padding: 0; border: none; width: 90%; max-width: 500px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); overflow: hidden;">
+                <div class="modal-header" style="background: linear-gradient(135deg, #f97316, #fbbf24); padding: 20px; display: flex; justify-content: space-between; align-items: center; color: white;">
+                    <h2 style="margin: 0; font-size: 20px; color: white;">Thông tin thành viên</h2>
+                    <button onclick="document.getElementById('view-member-modal').style.display='none'" style="background: none; border: none; font-size: 24px; cursor: pointer; color: white; opacity: 0.8;">&times;</button>
+                </div>
+                <div class="modal-body" id="view-member-body" style="padding: 30px;">
+                    <!-- Content will be injected here -->
+                </div>
+                <div class="modal-footer" style="padding: 15px 30px; background: #f9fafb; border-top: 1px solid #e5e7eb; text-align: right;">
+                    <button onclick="document.getElementById('view-member-modal').style.display='none'" style="padding: 8px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Đóng</button>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    const body = document.getElementById('view-member-body');
+    
+    // Format dữ liệu
+    const genderIcon = member.gender === 'Nam' ? '<i class="fas fa-mars" style="color:#3b82f6"></i>' : '<i class="fas fa-venus" style="color:#ec4899"></i>';
+    
+    // Logic xác định sinh tử
+    const hasDeathDate = member.death_date && String(member.death_date).trim() !== '' && String(member.death_date).trim() !== '0';
+    const isDeadByFlag = member.is_live === 0 || member.is_live === '0' || member.is_live === false;
+    const isDeceased = hasDeathDate || isDeadByFlag;
+
+    const status = isDeceased 
+        ? '<span style="color:#6b7280; background:#f3f4f6; padding:2px 8px; border-radius:10px; font-size:12px;">Đã mất</span>' 
+        : '<span style="color:#16a34a; background:#dcfce7; padding:2px 8px; border-radius:10px; font-size:12px;">Còn sống</span>';
+
+    // Tìm cha mẹ vợ chồng
+    const father = allMembers.find(m => String(m.id) === String(member.fid));
+    const mother = allMembers.find(m => String(m.id) === String(member.mid));
+    
+    // Tìm vợ/chồng (hỗ trợ đa thê)
+    const spouseList = [];
+    if (member.pid) {
+        const s = allMembers.find(x => String(x.id) === String(member.pid));
+        if (s) spouseList.push(s);
+    }
+    const others = allMembers.filter(p => String(p.pid) === String(member.id));
+    others.forEach(o => {
+        if (!spouseList.some(s => String(s.id) === String(o.id))) spouseList.push(o);
+    });
+    const spouseNames = spouseList.length > 0 ? spouseList.map(s => s.full_name).join(', ') : '---';
+
+    // Ảnh đại diện
+    const avatarSrc = member.image || (member.gender === 'Nam' ? 'https://cdn-icons-png.flaticon.com/512/4128/4128176.png' : 'https://cdn-icons-png.flaticon.com/512/4128/4128349.png');
+
+    body.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px;">
+            <img src="${avatarSrc}" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 4px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" onerror="this.src='https://via.placeholder.com/100'">
+            <h3 style="margin: 10px 0 5px; font-size: 22px; color: #1f2937;">${member.full_name}</h3>
+            <div style="font-size: 14px; color: #6b7280;">${genderIcon} ${member.gender} • Đời thứ ${member.generation} • ${status}</div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 14px;">
+            <div style="grid-column: 1 / -1; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 5px; font-weight: 600; color: #f97316;">Thông tin cá nhân</div>
+            
+            <div><span style="color:#6b7280;">Ngày sinh:</span><br><strong>${member.birth_date || '---'}</strong></div>
+            <div><span style="color:#6b7280;">Ngày mất:</span><br><strong>${member.death_date || '---'}</strong></div>
+            <div><span style="color:#6b7280;">Nghề nghiệp:</span><br><strong>${member.job || '---'}</strong></div>
+            <div><span style="color:#6b7280;">Điện thoại:</span><br><strong>${member.phone || '---'}</strong></div>
+            <div style="grid-column: 1 / -1;"><span style="color:#6b7280;">Địa chỉ:</span><br><strong>${member.address || '---'}</strong></div>
+
+            <div style="grid-column: 1 / -1; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 5px; margin-top: 10px; font-weight: 600; color: #f97316;">Quan hệ gia đình</div>
+            
+            <div><span style="color:#6b7280;">Cha:</span><br><strong>${father ? father.full_name : '---'}</strong></div>
+            <div><span style="color:#6b7280;">Mẹ:</span><br><strong>${mother ? mother.full_name : '---'}</strong></div>
+            <div style="grid-column: 1 / -1;"><span style="color:#6b7280;">Vợ/Chồng:</span><br><strong>${spouseNames}</strong></div>
+        </div>
+
+        ${member.note ? `
+        <div style="margin-top: 15px; background: #fff7ed; padding: 10px; border-radius: 8px; font-size: 13px; color: #9a3412;">
+            <strong><i class="fas fa-sticky-note"></i> Ghi chú:</strong> ${member.note}
+        </div>` : ''}
+    `;
+
+    document.getElementById('view-member-modal').style.display = 'flex';
 }
 
 // Đóng tất cả modal
@@ -4135,4 +4228,337 @@ function showToast(message, type = 'success') {
             }
         }, 300);
     }, 3000);
+}
+
+/* ==========================================================
+   8. LOGIC TAB PHẢ HỆ (LINEAGE)
+========================================================== */
+
+function renderGenealogyTab() {
+    const container = document.getElementById('genealogy-tab');
+    if (!container) return;
+    
+    // Khởi tạo cấu trúc nếu chưa có hoặc đang hiển thị placeholder
+    if (!container.querySelector('.lineage-container')) {
+        container.innerHTML = `
+            <div class="lineage-container" style="display:flex; gap:20px; height: calc(100vh - 180px); flex-direction: row;">
+                <div class="lineage-sidebar" style="width:200px; flex-shrink:0; overflow-y:auto; padding-right:10px; border-right:1px solid #eee;">
+                    <h3 style="margin-top:0; font-size:16px; color:#555; position:sticky; top:0; background:#fff; padding:10px 0; z-index:1;">Danh sách Đời</h3>
+                    <div id="lineageGenerations"></div>
+                </div>
+                <div class="lineage-content" style="flex:1; overflow-y:auto; padding: 0 10px;">
+                    <h2 id="lineageTitle" style="margin-top:0; color:#d32f2f; border-bottom:2px solid #eee; padding-bottom:10px; position:sticky; top:0; background:#fff; z-index:1;"></h2>
+                    <div id="lineageList"></div>
+                </div>
+            </div>
+            <style>
+                @media (max-width: 768px) {
+                    .lineage-container { flex-direction: column !important; }
+                    .lineage-sidebar { width: 100% !important; height: 120px; border-right: none !important; border-bottom: 1px solid #eee; margin-bottom: 10px; }
+                }
+            </style>
+        `;
+        initLineage();
+    }
+}
+
+function initLineage() {
+    if (!allMembers || allMembers.length === 0) return;
+    renderLineageSidebar();
+    // Mặc định chọn đời 1 nếu chưa có nội dung
+    const list = document.getElementById('lineageList');
+    if (list && list.innerHTML === '') {
+        renderLineageMembers(1);
+    }
+}
+
+function renderLineageSidebar() {
+    const container = document.getElementById('lineageGenerations');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const stats = {};
+    let maxGen = 0;
+
+    allMembers.forEach(m => {
+        const gen = parseInt(m.generation) || 1;
+        if (gen > maxGen) maxGen = gen;
+        if (!stats[gen]) stats[gen] = { total: 0 };
+        stats[gen].total++;
+    });
+
+    for (let i = 1; i <= maxGen; i++) {
+        const s = stats[i] || { total: 0 };
+        const btn = document.createElement('div');
+        btn.className = 'gen-btn';
+        if (i === 1) btn.classList.add('active');
+        btn.onclick = () => renderLineageMembers(i);
+        btn.dataset.gen = i;
+        
+        btn.innerHTML = `<span>Đời thứ ${i}</span><span class="gen-badge">${s.total}</span>`;
+        container.appendChild(btn);
+    }
+}
+
+function renderLineageMembers(generation) {
+    document.querySelectorAll('#lineageGenerations .gen-btn').forEach(b => {
+        b.classList.toggle('active', parseInt(b.dataset.gen) === generation);
+    });
+
+    const title = document.getElementById('lineageTitle');
+    if (title) title.textContent = `Danh sách thành viên Đời thứ ${generation}`;
+
+    const container = document.getElementById('lineageList');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const members = allMembers.filter(m => parseInt(m.generation) === generation);
+    
+    if (members.length === 0) {
+        container.innerHTML = '<div style="text-align:center; color:#666; padding:20px;">Không có thành viên nào.</div>';
+        return;
+    }
+
+    // Sắp xếp: Nam trước Nữ, sau đó theo Order
+    members.sort((a, b) => {
+        if (a.gender !== b.gender) return a.gender === 'Nam' ? -1 : 1;
+        return (parseInt(a.order) || 99) - (parseInt(b.order) || 99);
+    });
+
+    members.forEach(m => {
+        // Tìm vợ/chồng
+        const spouse = m.pid ? allMembers.find(s => String(s.id) === String(m.pid)) : null;
+        
+        // Tìm con cái
+        const children = allMembers.filter(c => String(c.fid) === String(m.id) || String(c.mid) === String(m.id))
+                                   .sort((a, b) => (parseInt(a.order) || 99) - (parseInt(b.order) || 99));
+
+        // Tìm tên bố mẹ
+        let parentText = "Chưa cập nhật";
+        if (m.fid || m.mid) {
+            const parent = allMembers.find(p => String(p.id) === String(m.fid) || String(p.id) === String(m.mid));
+            if (parent) parentText = parent.full_name;
+        } else if (generation === 1) {
+            parentText = "Thủy Tổ";
+        }
+
+        const avatar = m.image || (m.gender === 'Nam' ? 'https://cdn-icons-png.flaticon.com/512/4128/4128176.png' : 'https://cdn-icons-png.flaticon.com/512/4128/4128349.png');
+
+        const card = document.createElement('div');
+        card.className = 'member-card-red';
+        card.innerHTML = `
+            <div class="card-header-red">
+                <div class="parent-info">Phụ mẫu: ${parentText}</div>
+                <div class="main-info">
+                    <img src="${avatar}" class="avatar-circle-small" onerror="this.src='https://via.placeholder.com/50'">
+                    <div style="flex:1">
+                        <h3 class="member-name-red">${m.full_name}</h3>
+                        <p class="meta-info">${m.gender} • ${children.length} Con</p>
+                    </div>
+                    <button class="expand-toggle" onclick="toggleLineageDetails(this)">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-details">
+                ${spouse ? `<div class="sub-row"><span class="label-gold">Vợ/Chồng</span> <span class="sub-name">${spouse.full_name}</span></div>` : ''}
+                ${children.map((c, idx) => `<div class="sub-row"><span class="label-gold">Con ${idx+1}</span> <span class="sub-name">${c.full_name}</span></div>`).join('')}
+                ${!spouse && children.length === 0 ? '<div style="color:#999; font-size:13px; font-style:italic;">Chưa có thông tin vợ/chồng hoặc con cái.</div>' : ''}
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+function toggleLineageDetails(btn) {
+    const card = btn.closest('.member-card-red') || btn.closest('.member-card-blue');
+    const details = card.querySelector('.card-details');
+    const icon = btn.querySelector('i');
+    
+    if (details.style.display === 'block') {
+        details.style.display = 'none';
+        icon.style.transform = 'rotate(0deg)';
+    } else {
+        details.style.display = 'block';
+        icon.style.transform = 'rotate(180deg)';
+    }
+}
+// Expose global
+window.toggleLineageDetails = toggleLineageDetails;
+
+/* ==========================================================
+   9. LOGIC TAB PHÂN PHÁI (BRANCHES)
+========================================================== */
+
+function renderBranchesTab() {
+    const container = document.getElementById('branches-tab');
+    if (!container) return;
+
+    if (!container.querySelector('.branch-container')) {
+        container.innerHTML = `
+            <div class="branch-container" style="display:flex; gap:20px; height: calc(100vh - 180px); flex-direction: row;">
+                <div class="branch-sidebar" style="width:200px; flex-shrink:0; overflow-y:auto; padding-right:10px; border-right:1px solid #eee;">
+                    <h3 style="margin-top:0; font-size:16px; color:#555; position:sticky; top:0; background:#fff; padding:10px 0; z-index:1;">Danh sách Phái</h3>
+                    <div id="branchListSidebar"></div>
+                </div>
+                <div class="branch-content" style="flex:1; overflow-y:auto; padding: 0 10px;">
+                    <h2 id="branchTitle" style="margin-top:0; color:#1d4ed8; border-bottom:2px solid #eee; padding-bottom:10px; position:sticky; top:0; background:#fff; z-index:1;"></h2>
+                    <div id="branchMemberList"></div>
+                </div>
+            </div>
+            <style>
+                @media (max-width: 768px) {
+                    .branch-container { flex-direction: column !important; }
+                    .branch-sidebar { width: 100% !important; height: 120px; border-right: none !important; border-bottom: 1px solid #eee; margin-bottom: 10px; }
+                }
+            </style>
+        `;
+        initBranches();
+    }
+}
+
+function initBranches() {
+    if (!allMembers || allMembers.length === 0) return;
+    renderBranchSidebar();
+}
+
+function renderBranchSidebar() {
+    const container = document.getElementById('branchListSidebar');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const stats = {};
+    allMembers.forEach(m => {
+        const branchName = m.branch ? m.branch.trim() : "Chưa phân phái";
+        if (!stats[branchName]) stats[branchName] = { total: 0, name: branchName };
+        stats[branchName].total++;
+    });
+
+    const sortedBranches = Object.values(stats).sort((a, b) => {
+        if (a.name === "Chưa phân phái") return 1;
+        if (b.name === "Chưa phân phái") return -1;
+        return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    sortedBranches.forEach((br, index) => {
+        const btn = document.createElement('div');
+        btn.className = 'gen-btn';
+        if (index === 0) {
+            btn.classList.add('active');
+            renderBranchMembers(br.name);
+        }
+        
+        btn.onclick = () => {
+            document.querySelectorAll('#branchListSidebar .gen-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderBranchMembers(br.name);
+        };
+        
+        // Map tên phái hiển thị đẹp hơn
+        const branchMap = { '0': 'Tổ khảo', '1': 'Phái Nhất', '2': 'Phái Nhì', '3': 'Phái Ba', '4': 'Phái Bốn' };
+        const displayName = branchMap[br.name] || (br.name === 'Gốc' ? 'Gốc' : br.name);
+
+        btn.innerHTML = `<span>${displayName}</span><span class="gen-badge">${br.total}</span>`;
+        container.appendChild(btn);
+    });
+}
+
+function renderBranchMembers(branchName) {
+    const title = document.getElementById('branchTitle');
+    const branchMap = { '0': 'Tổ khảo', '1': 'Phái Nhất', '2': 'Phái Nhì', '3': 'Phái Ba', '4': 'Phái Bốn' };
+    const displayName = branchMap[branchName] || (branchName === 'Gốc' ? 'Gốc' : branchName);
+    
+    if (title) title.textContent = `Danh sách thành viên thuộc: ${displayName}`;
+
+    const container = document.getElementById('branchMemberList');
+    if (!container) return;
+    container.innerHTML = '';
+
+    let members = allMembers.filter(m => {
+        const mBranch = m.branch ? m.branch.trim() : "Chưa phân phái";
+        return mBranch === branchName;
+    });
+
+    // Sắp xếp: Đời -> Order
+    members.sort((a, b) => {
+        const genA = parseInt(a.generation) || 0;
+        const genB = parseInt(b.generation) || 0;
+        if (genA !== genB) return genA - genB;
+        return (parseInt(a.order) || 99) - (parseInt(b.order) || 99);
+    });
+
+    if (members.length === 0) {
+        container.innerHTML = '<div style="text-align:center; color:#666; padding:20px;">Không có thành viên nào.</div>';
+        return;
+    }
+
+    members.forEach(m => {
+        // Tìm vợ/chồng
+        const spouse = m.pid ? allMembers.find(s => String(s.id) === String(m.pid)) : null;
+        
+        // Tìm con cái
+        const children = allMembers.filter(c => String(c.fid) === String(m.id) || String(c.mid) === String(m.id))
+                                   .sort((a, b) => (parseInt(a.order) || 99) - (parseInt(b.order) || 99));
+
+        // Tìm tên bố mẹ
+        let fatherName = "";
+        let motherName = "";
+        if (m.fid) {
+            const f = allMembers.find(p => String(p.id) === String(m.fid));
+            if (f) fatherName = f.full_name;
+        }
+        if (m.mid) {
+            const mo = allMembers.find(p => String(p.id) === String(m.mid));
+            if (mo) motherName = mo.full_name;
+        }
+
+        let parentText = "";
+        if ((parseInt(m.generation) || 1) === 1) parentText = "Thủy Tổ";
+        else {
+            const parts = [];
+            if (fatherName) parts.push(`Cha: ${fatherName}`);
+            if (motherName) parts.push(`Mẹ: ${motherName}`);
+            parentText = parts.length > 0 ? parts.join(" | ") : "";
+        }
+
+        const avatar = m.image || (m.gender === 'Nam' ? 'https://cdn-icons-png.flaticon.com/512/4128/4128176.png' : 'https://cdn-icons-png.flaticon.com/512/4128/4128349.png');
+
+        // Xây dựng HTML chi tiết
+        let detailsHtml = '';
+        if (spouse) {
+            detailsHtml += `<div class="sub-row" style="background-color: #f9fafb; font-weight:bold;">
+                <span class="label-gold">Vợ/Chồng</span> 
+                <span class="sub-name">${spouse.full_name}</span>
+            </div>`;
+        }
+        children.forEach((child, cIdx) => {
+            detailsHtml += `<div class="sub-row" style="padding-left: 20px; border-bottom: 1px dashed #eee;">
+                <span class="label-gold" style="font-weight:normal; font-size:12px; width:auto; margin-right:8px;">Con ${cIdx + 1}</span> 
+                <span class="sub-name">${child.full_name}</span>
+            </div>`;
+        });
+        if (detailsHtml === '') {
+            detailsHtml = '<div style="color:#999; font-size:13px; font-style:italic;">Chưa có thông tin vợ/chồng hoặc con cái.</div>';
+        }
+
+        const card = document.createElement('div');
+        card.className = 'member-card-blue';
+        card.innerHTML = `
+            <div class="card-header-blue">
+                <div class="parent-info">${parentText ? parentText + ' | ' : ''}Đời ${m.generation}</div>
+                <div class="main-info">
+                    <img src="${avatar}" class="avatar-circle-small" onerror="this.src='https://via.placeholder.com/50'">
+                    <div style="flex:1">
+                        <h3 class="member-name-blue">${m.full_name}</h3>
+                        <p class="meta-info">${m.gender} • ${children.length} Con</p>
+                    </div>
+                    <button class="expand-toggle" onclick="toggleLineageDetails(this)"><i class="fas fa-chevron-down"></i></button>
+                </div>
+            </div>
+            <div class="card-details">
+                ${detailsHtml}
+            </div>
+        `;
+        container.appendChild(card);
+    });
 }
