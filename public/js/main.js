@@ -4335,15 +4335,31 @@ function renderLineageMembers(generation) {
                                    .sort((a, b) => (parseInt(a.order) || 99) - (parseInt(b.order) || 99));
 
         // Tìm tên bố mẹ
-        let parentText = "Chưa cập nhật";
-        if (m.fid || m.mid) {
-            const parent = allMembers.find(p => String(p.id) === String(m.fid) || String(p.id) === String(m.mid));
-            if (parent) {
-                // Tạo link nhảy đến cha mẹ
-                parentText = `<a href="javascript:void(0)" onclick="jumpToLineageMember('${parent.id}')" class="jump-link">${parent.full_name}</a>`;
+        let fatherName = "";
+        let motherName = "";
+        let fatherId = "";
+        let motherId = "";
+
+        if (m.fid) {
+            const f = allMembers.find(p => String(p.id) === String(m.fid));
+            if (f) { fatherName = f.full_name; fatherId = f.id; }
+        }
+        if (m.mid) {
+            const mo = allMembers.find(p => String(p.id) === String(m.mid));
+            if (mo) { motherName = mo.full_name; motherId = mo.id; }
+        }
+
+        let parentHtml = "";
+        if (generation === 1) {
+            parentHtml = '<span style="font-weight:bold; color:#d97706;">👑 Thủy Tổ</span>';
+        } else {
+            if (fatherName) {
+                parentHtml += `<div style="display:flex; align-items:center; gap:5px;"><i class="fas fa-male" style="color:#3b82f6; width:12px;"></i> Cha: <strong><a href="javascript:void(0)" onclick="jumpToLineageMember('${fatherId}')" class="jump-link">${fatherName}</a></strong></div>`;
             }
-        } else if (generation === 1) {
-            parentText = "Thủy Tổ";
+            if (motherName) {
+                parentHtml += `<div style="display:flex; align-items:center; gap:5px;"><i class="fas fa-female" style="color:#ec4899; width:12px;"></i> Mẹ: <strong><a href="javascript:void(0)" onclick="jumpToLineageMember('${motherId}')" class="jump-link">${motherName}</a></strong></div>`;
+            }
+            if (!fatherName && !motherName) parentHtml = '<span style="color:#999; font-style:italic;">Chưa cập nhật cha mẹ</span>';
         }
 
         const avatar = m.image || (m.gender === 'Nam' ? 'https://cdn-icons-png.flaticon.com/512/4128/4128176.png' : 'https://cdn-icons-png.flaticon.com/512/4128/4128349.png');
@@ -4353,7 +4369,7 @@ function renderLineageMembers(generation) {
         card.id = `lineage-card-${m.id}`; // Gắn ID để scroll tới
         card.innerHTML = `
             <div class="card-header-red">
-                <div class="parent-info">Phụ mẫu: ${parentText}</div>
+                <div class="parent-info" style="display:flex; flex-direction:column; gap:2px; text-transform:none; font-weight:normal;">${parentHtml}</div>
                 <div class="main-info">
                     <img src="${avatar}" class="avatar-circle-small" onerror="this.src='https://via.placeholder.com/50'">
                     <div style="flex:1">

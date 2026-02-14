@@ -1308,15 +1308,42 @@ function renderLineageMembers(generation) {
             return (c.parent_id == (m._id || m.id));
         });
 
-        // Tìm tên bố mẹ
-        let parentText = "Chưa cập nhật";
-        if (m.parent_id) {
-            const pid = Array.isArray(m.parent_id) ? m.parent_id[0] : m.parent_id;
-            const parent = allMembers.find(p => (p._id || p.id) == (pid._id || pid));
-            if (parent) parentText = parent.full_name;
-            else if (m.generation === 1) parentText = "Thủy Tổ";
-        } else if (m.generation === 1) {
-            parentText = "Thủy Tổ";
+        // Tìm tên bố mẹ (Tách biệt Cha/Mẹ)
+        let fatherName = "";
+        let motherName = "";
+
+        // 1. Ưu tiên dùng fid/mid (Chuẩn Schema)
+        if (m.fid) {
+            const f = allMembers.find(p => (p._id || p.id) == m.fid);
+            if (f) fatherName = f.full_name;
+        }
+        if (m.mid) {
+            const mo = allMembers.find(p => (p._id || p.id) == m.mid);
+            if (mo) motherName = mo.full_name;
+        }
+
+        // 2. Fallback: Dùng parent_id nếu fid/mid chưa có
+        if (!fatherName && !motherName && m.parent_id) {
+            const pids = Array.isArray(m.parent_id) ? m.parent_id : [m.parent_id];
+            pids.forEach(pid => {
+                const pIdVal = pid._id || pid;
+                const parent = allMembers.find(p => (p._id || p.id) == pIdVal);
+                if (parent) {
+                    const g = (parent.gender || '').toLowerCase();
+                    if (g === 'nam' || g === 'male' || g === 'trai') fatherName = parent.full_name;
+                    else motherName = parent.full_name;
+                }
+            });
+        }
+
+        let parentHtml = "";
+        if (m.generation === 1) {
+            parentHtml = '<span style="font-weight:bold; color:#d97706;">👑 Thủy Tổ</span>';
+        } else {
+            if (fatherName) parentHtml += `<div style="display:flex; align-items:center; gap:5px;"><i class="fas fa-male" style="color:#3b82f6; width:12px;"></i> Cha: <strong>${fatherName}</strong></div>`;
+            if (motherName) parentHtml += `<div style="display:flex; align-items:center; gap:5px;"><i class="fas fa-female" style="color:#ec4899; width:12px;"></i> Mẹ: <strong>${motherName}</strong></div>`;
+            
+            if (!fatherName && !motherName) parentHtml = '<span style="color:#999; font-style:italic;">Chưa cập nhật cha mẹ</span>';
         }
 
         const avatar = m.photo || m.avatar || (m.gender === 'Nữ' ? 'https://cdn-icons-png.flaticon.com/512/4128/4128349.png' : 'https://cdn-icons-png.flaticon.com/512/4128/4128176.png');
@@ -1326,7 +1353,7 @@ function renderLineageMembers(generation) {
         card.className = 'member-card-red';
         card.innerHTML = `
             <div class="card-header-red">
-                <div class="parent-info">Phụ mẫu: ${parentText}</div>
+                <div class="parent-info" style="display:flex; flex-direction:column; gap:2px; text-transform:none; font-weight:normal;">${parentHtml}</div>
                 <div class="main-info">
                     <img src="${avatar}" class="avatar-circle-small">
                     <div style="flex:1">
