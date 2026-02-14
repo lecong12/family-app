@@ -3599,9 +3599,9 @@ function renderDashboardTab() {
             let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
             genLabels.forEach(label => {
                 const count = genCounts[label];
-                html += `<li style="padding: 12px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
-                            <span style="color: #333; font-weight: 500;">Đời thứ ${label}</span>
-                            <span style="background: #fff3e0; color: #e67e22; padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 0.9em;">${count} người</span>
+                html += `<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: #333; font-weight: 500; font-size: 14px;">Đời thứ ${label}</span>
+                            <span style="background: #fff3e0; color: #e67e22; padding: 2px 10px; border-radius: 20px; font-weight: bold; font-size: 0.85em;">${count} người</span>
                          </li>`;
             });
             html += '</ul>';
@@ -3637,9 +3637,9 @@ function renderDashboardTab() {
                 // Lấy tên hiển thị, nếu không nằm trong 1-4 thì hiển thị nguyên gốc
                 const displayName = branchMap[label] || (label === 'Gốc' ? 'Gốc' : `Phái ${label}`);
                 
-                html += `<li style="padding: 12px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
-                            <span style="color: #333; font-weight: 500;">${displayName}</span>
-                            <span style="background: #e0f2fe; color: #0284c7; padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 0.9em;">${count} người</span>
+                html += `<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: #333; font-weight: 500; font-size: 14px;">${displayName}</span>
+                            <span style="background: #e0f2fe; color: #0284c7; padding: 2px 10px; border-radius: 20px; font-weight: bold; font-size: 0.85em;">${count} người</span>
                          </li>`;
             });
             html += '</ul>';
