@@ -4493,72 +4493,76 @@ function renderBranchMembers(branchName) {
     }
 
     members.forEach(m => {
-        // Tìm vợ/chồng
-        const spouse = m.pid ? allMembers.find(s => String(s.id) === String(m.pid)) : null;
-        
-        // Tìm con cái
-        const children = allMembers.filter(c => String(c.fid) === String(m.id) || String(c.mid) === String(m.id))
-                                   .sort((a, b) => (parseInt(a.order) || 99) - (parseInt(b.order) || 99));
+        try {
+            // Tìm vợ/chồng
+            const spouse = m.pid ? allMembers.find(s => String(s.id) === String(m.pid)) : null;
+            
+            // Tìm con cái
+            const children = allMembers.filter(c => String(c.fid) === String(m.id) || String(c.mid) === String(m.id))
+                                    .sort((a, b) => (parseInt(a.order) || 99) - (parseInt(b.order) || 99));
 
-        // Tìm tên bố mẹ
-        let fatherName = "";
-        let motherName = "";
-        if (m.fid) {
-            const f = allMembers.find(p => String(p.id) === String(m.fid));
-            if (f) fatherName = f.full_name;
-        }
-        if (m.mid) {
-            const mo = allMembers.find(p => String(p.id) === String(m.mid));
-            if (mo) motherName = mo.full_name;
-        }
+            // Tìm tên bố mẹ
+            let fatherName = "";
+            let motherName = "";
+            if (m.fid) {
+                const f = allMembers.find(p => String(p.id) === String(m.fid));
+                if (f) fatherName = f.full_name;
+            }
+            if (m.mid) {
+                const mo = allMembers.find(p => String(p.id) === String(m.mid));
+                if (mo) motherName = mo.full_name;
+            }
 
-        let parentText = "";
-        if ((parseInt(m.generation) || 1) === 1) parentText = "Thủy Tổ";
-        else {
-            const parts = [];
-            if (fatherName) parts.push(`Cha: ${fatherName}`);
-            if (motherName) parts.push(`Mẹ: ${motherName}`);
-            parentText = parts.length > 0 ? parts.join(" | ") : "";
-        }
+            let parentText = "";
+            if ((parseInt(m.generation) || 1) === 1) parentText = "Thủy Tổ";
+            else {
+                const parts = [];
+                if (fatherName) parts.push(`Cha: ${fatherName}`);
+                if (motherName) parts.push(`Mẹ: ${motherName}`);
+                parentText = parts.length > 0 ? parts.join(" | ") : "";
+            }
 
-        const avatar = m.image || (m.gender === 'Nam' ? 'https://cdn-icons-png.flaticon.com/512/4128/4128176.png' : 'https://cdn-icons-png.flaticon.com/512/4128/4128349.png');
+            const avatar = m.image || (m.gender === 'Nam' ? 'https://cdn-icons-png.flaticon.com/512/4128/4128176.png' : 'https://cdn-icons-png.flaticon.com/512/4128/4128349.png');
 
-        // Xây dựng HTML chi tiết
-        let detailsHtml = '';
-        if (spouse) {
-            detailsHtml += `<div class="sub-row" style="background-color: #f9fafb; font-weight:bold;">
-                <span class="label-gold">Vợ/Chồng</span> 
-                <span class="sub-name">${spouse.full_name}</span>
-            </div>`;
-        }
-        children.forEach((child, cIdx) => {
-            detailsHtml += `<div class="sub-row" style="padding-left: 20px; border-bottom: 1px dashed #eee;">
-                <span class="label-gold" style="font-weight:normal; font-size:12px; width:auto; margin-right:8px;">Con ${cIdx + 1}</span> 
-                <span class="sub-name">${child.full_name}</span>
-            </div>`;
-        });
-        if (detailsHtml === '') {
-            detailsHtml = '<div style="color:#999; font-size:13px; font-style:italic;">Chưa có thông tin vợ/chồng hoặc con cái.</div>';
-        }
+            // Xây dựng HTML chi tiết
+            let detailsHtml = '';
+            if (spouse) {
+                detailsHtml += `<div class="sub-row" style="background-color: #f9fafb; font-weight:bold;">
+                    <span class="label-gold">Vợ/Chồng</span> 
+                    <span class="sub-name">${spouse.full_name}</span>
+                </div>`;
+            }
+            children.forEach((child, cIdx) => {
+                detailsHtml += `<div class="sub-row" style="padding-left: 20px; border-bottom: 1px dashed #eee;">
+                    <span class="label-gold" style="font-weight:normal; font-size:12px; width:auto; margin-right:8px;">Con ${cIdx + 1}</span> 
+                    <span class="sub-name">${child.full_name}</span>
+                </div>`;
+            });
+            if (detailsHtml === '') {
+                detailsHtml = '<div style="color:#999; font-size:13px; font-style:italic;">Chưa có thông tin vợ/chồng hoặc con cái.</div>';
+            }
 
-        const card = document.createElement('div');
-        card.className = 'member-card-blue';
-        card.innerHTML = `
-            <div class="card-header-blue">
-                <div class="parent-info">${parentText ? parentText + ' | ' : ''}Đời ${m.generation}</div>
-                <div class="main-info">
-                    <img src="${avatar}" class="avatar-circle-small" onerror="this.src='https://via.placeholder.com/50'">
-                    <div style="flex:1">
-                        <h3 class="member-name-blue">${m.full_name}</h3>
-                        <p class="meta-info">${m.gender} • ${children.length} Con</p>
+            const card = document.createElement('div');
+            card.className = 'member-card-blue';
+            card.innerHTML = `
+                <div class="card-header-blue">
+                    <div class="parent-info">${parentText ? parentText + ' | ' : ''}Đời ${m.generation}</div>
+                    <div class="main-info">
+                        <img src="${avatar}" class="avatar-circle-small" onerror="this.src='https://via.placeholder.com/50'">
+                        <div style="flex:1">
+                            <h3 class="member-name-blue">${m.full_name}</h3>
+                            <p class="meta-info">${m.gender} • ${children.length} Con</p>
+                        </div>
+                        <button class="expand-toggle" onclick="toggleLineageDetails(this)"><i class="fas fa-chevron-down"></i></button>
                     </div>
-                    <button class="expand-toggle" onclick="toggleLineageDetails(this)"><i class="fas fa-chevron-down"></i></button>
                 </div>
-            </div>
-            <div class="card-details">
-                ${detailsHtml}
-            </div>
-        `;
-        container.appendChild(card);
+                <div class="card-details">
+                    ${detailsHtml}
+                </div>
+            `;
+            container.appendChild(card);
+        } catch (err) {
+            console.error("Lỗi hiển thị thành viên phân phái:", m.full_name, err);
+        }
     });
 }
