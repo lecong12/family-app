@@ -3258,19 +3258,25 @@ input[type="radio"][value="0"]:checked + .option-deceased {
         height: auto !important;
         border-right: none !important;
         border-bottom: 1px solid #eee;
-        margin-bottom: 15px;
+        margin-bottom: 10px;
         
         /* Chuyển thành thanh cuộn ngang */
         display: flex;
         flex-wrap: nowrap;
         overflow-x: auto;
-        padding: 10px 5px;
-        gap: 10px;
+        padding: 8px 4px;
+        gap: 8px;
         background: #fff;
         position: sticky;
         top: 0;
         z-index: 10;
         box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        /* Ẩn thanh cuộn nhưng vẫn cuộn được */
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none;  /* IE 10+ */
+    }
+    .lineage-sidebar::-webkit-scrollbar, .branch-sidebar::-webkit-scrollbar { 
+        display: none; /* Chrome/Safari/Webkit */
     }
     
     /* Ẩn tiêu đề sidebar trên mobile để tiết kiệm chỗ */
@@ -3279,16 +3285,20 @@ input[type="radio"][value="0"]:checked + .option-deceased {
     .gen-btn {
         flex: 0 0 auto; /* Không co lại */
         margin-bottom: 0;
-        min-width: 110px;
-        flex-direction: column;
+        min-width: auto;
+        flex-direction: row;
         justify-content: center;
+        align-items: center;
         text-align: center;
-        padding: 8px 12px;
+        padding: 6px 12px;
         font-size: 13px;
-        height: 50px;
+        height: 36px;
+        border-radius: 20px;
+        gap: 6px;
+        white-space: nowrap;
     }
     
-    .gen-badge { margin-top: 4px; font-size: 11px; }
+    .gen-badge { margin-top: 0; font-size: 11px; }
     
     .lineage-content, .branch-content {
         padding: 0 5px !important;
@@ -3300,5 +3310,21 @@ input[type="radio"][value="0"]:checked + .option-deceased {
         font-size: 18px;
         padding-top: 10px;
         position: static !important;
+    }
+
+    /* Thu gọn thẻ thành viên trên mobile */
+    .card-header-red, .card-header-blue {
+        padding: 10px 12px;
+    }
+    .member-name-red, .member-name-blue {
+        font-size: 15px;
+    }
+    .avatar-circle-small {
+        width: 40px;
+        height: 40px;
+    }
+    .parent-info {
+        font-size: 11px;
+        margin-bottom: 4px;
     }
 }
