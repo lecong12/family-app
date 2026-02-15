@@ -2890,7 +2890,7 @@ input[type="radio"][value="0"]:checked + .option-deceased {
 @media (max-width: 768px) {
     .pagination-controls,
     .book-controls {
-        gap: 8px !important;
+        gap: 4px !important;
         flex-wrap: nowrap !important; /* Ép buộc nằm trên 1 hàng */
         justify-content: center !important;
         width: 100%; /* Đảm bảo chiếm hết chiều rộng để căn giữa chuẩn */

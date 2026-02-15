@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!isAdmin()) {
         document.title = "Gia phả Họ Lê Công";
         const headerTitle = document.querySelector('.header-info h1');
-        if (headerTitle) headerTitle.innerHTML = "Gia phả Họ Lê Công<br>Thôn Linh An, tỉnh Quảng Trị";
+        if (headerTitle) headerTitle.innerHTML = "Gia phả Họ Lê Công<br>, tỉnh Quảng Trị";
     }
 
     // --- FIX: Gắn sự kiện Đăng xuất bằng Event Delegation (Chắc chắn hoạt động 100%) ---
@@ -2759,11 +2759,11 @@ async function renderBookTab() {
 
     // 3. Tạo khung HTML cho sách
     container.innerHTML = `
-        <div class="book-controls" style="text-align:center; margin-bottom:15px; display:flex; justify-content:center; align-items:center; gap:5px; flex-wrap:wrap;">
+        <div class="book-controls" style="text-align:center; margin-bottom:10px; display:flex; justify-content:center; align-items:center; gap:4px; flex-wrap:wrap;">
             <button class="btn-control" id="btn-book-prev"><i class="fas fa-chevron-left"></i><span class="btn-text"> Trang trước</span></button>
             
             <!-- Pagination Input (Phân trang) -->
-            <div class="book-pagination" style="display:flex; align-items:center; gap:5px; background:white; padding:4px 8px; border-radius:8px; border:1px solid #ddd;">
+            <div class="book-pagination" style="display:flex; align-items:center; gap:2px; background:white; padding:2px 5px; border-radius:8px; border:1px solid #ddd;">
                 <span style="font-size:13px; color:#666;">Trang</span>
                 <input type="number" id="book-page-input" min="1" style="width:50px; text-align:center; padding:4px; border:1px solid #ccc; border-radius:4px; font-weight:bold;">
                 <span id="book-total-pages" style="font-size:13px; font-weight:bold; color:#555;">/ ...</span>
@@ -2793,7 +2793,7 @@ async function renderBookTab() {
                 <div style="border: 3px double #d7ccc8; padding: 20px; height: 100%; display:flex; flex-direction:column; justify-content:flex-start; align-items:center; padding-top: 80px;">
                     <h1 style="font-family: 'Times New Roman', serif; font-size: 2.5em; text-align: center; color: #d7ccc8; margin-bottom: 20px; text-shadow: 1px 1px 2px #000;">GIA PHẢ<br>HỌ LÊ CÔNG</h1>
                     <div style="width: 50px; height: 2px; background: #5d4037; margin: 20px auto;"></div>
-                    <p style="font-size: 1.2em; color: #d7ccc8;">Thôn Linh An,Tỉnh Quảng Trị</p>
+                    <p style="font-size: 1.2em; color: #d7ccc8;">Thôn Linh An, Quảng Trị</p>
                     <p style="margin-top: auto; font-size: 0.9em; color: #a1887f;">Năm ${new Date().getFullYear()}</p>
                 </div>
             </div>
