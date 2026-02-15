@@ -3460,7 +3460,7 @@ function renderDashboardTab() {
         <div class="dashboard-columns">
             <div class="dashboard-col">
                 <h3>Phân bố theo Thế hệ</h3>
-                <div id="gen-list-container" style="max-height: 300px; overflow-y: auto;"></div>
+                <div id="gen-list-container"></div>
             </div>
             <div class="dashboard-col">
                 <h3>Thành phần Gia tộc</h3>
@@ -3472,7 +3472,7 @@ function renderDashboardTab() {
         <div class="dashboard-columns">
             <div class="dashboard-col">
                 <h3>Phân bổ theo Phái</h3>
-                <div id="branch-list-container" style="max-height: 300px; overflow-y: auto;"></div>
+                <div id="branch-list-container"></div>
             </div>
             <div class="dashboard-col">
                 <h3>Tình trạng sinh tử</h3>
@@ -3596,15 +3596,15 @@ function renderDashboardTab() {
         if (genLabels.length === 0) {
             genListContainer.innerHTML = '<p style="text-align:center; color:#666; padding: 20px;">Chưa có dữ liệu.</p>';
         } else {
-            let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
+            let html = '<div style="display: flex; flex-wrap: wrap; gap: 8px;">';
             genLabels.forEach(label => {
                 const count = genCounts[label];
-                html += `<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
-                            <span style="color: #333; font-weight: 500; font-size: 14px;">Đời thứ ${label}</span>
-                            <span style="background: #fff3e0; color: #e67e22; padding: 2px 10px; border-radius: 20px; font-weight: bold; font-size: 0.85em;">${count} người</span>
-                         </li>`;
+                html += `<div style="background: #fff7ed; border: 1px solid #ffedd5; padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-size: 13px; flex: 1 0 auto; justify-content: center;">
+                            <span style="color: #9a3412; font-weight: 600; white-space: nowrap;">Đời thứ ${label}</span>
+                            <span style="background: #f97316; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold;">${count}</span>
+                         </div>`;
             });
-            html += '</ul>';
+            html += '</div>';
             genListContainer.innerHTML = html;
         }
     }
@@ -3623,7 +3623,7 @@ function renderDashboardTab() {
         if (branchLabels.length === 0) {
             branchListContainer.innerHTML = '<p style="text-align:center; color:#666; padding: 20px;">Chưa có dữ liệu phái.</p>';
         } else {
-            let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
+            let html = '<div style="display: flex; flex-wrap: wrap; gap: 8px;">';
             const branchMap = { 
                 '0': 'Tổ khảo',                                 
                 '1': 'Phái Nhất', 
@@ -3637,12 +3637,12 @@ function renderDashboardTab() {
                 // Lấy tên hiển thị, nếu không nằm trong 1-4 thì hiển thị nguyên gốc
                 const displayName = branchMap[label] || (label === 'Gốc' ? 'Gốc' : `Phái ${label}`);
                 
-                html += `<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
-                            <span style="color: #333; font-weight: 500; font-size: 14px;">${displayName}</span>
-                            <span style="background: #e0f2fe; color: #0284c7; padding: 2px 10px; border-radius: 20px; font-weight: bold; font-size: 0.85em;">${count} người</span>
-                         </li>`;
+                html += `<div style="background: #e0f2fe; border: 1px solid #bae6fd; padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-size: 13px; flex: 1 0 auto; justify-content: center;">
+                            <span style="color: #0369a1; font-weight: 600; white-space: nowrap;">${displayName}</span>
+                            <span style="background: #0284c7; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold;">${count}</span>
+                         </div>`;
             });
-            html += '</ul>';
+            html += '</div>';
             branchListContainer.innerHTML = html;
         }
     }
