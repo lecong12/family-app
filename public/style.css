@@ -368,15 +368,15 @@ body {
 .tabs-container {
     max-width: 1600px;
     margin: 0 auto;
-    padding: 20px 30px;
+    padding: 10px 15px;
     display: flex;
-    gap: 10px;
+    gap: 5px;
     flex-wrap: wrap;
     width: 100%;
 }
 
 .tab-btn {
-    padding: 8px 16px;
+    padding: 6px 10px;
     border: 2px solid var(--gray-200);
     background: white;
     border-radius: 10px;
@@ -385,7 +385,7 @@ body {
     transition: all 0.3s;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     color: var(--gray-800);
     font-size: 13px;
 }
@@ -1473,28 +1473,22 @@ body {
     }
 
     .tab-btn {
-        padding: 6px 2px;
-        font-size: 10px;
         padding: 4px 2px;
-        font-size: 9px; /* Giảm cỡ chữ một chút để không bị tràn */
-        flex-direction: column; /* Icon nằm trên, chữ nằm dưới */
+        font-size: 11px;
+        flex-direction: row;
         justify-content: center;
         text-align: center;
         white-space: normal; /* Cho phép xuống dòng nếu chữ dài */
-        min-height: 55px;
-        min-height: 50px;
+        min-height: 36px;
         width: 100%;
-        gap: 4px;
-        gap: 2px;
+        gap: 0;
         min-width: 0; /* QUAN TRỌNG: Cho phép nút co nhỏ dưới kích thước nội dung */
         word-break: break-word; /* Ngắt từ nếu quá dài */
         line-height: 1.1;
     }
 
     .tab-btn i {
-        font-size: 18px; /* Tăng kích thước icon cho dễ nhìn */
-        font-size: 16px;
-        margin-bottom: 2px;
+        display: none;
     }
 
     .stats-grid {
