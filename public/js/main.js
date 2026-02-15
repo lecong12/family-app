@@ -2852,7 +2852,7 @@ async function renderBookTab() {
     bookInstance = new St.PageFlip(bookEl, {
         width: width,
         height: height,
-        size: isMobile ? "stretch" : "fixed", // Mobile co giãn, PC cố định
+        size: "fixed", // FIX: Khóa kích thước cố định (không stretch) để tránh zoom/co giãn
         minWidth: 300,
         maxWidth: 600,
         minHeight: 400,
@@ -2866,30 +2866,13 @@ async function renderBookTab() {
     bookInstance.loadFromHTML(document.querySelectorAll('.page'));
 
     // 5. Gắn sự kiện điều khiển
-    // Hàm cuộn lên đầu sách khi chuyển trang (Tham khảo từ yêu cầu)
-    const handleBookPageChange = () => {
-        const element = document.getElementById("so-gia-pha-content");
-        if (element) {
-            const rect = element.getBoundingClientRect();
-            const headerOffset = 100; // Trừ đi chiều cao header sticky
-            
-            // FIX: Chỉ cuộn nếu đỉnh sách bị khuất phía trên (người dùng đã cuộn xuống quá sâu)
-            // Giúp tránh giật màn hình khi đang xem trọn vẹn sách
-            if (rect.top < headerOffset) {
-                const offsetPosition = rect.top + window.pageYOffset - headerOffset;
-                window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
-            }
-        }
-    };
+    // Đã xóa handleBookPageChange để chặn tự động cuộn (thay đổi vị trí)
 
     document.getElementById('btn-book-prev').onclick = () => {
         bookInstance.flipPrev();
-        // FIX: Delay cuộn để hiệu ứng lật trang chạy mượt trước (600ms là thời gian lật mặc định)
-        setTimeout(handleBookPageChange, 600);
     };
     document.getElementById('btn-book-next').onclick = () => {
         bookInstance.flipNext();
-        setTimeout(handleBookPageChange, 600);
     };
 
     // Xử lý nhảy trang (Pagination)
@@ -2904,7 +2887,6 @@ async function renderBookTab() {
         
         // PageFlip index bắt đầu từ 0
         bookInstance.flip(page - 1);
-        handleBookPageChange();
     };
 
     document.getElementById('btn-book-goto').onclick = goToPage;
