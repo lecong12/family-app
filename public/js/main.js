@@ -141,10 +141,10 @@ document.addEventListener('DOMContentLoaded', () => {
         bookTabBtn.dataset.target = '#book-tab';
         bookTabBtn.innerHTML = '<i class="fas fa-book-open"></i> Sổ Gia phả';
         
-        // FIX: Chèn vào sau tab Thành viên (Vị trí thứ 4)
-        const membersTabBtn = tabsContainer.querySelector('[data-target="#members-tab"]');
-        if (membersTabBtn) {
-            membersTabBtn.after(bookTabBtn);
+        // FIX: Chèn vào sau tab Cây Gia Phả (Tree Tab)
+        const treeTabBtn = tabsContainer.querySelector('[data-target="#tree-tab"]');
+        if (treeTabBtn) {
+            treeTabBtn.after(bookTabBtn);
         } else {
             tabsContainer.appendChild(bookTabBtn);
         }
