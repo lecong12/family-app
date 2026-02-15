@@ -3658,6 +3658,7 @@ function renderDashboardTab() {
         const upcomingBirthdays = [];
         const upcomingDeathAnnivs = [];
         const checkDays = 30; // Số ngày kiểm tra trước
+        const processedIds = new Set(); // FIX: Set để theo dõi và lọc trùng ID
 
         // Hàm parse ngày tháng từ chuỗi (hỗ trợ dd/mm/yyyy, dd-mm-yyyy)
         const parseDayMonth = (dateStr) => {
@@ -3679,6 +3680,10 @@ function renderDashboardTab() {
         };
 
         allMembers.forEach(m => {
+            // FIX: Nếu ID này đã được xử lý rồi thì bỏ qua ngay
+            if (processedIds.has(String(m.id))) return;
+            processedIds.add(String(m.id));
+
             // Xác định trạng thái sống/mất dựa trên dữ liệu
             // Nếu có death_date thì coi như đã mất. Nếu không, kiểm tra is_live (nếu có)
             const hasDeathDate = m.death_date && String(m.death_date).trim() !== '' && String(m.death_date).trim() !== '0';

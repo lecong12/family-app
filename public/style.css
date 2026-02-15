@@ -338,6 +338,7 @@ body {
     display: flex;
     align-items: center;
     gap: 15px;
+    gap: 8px;
 }
 
 .user-name {
@@ -349,6 +350,7 @@ body {
     background: var(--danger);
     color: white;
     padding: 6px 12px; /* Giảm padding để tiết kiệm diện tích */
+    padding: 4px 8px;
     border: none;
     border-radius: 8px;
     cursor: pointer;
@@ -1438,8 +1440,10 @@ body {
     .header-container {
         flex-direction: column;
         gap: 16px;
+        gap: 4px;
         text-align: center;
         padding: 15px 20px;
+        padding: 8px 10px;
     }
     
     .header-info h1 {
@@ -2921,6 +2925,7 @@ input[type="radio"][value="0"]:checked + .option-deceased {
 /* ===== GENEALOGY BOOK STYLES ===== */
 #book-tab {
     padding: 20px;
+    padding: 10px;
     background-color: #fff9c4; /* Nền vàng nhạt để làm nổi bật cuốn sổ */
     background-image: none;
     border-radius: 16px;
