@@ -3581,7 +3581,7 @@ function renderDashboardTab() {
             let html = '<div style="display: flex; flex-wrap: wrap; gap: 8px;">';
             genLabels.forEach(label => {
                 const count = genCounts[label];
-                html += `<div style="background: #fff7ed; border: 1px solid #ffedd5; padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-size: 13px; flex: 1 0 auto; justify-content: center;">
+                html += `<div style="background: #fff7ed; border: 1px solid #ffedd5; padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-size: 13px; flex: 1 0 auto; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
                             <span style="color: #9a3412; font-weight: 600; white-space: nowrap;">Đời thứ ${label}</span>
                             <span style="background: #f97316; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold;">${count}</span>
                          </div>`;
@@ -3619,7 +3619,7 @@ function renderDashboardTab() {
                 // Lấy tên hiển thị, nếu không nằm trong 1-4 thì hiển thị nguyên gốc
                 const displayName = branchMap[label] || (label === 'Gốc' ? 'Gốc' : `Phái ${label}`);
                 
-                html += `<div style="background: #e0f2fe; border: 1px solid #bae6fd; padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-size: 13px; flex: 1 0 auto; justify-content: center;">
+                html += `<div style="background: #e0f2fe; border: 1px solid #bae6fd; padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-size: 13px; flex: 1 0 auto; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
                             <span style="color: #0369a1; font-weight: 600; white-space: nowrap;">${displayName}</span>
                             <span style="background: #0284c7; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold;">${count}</span>
                          </div>`;
