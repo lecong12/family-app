@@ -4241,22 +4241,15 @@ function renderGenealogyTab() {
     // Khởi tạo cấu trúc nếu chưa có hoặc đang hiển thị placeholder
     if (!container.querySelector('.lineage-container')) {
         container.innerHTML = `
-            <div class="lineage-container" style="display:flex; gap:20px; height: calc(100vh - 180px); flex-direction: row;">
-                <div class="lineage-sidebar" style="width:200px; flex-shrink:0; overflow-y:auto; padding-right:10px; border-right:1px solid #eee;">
-                    <h3 style="margin-top:0; font-size:16px; color:#555; position:sticky; top:0; background:#fff; padding:10px 0; z-index:1;">Danh sách Đời</h3>
-                    <div id="lineageGenerations"></div>
+            <div class="lineage-container" style="display:flex; gap:20px; height: calc(100vh - 180px); flex-direction: column;">
+                <div class="lineage-sidebar" style="width:100%; flex-shrink:0; border-bottom:1px solid #eee; padding-bottom: 10px;">
+                    <div id="lineageGenerations" style="display:flex; gap:10px; overflow-x:auto; padding: 5px 0; align-items: center;"></div>
                 </div>
                 <div class="lineage-content" style="flex:1; overflow-y:auto; padding: 0 10px;">
                     <h2 id="lineageTitle" style="margin-top:0; color:#d32f2f; border-bottom:2px solid #eee; padding-bottom:10px; position:sticky; top:0; background:#fff; z-index:1;"></h2>
                     <div id="lineageList"></div>
                 </div>
             </div>
-            <style>
-                @media (max-width: 768px) {
-                    .lineage-container { flex-direction: column !important; }
-                    .lineage-sidebar { width: 100% !important; height: 120px; border-right: none !important; border-bottom: 1px solid #eee; margin-bottom: 10px; }
-                }
-            </style>
         `;
         initLineage();
     }
@@ -4291,6 +4284,8 @@ function renderLineageSidebar() {
         const s = stats[i] || { total: 0 };
         const btn = document.createElement('div');
         btn.className = 'gen-btn';
+        btn.style.minWidth = 'fit-content';
+        btn.style.marginBottom = '0';
         if (i === 1) btn.classList.add('active');
         btn.onclick = () => renderLineageMembers(i);
         btn.dataset.gen = i;

@@ -1464,14 +1464,10 @@ body {
     }
 
     .tabs-container {
-        padding: 10px;
-        gap: 6px;
-        display: grid;
-        grid-template-columns: repeat(4, 1fr); /* Chia đều 4 cột -> 8 tab sẽ thành 2 hàng */
-        padding: 5px; /* Giảm lề để có thêm chỗ */
-        gap: 4px;     /* Giảm khoảng cách giữa các nút */
         display: grid !important; /* Bắt buộc dùng Grid */
         grid-template-columns: repeat(4, 1fr) !important; /* Bắt buộc chia 4 cột đều nhau */
+        padding: 2px; /* Giảm lề tối đa */
+        gap: 2px;     /* Giảm khoảng cách giữa các nút */
         width: 100%;
         box-sizing: border-box;
     }
@@ -3317,6 +3313,30 @@ input[type="radio"][value="0"]:checked + .option-deceased {
     .card-header-red, .card-header-blue {
         padding: 10px 12px;
     }
+    .member-name-red, .member-name-blue {
+        font-size: 15px;
+    }
+    .avatar-circle-small {
+        width: 40px;
+        height: 40px;
+    }
+    .parent-info {
+        font-size: 11px;
+        margin-bottom: 4px;
+    }
+}   }
+    .member-name-red, .member-name-blue {
+        font-size: 15px;
+    }
+    .avatar-circle-small {
+        width: 40px;
+        height: 40px;
+    }
+    .parent-info {
+        font-size: 11px;
+        margin-bottom: 4px;
+    }
+}   }
     .member-name-red, .member-name-blue {
         font-size: 15px;
     }
